@@ -1,0 +1,26 @@
+name: check
+on:
+  push:
+  pull_request:
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Workspace health
+        run: ./scripts/doctor
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The bootstrap workflow may add toolchain setup steps here (e.g. setup-dotnet, setup-node)
+      # to match the commands it writes into scripts/check.conf.
+      - name: Verification contract
+        run: |
+          if [ -f scripts/check.conf ]; then
+            ./scripts/check
+          else
+            echo "scripts/check.conf not present yet (pre-bootstrap) — skipping."
+          fi

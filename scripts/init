@@ -1,0 +1,51 @@
+#!/bin/sh
+# ANEW init — installs an AI tool adapter into the repo root.
+# Usage: ./scripts/init [claude-code|github-copilot|cursor|generic]
+set -e
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ADAPTERS="$ROOT/adapters"
+
+usage() {
+  echo "Usage: ./scripts/init <adapter>"
+  echo ""
+  echo "Available adapters:"
+  echo "  claude-code      CLAUDE.md + .claude/ (commands, reviewer subagent, permissions, hooks)"
+  echo "  github-copilot   .github/copilot-instructions.md pointer"
+  echo "  cursor           .cursor/rules/ pointer"
+  echo "  generic          nothing to install — prints wiring instructions"
+}
+
+[ $# -eq 1 ] || { usage; exit 1; }
+
+case "$1" in
+  claude-code)
+    cp "$ADAPTERS/claude-code/CLAUDE.md" "$ROOT/CLAUDE.md"
+    mkdir -p "$ROOT/.claude"
+    cp -R "$ADAPTERS/claude-code/.claude/." "$ROOT/.claude/"
+    chmod +x "$ROOT/.claude/hooks/"*.sh 2>/dev/null || true
+    echo "Installed: CLAUDE.md, .claude/ (commands, agents, hooks, settings)."
+    echo "Next: open Claude Code here and run /bootstrap"
+    ;;
+  github-copilot)
+    mkdir -p "$ROOT/.github"
+    cp "$ADAPTERS/github-copilot/copilot-instructions.md" "$ROOT/.github/copilot-instructions.md"
+    echo "Installed: .github/copilot-instructions.md."
+    echo "Next: open Copilot chat and paste prompts/bootstrap.md"
+    ;;
+  cursor)
+    mkdir -p "$ROOT/.cursor/rules"
+    cp "$ADAPTERS/cursor/rules/anew.mdc" "$ROOT/.cursor/rules/anew.mdc"
+    echo "Installed: .cursor/rules/anew.mdc."
+    echo "Next: open Cursor here and paste prompts/bootstrap.md"
+    ;;
+  generic)
+    echo "Nothing to install. See adapters/generic/README.md for wiring any tool:"
+    echo "paste AGENTS.md at session start, drive workflows/ manually, review in a fresh session."
+    ;;
+  -h|--help) usage ;;
+  *)
+    echo "Unknown adapter: $1" >&2
+    usage
+    exit 1
+    ;;
+esac

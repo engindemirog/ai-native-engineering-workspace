@@ -1,0 +1,7 @@
+---
+description: ANEW workspace rules pointer
+alwaysApply: true
+---
+All project rules live in AGENTS.md at the repository root — the single source of truth. Read it
+first and honor the operating mode it declares. Processes: workflows/. Prompts: prompts/.
+Project knowledge: docs/. Never act against the AGENTS.md invariant rules.

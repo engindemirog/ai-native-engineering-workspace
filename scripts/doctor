@@ -1,0 +1,81 @@
+#!/bin/sh
+# ANEW doctor — workspace health check. Structure, configuration state, adapter presence.
+# Exit 0 = healthy (warnings allowed), exit 1 = broken structure.
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+fails=0
+warns=0
+
+fail() { echo "FAIL  $1"; fails=$((fails + 1)); }
+warn() { echo "WARN  $1"; warns=$((warns + 1)); }
+ok()   { echo "ok    $1"; }
+
+echo "== ANEW doctor =="
+
+# --- structure: required files ---
+for f in \
+  AGENTS.md README.md \
+  docs/architecture.md docs/domain.md docs/conventions.md docs/testing.md docs/security.md docs/git.md \
+  docs/decisions/TEMPLATE.md docs/roles/README.md docs/roles/analyst.md docs/roles/developer.md \
+  docs/roles/reviewer.md docs/roles/qa.md \
+  specs/TEMPLATE.md specs/plans/TEMPLATE.md \
+  workflows/README.md workflows/bootstrap.md workflows/feature-development.md workflows/bug-fix.md \
+  workflows/refactor.md workflows/incident.md \
+  prompts/README.md prompts/bootstrap.md prompts/clarify.md prompts/spec.md prompts/plan.md \
+  prompts/build.md prompts/review.md prompts/verify.md prompts/adr.md prompts/recovery/README.md \
+  scripts/check
+do
+  if [ -f "$ROOT/$f" ]; then :; else fail "missing: $f"; fi
+done
+[ "$fails" -eq 0 ] && ok "core structure complete"
+
+# --- recovery ramps ---
+ramps=$(ls "$ROOT/prompts/recovery" 2>/dev/null | grep -c '^[a-z].*\.md$')
+if [ "$ramps" -ge 12 ]; then ok "recovery catalog present ($ramps ramps)"; else warn "recovery catalog incomplete (found $ramps ramps, expected 12)"; fi
+
+# --- configuration state ---
+if grep -q "STATUS: NOT CONFIGURED" "$ROOT/AGENTS.md" 2>/dev/null; then
+  warn "AGENTS.md not configured yet — run the bootstrap workflow (/bootstrap or prompts/bootstrap.md)"
+else
+  ok "AGENTS.md configured"
+fi
+
+if grep -qi "^\*\*Mode: unset\*\*\|Mode: unset" "$ROOT/AGENTS.md" 2>/dev/null; then
+  warn "operating mode not set (lite/strict) — bootstrap sets it in AGENTS.md"
+else
+  ok "operating mode set"
+fi
+
+if grep -q "Invariant rules" "$ROOT/AGENTS.md" 2>/dev/null; then
+  ok "AGENTS.md invariant rules block present"
+else
+  fail "AGENTS.md invariant rules block MISSING — it must survive bootstrap"
+fi
+
+lines=$(wc -l < "$ROOT/AGENTS.md" 2>/dev/null || echo 0)
+if [ "$lines" -gt 60 ]; then
+  warn "AGENTS.md is $lines lines — it should be a signpost (<= ~40 lines), not a handbook"
+fi
+
+if [ -f "$ROOT/scripts/check.conf" ]; then
+  ok "verification contract configured (scripts/check.conf)"
+else
+  warn "scripts/check.conf missing — bootstrap generates it; until then './scripts/check' has nothing to run"
+fi
+
+# --- adapter presence ---
+if [ -f "$ROOT/CLAUDE.md" ] || [ -f "$ROOT/.github/copilot-instructions.md" ] || [ -d "$ROOT/.cursor/rules" ]; then
+  ok "an AI tool adapter is installed"
+else
+  warn "no adapter installed — run ./scripts/init <claude-code|github-copilot|cursor|generic>"
+fi
+
+# --- hygiene ---
+if [ -d "$ROOT/.claude/hooks" ]; then
+  for h in "$ROOT/.claude/hooks/"*.sh; do
+    [ -f "$h" ] && [ ! -x "$h" ] && warn "hook not executable: ${h#"$ROOT"/} (chmod +x it)"
+  done
+fi
+
+echo "== result: $fails fail, $warns warn =="
+[ "$fails" -eq 0 ] || exit 1
+exit 0

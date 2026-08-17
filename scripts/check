@@ -1,0 +1,38 @@
+#!/bin/sh
+# ANEW check — THE single verification contract.
+# Humans, agents, hooks, and CI all answer "is this good?" by running this one command.
+# Stack-specific internals live in scripts/check.conf (generated at bootstrap).
+# check.conf format: one step per line ->  <name>: <command>
+#   build: dotnet build -warnaserror
+#   test: dotnet test
+#   lint: npm run lint
+# Blank lines and lines starting with # are ignored. Steps run in order, fail fast.
+set -u
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+CONF="$ROOT/scripts/check.conf"
+
+if [ ! -f "$CONF" ]; then
+  echo "check: no scripts/check.conf yet." >&2
+  echo "Run the bootstrap workflow (/bootstrap or prompts/bootstrap.md) to generate it," >&2
+  echo "or copy scripts/check.conf.example and fill in your stack's commands." >&2
+  exit 1
+fi
+
+steps=0
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in ''|\#*) continue ;; esac
+  name=${line%%:*}
+  cmd=${line#*:}
+  steps=$((steps + 1))
+  echo "==> $name"
+  if ! ( cd "$ROOT" && sh -c "$cmd" ); then
+    echo "CHECK FAILED at step: $name" >&2
+    exit 1
+  fi
+done < "$CONF"
+
+if [ "$steps" -eq 0 ]; then
+  echo "check: check.conf has no steps — greenfield no-op. Add steps as soon as code exists."
+  exit 0
+fi
+echo "CHECK GREEN ($steps steps)"
