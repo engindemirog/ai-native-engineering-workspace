@@ -18,3 +18,11 @@
 |---|---|
 | AC-1 | |
 | AC-2 | |
+
+## Approved deviations
+<!-- Filled during build, not at plan time. R-07: plans are amended by approval, never silently.
+Empty means the plan held — that is a result, not a blank to delete. -->
+
+| Deviation | Why it was necessary | Approved by / on |
+|---|---|---|
+|  |  |  |

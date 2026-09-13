@@ -12,7 +12,7 @@ INTENT → CLARIFY → SPEC → PLAN → [APPROVAL] → BUILD → REVIEW → [TR
 | 2 | **SPEC** — create `specs/active/NNNN-<name>.md` | Analyst | `prompts/spec.md` | Atomic, testable criteria; no tech in Requirements. **[GATE: human — strict]** Self-critique pass included. |
 | 3 | **PLAN** — create `specs/plans/NNNN-plan.md` | Developer | `prompts/plan.md` | Files + steps + risks (with recommendations) + criterion↔test map. **No code.** |
 | 4 | **APPROVAL** | Human | — | **[GATE: human]** Plan touches every criterion? Blast radius sane? Risks honest? Approval recorded in the plan file. |
-| 5 | **BUILD** | Developer | `prompts/build.md` | Branch per `docs/git.md`; steps match plan; `scripts/check` green. Deviation → R-07. |
+| 5 | **BUILD** | Developer | `prompts/build.md` | Branch per `docs/git.md`; steps match plan; `scripts/check` green. Deviation → R-07, recorded in the plan. |
 | 6 | **INDEPENDENT REVIEW** — fresh session / read-only subagent | Reviewer | `prompts/review.md` | Findings with evidence (file:line) across all six dimensions, or "clean". |
 | 7 | **TRIAGE** | Human | — | **[GATE: human]** Each finding: real (fix) / noise (reject, write why) / investigate (→ QA, R-05). |
 | 8 | **FIX ROUNDS** | Developer | `prompts/build.md` §fixes | Only real findings. Re-review the fix diff (step 6, narrow scope). Rounds > 3 → R-06. |

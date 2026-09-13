@@ -10,7 +10,7 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
   R-07 (deviations are proposed, not smuggled).
 - Problems: compile/runtime error → R-01 · red test → R-02 · you created a regression → R-04.
 
-Done means: all steps complete, ./scripts/check GREEN, changed-file list matches the plan.
+Done means: all steps complete, ./scripts/check GREEN, changed-file list matches the plan as amended.
 Return: changed files + check output. Do not self-review; that comes next, independently.
 
 §fixes — For triaged review findings: fix ONLY findings marked real, smallest change per finding,
