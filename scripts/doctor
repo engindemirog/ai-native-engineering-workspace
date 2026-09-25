@@ -1,13 +1,17 @@
 #!/bin/sh
 # ANEW doctor — workspace health check. Structure, configuration state, adapter presence.
 # Exit 0 = healthy (warnings allowed), exit 1 = broken structure.
+# --strict: spec/plan gate violations (see workflows/segments.md) become FAIL — used by CI.
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 fails=0
 warns=0
+strict=0
+[ "${1:-}" = "--strict" ] && strict=1
 
 fail() { echo "FAIL  $1"; fails=$((fails + 1)); }
 warn() { echo "WARN  $1"; warns=$((warns + 1)); }
 ok()   { echo "ok    $1"; }
+gate() { if [ "$strict" -eq 1 ]; then fail "$1"; else warn "$1"; fi; }
 
 echo "== ANEW doctor =="
 
@@ -19,7 +23,7 @@ for f in \
   docs/roles/reviewer.md docs/roles/qa.md \
   specs/TEMPLATE.md specs/plans/TEMPLATE.md \
   workflows/README.md workflows/bootstrap.md workflows/feature-development.md workflows/bug-fix.md \
-  workflows/refactor.md workflows/incident.md \
+  workflows/refactor.md workflows/incident.md workflows/segments.md \
   prompts/README.md prompts/bootstrap.md prompts/clarify.md prompts/spec.md prompts/plan.md \
   prompts/build.md prompts/review.md prompts/verify.md prompts/adr.md prompts/recovery/README.md \
   scripts/check
@@ -70,6 +74,7 @@ else
 fi
 
 # --- spec/plan consistency (state machine: Draft -> Approved -> In progress -> Shipped) ---
+# gate() = WARN locally, FAIL under --strict (CI).
 plans_checked=0
 for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
   [ -f "$p" ] || continue
@@ -80,14 +85,14 @@ for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
     [ -f "$s" ] && { spec="$s"; break; }
   done
   if [ -z "$spec" ]; then
-    warn "plan exists for unapproved spec $n (no spec file found in specs/active/ or specs/done/)"
+    gate "plan exists for unapproved spec $n (no spec file found in specs/active/ or specs/done/)"
     continue
   fi
   status=$(grep -m1 '^- Status:' "$spec" | sed 's/^- Status:[[:space:]]*//; s/[[:space:]]*$//')
   case "$spec" in "$ROOT/specs/done/"*) status="Shipped" ;; esac
   case "$status" in
     Approved|"In progress"|Shipped) ;;
-    *) warn "plan exists for unapproved spec $n (spec status: ${status:-unknown})" ;;
+    *) gate "plan exists for unapproved spec $n (spec status: ${status:-unknown})" ;;
   esac
   # approval line, HTML comments stripped; empty, "-" or "—" means not recorded
   approval=$(grep -m1 '^- Approved by / on:' "$p" | sed 's/<!--.*-->//g; s/^- Approved by \/ on:[[:space:]]*//; s/[[:space:]]*$//')
@@ -96,7 +101,7 @@ for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
     *) approved=1 ;;
   esac
   if [ "$status" = "In progress" ] && [ "$approved" -eq 0 ]; then
-    warn "build started without recorded plan approval (spec $n is In progress, plan has no 'Approved by / on')"
+    gate "build started without recorded plan approval (spec $n is In progress, plan has no 'Approved by / on')"
   fi
 done
 [ "$plans_checked" -gt 0 ] && ok "spec/plan consistency checked ($plans_checked plan(s))"

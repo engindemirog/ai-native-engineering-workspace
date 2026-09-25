@@ -5,7 +5,7 @@ Install: `./scripts/init claude-code` — copies `CLAUDE.md` and `.claude/` to t
 What it adds on top of the core:
 
 - **Segment commands** (`.claude/commands/`): `/analyze`, `/plan`, `/build`, `/review`, `/verify`
-  — one per stage of `workflows/feature-development.md`. Each checks its entry condition (spec
+  — one per segment of `workflows/segments.md`. Each checks its entry condition (spec
   `Status: Approved`, plan `Approved by / on`, build evidence, triage), does its segment, and
   **always stops** with a handoff line naming the next command. Handoffs travel through files.
 - **Chainer**: `/new-feature` reads the Mode from `AGENTS.md`. In `lite` it runs the segments in

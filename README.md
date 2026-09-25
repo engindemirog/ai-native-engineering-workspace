@@ -71,7 +71,7 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 `Status`, the plan's `Approved by / on` line). The rule:
 **Segments always stop; /new-feature flows only as far as the mode allows.**
 
-### Commands (Claude Code adapter)
+### Segment commands (every adapter; defined once in `workflows/segments.md`)
 
 | Command | What it does | Stops at |
 |---|---|---|
@@ -81,7 +81,11 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 | `/review <NNNN>` | Independent read-only review (subagent) | Findings report → human triage |
 | `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
 | `/new-feature "<feature>"` | **Chainer.** `lite`: runs the segments in order, asks at every gate. `strict`: refuses and redirects to the segment commands. | Each gate |
-| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows; see `adapters/claude-code/README.md` | Their gates |
+| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows (Claude Code); other tools paste the prompts | Their gates |
+
+Claude Code and Cursor expose these as slash commands, GitHub Copilot as prompt files, and any
+other tool by pasting the prompts (`adapters/generic/README.md`). CI runs `scripts/doctor --strict`,
+so the spec/plan gates hold whichever tool produced the PR.
 
 ### Two operating modes
 
@@ -106,11 +110,11 @@ Pick per project — or per feature.
 | `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. |
 | `docs/roles/` | Role cards bound to responsibility, not technology: analyst, developer, reviewer, QA. Producer and verifier are never the same session. |
 | `specs/` | One spec per piece of work: intent, behavior, testable acceptance criteria. `active/` → `done/` (immutable once shipped). Plans live in `specs/plans/`. |
-| `workflows/` | The processes: bootstrap, feature-development, bug-fix, refactor, incident. Steps, roles, gates, evidence — each step points to its prompt. |
+| `workflows/` | The processes: bootstrap, feature-development, bug-fix, refactor, incident. Steps, roles, gates, evidence — each step points to its prompt. `segments.md` defines the feature stages as stop-at-handoff segments that every adapter maps onto. |
 | `prompts/` | Reusable prompt bodies with placeholders. `prompts/recovery/` is the catalog of safe ramps (R-01…R-12) for when things go wrong. |
 | `adapters/` | Per-tool wiring. `scripts/init <tool>` installs one. |
 | `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. |
-| `scripts/doctor` | Workspace health: structure, configuration state, adapter presence. |
+| `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI). |
 | `.github/` | CI that runs the same `scripts/check` + a PR template mirroring the gates. |
 
 ## Design principles

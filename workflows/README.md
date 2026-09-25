@@ -7,6 +7,7 @@ uses (`prompts/…`) — workflows never copy prompt text, so there is exactly o
 |---|---|
 | `bootstrap.md` | First run: adapt this workspace to your project (new or existing). |
 | `feature-development.md` | Any new behavior. |
+| `segments.md` | The feature workflow one stage at a time: entry checks, gates, handoffs, the chainer rule. Adapters map their commands onto it. |
 | `bug-fix.md` | Something works incorrectly. Reproduction comes before the fix. |
 | `refactor.md` | Structure changes, behavior doesn't. |
 | `incident.md` | Production is on fire. Stabilize first, learn after. |
@@ -29,9 +30,9 @@ Set at bootstrap, recorded in `AGENTS.md`:
 - **strict** — Intent → Clarify → Spec → **[GATE]** → Plan → **[GATE]** → Build → Independent
   Review → **[GATE: triage]** → Verify → **[GATE: ship]**. For teams and critical systems.
 
-**Segments and the chainer.** Each stage is a *segment command* (`/analyze`, `/plan`, `/build`,
-`/review`, `/verify` in the Claude Code adapter): canonical, entry-checked, and always ending at a
-handoff. `/new-feature` is a *chainer*. The rule everywhere:
+**Segments and the chainer** (`segments.md`). Each stage is a *segment* — ANALYZE, PLAN, BUILD,
+REVIEW, VERIFY — canonical, entry-checked, and always ending at a handoff. Adapters expose them
+as `/analyze`, `/plan`, … `/new-feature` is a *chainer*. The rule everywhere:
 **Segments always stop; /new-feature flows only as far as the mode allows.**
 Lite lives with `/new-feature` (it chains the segments and asks at each gate); strict lives with
 the segment commands (`/new-feature` refuses and redirects to them, one role per session).

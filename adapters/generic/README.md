@@ -10,3 +10,19 @@ No files to install. Wire any agent in three moves:
    the diff and the spec — never the builder's conversation.
 
 The verification contract is tool-independent by design: everything runs `./scripts/check`.
+
+## Running the feature segments by hand
+
+`workflows/segments.md` defines each segment's entry check, prompt, gate, and handoff. Without
+slash commands you *are* the chainer — and the rule still holds: segments always stop.
+
+| Segment | Open a session as | Paste | Before you paste, check | Stop when |
+|---|---|---|---|---|
+| ANALYZE | Analyst | `prompts/clarify.md`, then `prompts/spec.md` | no matching spec in `specs/active/` | you approved the spec and set `Status: Approved` |
+| PLAN | Developer (new session) | `prompts/plan.md` | spec says `Status: Approved` | you filled `Approved by / on` in the plan |
+| BUILD | Developer | `prompts/build.md` | plan's `Approved by / on` is filled; set spec `In progress` | `./scripts/check` output is green and shown |
+| REVIEW | Reviewer (fresh session, diff + spec only) | `prompts/review.md` | a branch/diff exists | you have the findings report — then triage |
+| VERIFY | QA (fresh session) | `prompts/verify.md` | triage is complete | the criterion ↔ evidence table is complete — then ship |
+
+`./scripts/doctor` (and CI with `--strict`) checks that these status fields are consistent, so
+the gates hold even when no tool enforces them.

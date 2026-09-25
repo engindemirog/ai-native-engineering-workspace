@@ -10,8 +10,8 @@ usage() {
   echo ""
   echo "Available adapters:"
   echo "  claude-code      CLAUDE.md + .claude/ (commands, reviewer subagent, permissions, hooks)"
-  echo "  github-copilot   .github/copilot-instructions.md pointer"
-  echo "  cursor           .cursor/rules/ pointer"
+  echo "  github-copilot   .github/ (copilot-instructions.md, prompts/, agents/, instructions/)"
+  echo "  cursor           .cursor/ (rules/, commands/)"
   echo "  generic          nothing to install — prints wiring instructions"
 }
 
@@ -29,13 +29,20 @@ case "$1" in
   github-copilot)
     mkdir -p "$ROOT/.github"
     cp "$ADAPTERS/github-copilot/copilot-instructions.md" "$ROOT/.github/copilot-instructions.md"
-    echo "Installed: .github/copilot-instructions.md."
+    for d in prompts agents instructions; do
+      mkdir -p "$ROOT/.github/$d"
+      cp "$ADAPTERS/github-copilot/$d/"* "$ROOT/.github/$d/"
+    done
+    echo "Installed: .github/copilot-instructions.md, .github/prompts/ (segment commands),"
+    echo "           .github/agents/reviewer.agent.md, .github/instructions/specs-done.instructions.md."
     echo "Next: open Copilot chat and paste prompts/bootstrap.md"
     ;;
   cursor)
     mkdir -p "$ROOT/.cursor/rules"
     cp "$ADAPTERS/cursor/rules/anew.mdc" "$ROOT/.cursor/rules/anew.mdc"
-    echo "Installed: .cursor/rules/anew.mdc."
+    mkdir -p "$ROOT/.cursor/commands"
+    cp "$ADAPTERS/cursor/commands/"*.md "$ROOT/.cursor/commands/"
+    echo "Installed: .cursor/rules/anew.mdc, .cursor/commands/ (segment commands)."
     echo "Next: open Cursor here and paste prompts/bootstrap.md"
     ;;
   generic)

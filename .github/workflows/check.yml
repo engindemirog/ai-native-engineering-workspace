@@ -8,8 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Workspace health
-        run: ./scripts/doctor
+      - name: Workspace health (spec/plan gates are failures in CI)
+        run: ./scripts/doctor --strict
 
   check:
     runs-on: ubuntu-latest

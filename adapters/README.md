@@ -10,9 +10,13 @@ the core and point at it.
 
 | Adapter | What you get |
 |---|---|
-| `claude-code/` | Pointer `CLAUDE.md` + slash commands for every workflow + read-only `reviewer` subagent + permission denies + a hook that makes `specs/done/` physically immutable. Deepest integration. |
-| `github-copilot/` | Pointer `copilot-instructions.md`. (Copilot also reads `AGENTS.md` natively in current versions.) |
-| `cursor/` | Pointer rule file. (Cursor also reads `AGENTS.md` natively in current versions.) |
-| `generic/` | Instructions for wiring any other agent. |
+| `claude-code/` | Pointer `CLAUDE.md` + segment commands (`/analyze` … `/verify`) + `/new-feature` chainer + other workflow commands + read-only `reviewer` subagent + permission denies + a hook that makes `specs/done/` physically immutable. Deepest integration. |
+| `github-copilot/` | Pointer `copilot-instructions.md` + segment prompt files + `/new-feature` chainer + read-only `reviewer` custom agent + an immutability instruction for `specs/done/`. |
+| `cursor/` | Pointer rule file + segment commands + `/new-feature` chainer. Review runs in a fresh chat. |
+| `generic/` | Instructions for wiring any other agent, incl. a paste-by-hand table for the segments. |
+
+All adapters expose the same five segments and the same chainer rule from `workflows/segments.md`
+— *segments always stop; /new-feature flows only as far as the mode allows* — and none of them
+restates it: they point.
 
 Tools change fast; adapters are the only layer that ages. Updating one never touches the core.
