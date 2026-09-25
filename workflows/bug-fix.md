@@ -8,7 +8,8 @@ REPORT → REPRODUCE (red test) → DIAGNOSE → FIX → PROVE → REVIEW → SH
 ```
 
 1. **REPORT.** Capture: expected vs actual, environment, frequency. If it came from review triage,
-   the finding is the report.
+   the finding is the report. The report plus the reproduction test (step 2) is the *spec's
+   equivalent* here — the failing test is the acceptance criterion, so AGENTS.md rule 1 holds.
 2. **REPRODUCE** — Role: QA. Write the *minimal failing test* that captures the bug
    (`prompts/recovery/unverified-finding.md`, R-05, is the pattern). No reproduction after honest
    effort → propose a reasoned close. **[GATE: human]**

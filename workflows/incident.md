@@ -11,7 +11,9 @@ ASSESS → STABILIZE → [HUMAN: action] → EVIDENCE → ROOT CAUSE → FIX (bu
    rewriting), feature-flag off, scale, or rate-limit. **[GATE: human]** — the human executes or
    explicitly approves the production action. Agents do not touch production unilaterally.
 3. **EVIDENCE.** Before it evaporates: logs, metrics, failing requests, timeline. Store alongside
-   the incident spec (`specs/active/incident-<date>.md` — a lightweight spec is enough).
+   the incident spec: `specs/active/NNNN-incident-<date>.md` from `specs/TEMPLATE-mini.md`
+   (Source = incident id; Preserved behavior = what must keep working while you stabilize). It
+   shares the spec numbering and the `scripts/doctor` checks.
 4. **ROOT CAUSE.** Diagnosis discipline of R-01: cause, not symptom. "Why did our gates miss it?"
    is part of the root cause.
 5. **FIX.** Run the **bug-fix workflow** (reproduction first). The incident is not "done" at

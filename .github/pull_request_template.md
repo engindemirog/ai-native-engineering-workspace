@@ -2,7 +2,10 @@
 <!-- specs/active/NNNN-<name>.md — a PR without a spec should not exist (AGENTS.md rule 1). -->
 - Spec: `specs/active/NNNN-<name>.md` — Status: <!-- In progress (Shipped once merged & moved) -->
 - Plan: `specs/plans/NNNN-plan.md`
-- Produced via: <!-- lite: /new-feature chain · strict: segment sessions (/analyze … /verify) -->
+- Or, for lanes without a spec file (AGENTS.md rule 1 still holds — this is the spec's equivalent):
+  bug fix → report + reproduction test: <!-- report id + test name --> · trivial change → work item
+  + `docs/git.md` policy: <!-- work item -->
+- Produced via: <!-- lite: /new-feature chain · strict: segment sessions (/analyze … /verify) · bug-fix · trivial -->
 
 ## What & why
 <!-- 2–3 sentences. -->

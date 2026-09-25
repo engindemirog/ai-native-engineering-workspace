@@ -48,9 +48,11 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 
 ./scripts/doctor                  # 4. Confirm the workspace is healthy
 
-# 5. Start your first feature
-#    Claude Code:  /new-feature "short description"
-#    Other tools:  follow workflows/feature-development.md
+# 5. Start your first feature (Claude Code, Cursor and Copilot share the same commands)
+#    lite mode:     /new-feature "short description"    # chains the segments, asks at each gate
+#    strict mode:   /analyze "short description"        # one segment per role, one role per session
+#    existing behavior must change:  /change "<request> <work item>"
+#    any other tool: adapters/generic/README.md (paste the prompts by hand)
 ```
 
 Works for **new projects** (empty repo) and **existing codebases** (bootstrap detects your stack
@@ -65,7 +67,9 @@ INTENT → CLARIFY → SPEC → PLAN → [HUMAN APPROVAL] → BUILD
        → INDEPENDENT REVIEW → [HUMAN TRIAGE] → VERIFY → SHIP
 ```
 
-Two human checkpoints are never automated: **plan approval** and **finding triage**.
+Two human checkpoints are never automated: **plan approval** and **finding triage**. Spec approval
+is always asked as well — in lite mode a quick yes/no, never skipped, because it is PLAN's entry
+condition.
 
 Each stage is a *segment* with an entry condition and a handoff written to files (the spec's
 `Status`, the plan's `Approved by / on` line). The rule:
@@ -95,7 +99,7 @@ Chosen at bootstrap, recorded in `AGENTS.md`, honored by every workflow:
 | | **Lite** — solo developers, low-risk work | **Strict** — teams, critical systems |
 |---|---|---|
 | Spine | Spec → Plan → Build → Review → Verify | Full spine incl. Intent → Clarify |
-| Human gates | Plan approval | Spec approval · plan approval · finding triage · ship decision |
+| Human gates | Spec approval (light yes/no) · plan approval; `/new-feature` also asks at triage and ship | Spec approval · plan approval · finding triage · ship decision |
 | Review | Independent (separate session/subagent) | Independent + role separation enforced |
 | Ceremony | Minimum viable | Full evidence trail |
 
@@ -108,7 +112,7 @@ Pick per project — or per feature.
 |---|---|
 | `AGENTS.md` | The signpost every agent auto-loads: invariant rules, operating mode, where everything lives. Rewritten by bootstrap; invariants survive. |
 | `docs/` | Long-term memory: architecture, domain language, conventions, testing, security, git rules — templates filled at bootstrap. |
-| `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. |
+| `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. ANEW's own design decisions are recorded there (0001–0003). |
 | `docs/roles/` | Role cards bound to responsibility, not technology: analyst, developer, reviewer, QA. Producer and verifier are never the same session. |
 | `specs/` | One spec per piece of work: intent, behavior, testable acceptance criteria (`TEMPLATE-mini.md` for behavior changes: changed + preserved criteria). `active/` → `done/` (immutable once shipped). Plans live in `specs/plans/`. |
 | `workflows/` | The processes: bootstrap, feature-development, change-request, bug-fix, refactor, incident. Steps, roles, gates, evidence — each step points to its prompt. `segments.md` defines the feature stages as stop-at-handoff segments that every adapter maps onto. |
@@ -116,7 +120,7 @@ Pick per project — or per feature.
 | `adapters/` | Per-tool wiring. `scripts/init <tool>` installs one. |
 | `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. |
 | `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI). |
-| `.github/` | CI that runs the same `scripts/check` + a PR template mirroring the gates. |
+| `.github/` | CI that runs the same `scripts/check` and `scripts/doctor --strict` + a PR template mirroring the gates. |
 
 ## Design principles
 

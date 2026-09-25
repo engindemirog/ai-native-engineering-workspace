@@ -1,0 +1,8 @@
+# Normalize line endings; POSIX scripts must stay LF even on Windows checkouts (autocrlf=true),
+# otherwise `sh` fails on the carriage return.
+* text=auto
+scripts/* text eol=lf
+*.sh text eol=lf
+*.md text
+*.yml text
+*.json text

@@ -4,7 +4,8 @@
 
 ## Branching
 - `feature/<spec-no>-<short-name>` — **no branch without a spec.**
-- Fixes: `fix/<spec-no>-<short-name>`; incidents: `incident/<date>-<short-name>`.
+- Fixes: `fix/<report-id>-<short-name>` (bug fixes carry a report, not a spec number);
+  incidents: `incident/<date>-<short-name>`; trivial changes: `trivial/<short-name>` (see below).
 
 ## Commits
 - Conventional Commits, with a plan reference: `feat(catalog): paging endpoint [plan 0001/3]`.

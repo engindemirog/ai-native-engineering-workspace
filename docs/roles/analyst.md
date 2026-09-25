@@ -1,6 +1,7 @@
 # Role: Analyst
 
-**Identity:** Turns business intent into an unambiguous, testable spec. Owns INTENT → CLARIFY → SPEC.
+**Identity:** Turns business intent into an unambiguous, testable spec. Owns INTENT → CLARIFY → SPEC
+and the change-request triage (`workflows/change-request.md`: verdict with rationale, human confirms).
 
 **Reads:** `AGENTS.md`, `docs/domain.md`, `docs/architecture.md` (boundaries only), `specs/TEMPLATE.md`.
 

@@ -10,7 +10,8 @@ TRIAGE → [BUG → bug-fix.md] | [TRIVIAL lane] | [CHANGE lane: mini-spec → p
 ## Triage rubric — run it in this order, every time
 
 The lane is decided by the **behavior test** and the **blast radius**, never by how small the
-request sounds. Present the verdict with its rationale (proposal rule); the human confirms.
+request sounds. **Role:** Analyst runs the rubric and presents the verdict with its rationale
+(proposal rule); the human confirms.
 
 | # | Question | If yes | If no |
 |---|---|---|---|
@@ -23,7 +24,9 @@ the user's plan": a criterion changed → CHANGE. "The button never did what the
 
 ## TRIVIAL lane
 
-- **No spec.** One narrow commit, touching only the thing named in the request.
+- **No spec file.** One narrow commit, touching only the thing named in the request. The work item
+  plus the confirmed triage verdict is the *spec's equivalent*: AGENTS.md rule 1 is honored by the
+  record, not waived — the PR names the work item.
 - Follow the project's **trivial-change policy** in `docs/git.md` ("Trivial changes"), set at
   bootstrap. Default: *no spec, but still a PR and one reviewer* — a cheap safety net.
 - `scripts/check` green. If the change turns out to need a second file or a new test, that is a

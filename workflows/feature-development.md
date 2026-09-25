@@ -16,7 +16,7 @@ through files (spec `Status`, plan `Approved by / on`), never chat.
 | # | Step | Role | Prompt | Gate / evidence | Segment · handoff |
 |---|---|---|---|---|---|
 | 1 | **INTENT & CLARIFY** *(strict; lite: fold into spec)* | Analyst | `prompts/clarify.md` | Intent in business language + every clarifying question answered by a human. **[GATE: human — strict]** | ANALYZE · continues to step 2 in the same session |
-| 2 | **SPEC** — create `specs/active/NNNN-<name>.md` | Analyst | `prompts/spec.md` | Atomic, testable criteria; no tech in Requirements. **[GATE: human — strict]** Self-critique pass included. | ANALYZE · STOP: spec `Status: Approved` → "Next: PLAN" |
+| 2 | **SPEC** — create `specs/active/NNNN-<name>.md` | Analyst | `prompts/spec.md` | Atomic, testable criteria; no tech in Requirements. **[GATE: light]** (lite: a yes/no; strict: full approval) → `Status: Approved`, PLAN's entry condition. Self-critique pass included. | ANALYZE · STOP: spec `Status: Approved` → "Next: PLAN" |
 | 3 | **PLAN** — create `specs/plans/NNNN-plan.md` | Developer | `prompts/plan.md` | Files + steps + risks (with recommendations) + criterion↔test map. **No code.** | PLAN · refuses unless spec is Approved |
 | 4 | **APPROVAL** | Human | — | **[GATE: human]** Plan touches every criterion? Blast radius sane? Risks honest? Approval recorded in the plan file. | PLAN · STOP: `Approved by / on` filled → "Next: BUILD" |
 | 5 | **BUILD** | Developer | `prompts/build.md` | Branch per `docs/git.md`; steps match plan; `scripts/check` green. Deviation → R-07. | BUILD · refuses unless plan approval recorded; sets `In progress`; STOP with check output → "Next: REVIEW" |

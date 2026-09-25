@@ -23,6 +23,7 @@ slash commands you *are* the chainer — and the rule still holds: segments alwa
 | BUILD | Developer | `prompts/build.md` | plan's `Approved by / on` is filled; set spec `In progress` | `./scripts/check` output is green and shown |
 | REVIEW | Reviewer (fresh session, diff + spec only) | `prompts/review.md` | a branch/diff exists | you have the findings report — then triage |
 | VERIFY | QA (fresh session) | `prompts/verify.md` | triage is complete | the criterion ↔ evidence table is complete — then ship |
+| CHANGE (existing behavior) | Analyst | the triage rubric in `workflows/change-request.md`, then ANALYZE with `specs/TEMPLATE-mini.md` | no open spec with the same `Source:` | verdict confirmed; then the lane's gates as above |
 
 `./scripts/doctor` (and CI with `--strict`) checks that these status fields are consistent, so
 the gates hold even when no tool enforces them.

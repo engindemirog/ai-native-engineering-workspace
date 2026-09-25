@@ -20,9 +20,10 @@ What it adds on top of the core:
   `workflows/` and `prompts/`, they don't restate them.
 - **Read-only reviewer subagent** (`.claude/agents/reviewer.md`): the "producer never verifies its
   own work" rule made *impossible to break* — the subagent has no Edit/Write tools.
-- **Permission denies** (`.claude/settings.json`): force push, hard reset, `rm -rf` blocked by
-  the tool, not by politeness.
-- **Immutability hook** (`.claude/hooks/protect-shipped.sh`): edits under `specs/done/` are
-  physically rejected.
+- **Permission denies** (`.claude/settings.json`): force push, hard reset, `git rebase`, `rm -rf`
+  blocked by the tool, not by politeness.
+- **Immutability hook** (`.claude/hooks/protect-shipped.sh`): Edit/Write/MultiEdit/NotebookEdit
+  under `specs/done/` are physically rejected. A shell redirect is not caught — the CI gate
+  (`scripts/doctor --strict`) and review are the backstop.
 
 All defaults are adjustable — see "Adapting it" in the root README.

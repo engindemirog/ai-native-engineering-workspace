@@ -1,8 +1,9 @@
 # Prompt: Write the Spec
 
 ```
-Role: Analyst. Using specs/TEMPLATE.md, write specs/active/<NNNN>-<name>.md for:
-"<feature>". Fold in the intent and every clarify decision we made.
+Role: Analyst. Using <specs/TEMPLATE.md | specs/TEMPLATE-mini.md for a change request or incident>,
+write specs/active/<NNNN>-<name>.md for: "<feature>". Fold in the intent and every clarify
+decision we made. (Mini: Changed behavior + Preserved behavior criteria, Source mandatory.)
 
 Requirements must describe BEHAVIOR — no technical solutions (no endpoints, tables, caches).
 Acceptance criteria: each line independently testable; cover the happy path, boundaries,

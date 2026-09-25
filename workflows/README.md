@@ -18,6 +18,8 @@ uses (`prompts/…`) — workflows never copy prompt text, so there is exactly o
 - **[GATE: human]** — a human decision. Never automated, in any mode.
 - **[GATE: human — strict]** — required in strict mode; in lite mode the agent states its
   assumption and proceeds unless you object.
+- **[GATE: light]** — asked in every mode, but in lite it is a quick yes/no (spec approval): it is
+  never skipped, because it is the entry condition of the next segment.
 - **Role:** who executes the step (see `docs/roles/`). In strict mode, role = separate session.
 - **Evidence:** what must exist before the step counts as done.
 
@@ -25,7 +27,8 @@ uses (`prompts/…`) — workflows never copy prompt text, so there is exactly o
 
 Set at bootstrap, recorded in `AGENTS.md`:
 
-- **lite** — Spec → Plan → **[GATE: human]** → Build → Independent Review → Verify.
+- **lite** — Spec → **[GATE: light]** → Plan → **[GATE: human]** → Build → Independent Review →
+  Verify (`/new-feature` also asks at triage and ship).
   For solo developers and low-risk work. Independent review is still non-negotiable — it's cheap
   (a subagent or second window) and catches what the producer can't.
 - **strict** — Intent → Clarify → Spec → **[GATE]** → Plan → **[GATE]** → Build → Independent
