@@ -119,6 +119,18 @@ for s in "$ROOT/specs/active/"[0-9]*.md; do
 done
 [ "$minis" -gt 0 ] && ok "mini-specs checked ($minis)"
 
+# --- spec numbering: one NNNN per piece of work; a duplicate is a twin spec ---
+dups=$(for f in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do
+  [ -f "$f" ] && basename "$f" | sed 's/[-.].*//'
+done | sort | uniq -d)
+for n in $dups; do gate "duplicate spec number $n (twin spec) across specs/active/ and specs/done/"; done
+
+# --- shipped specs must say so ---
+for s in "$ROOT/specs/done/"[0-9]*.md; do
+  [ -f "$s" ] || continue
+  grep -q '^- Status:[[:space:]]*Shipped' "$s" || warn "specs/done/$(basename "$s") is not marked 'Status: Shipped'"
+done
+
 # --- hygiene ---
 if [ -d "$ROOT/.claude/hooks" ]; then
   for h in "$ROOT/.claude/hooks/"*.sh; do
