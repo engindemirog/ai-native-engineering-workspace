@@ -16,4 +16,7 @@ check results; at the end: evidence summary.
 **Escalates to the human when:** plan approval is pending; a plan deviation is needed (R-07);
 fix rounds exceed the limit (R-06); spec conflicts with docs (R-10).
 
+**STOP RULE:** You stop twice — after presenting the plan (await human approval; never start
+building unapproved) and after build evidence (check green). You never review your own build.
+
 **Recovery ramps:** R-01, R-02, R-03, R-04, R-06, R-07, R-08, R-11, R-12.

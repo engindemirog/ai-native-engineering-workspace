@@ -69,6 +69,38 @@ else
   warn "no adapter installed — run ./scripts/init <claude-code|github-copilot|cursor|generic>"
 fi
 
+# --- spec/plan consistency (state machine: Draft -> Approved -> In progress -> Shipped) ---
+plans_checked=0
+for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
+  [ -f "$p" ] || continue
+  plans_checked=$((plans_checked + 1))
+  n=$(basename "$p" | sed 's/-plan\.md$//')
+  spec=""
+  for s in "$ROOT/specs/active/$n-"*.md "$ROOT/specs/done/$n-"*.md; do
+    [ -f "$s" ] && { spec="$s"; break; }
+  done
+  if [ -z "$spec" ]; then
+    warn "plan exists for unapproved spec $n (no spec file found in specs/active/ or specs/done/)"
+    continue
+  fi
+  status=$(grep -m1 '^- Status:' "$spec" | sed 's/^- Status:[[:space:]]*//; s/[[:space:]]*$//')
+  case "$spec" in "$ROOT/specs/done/"*) status="Shipped" ;; esac
+  case "$status" in
+    Approved|"In progress"|Shipped) ;;
+    *) warn "plan exists for unapproved spec $n (spec status: ${status:-unknown})" ;;
+  esac
+  # approval line, HTML comments stripped; empty, "-" or "—" means not recorded
+  approval=$(grep -m1 '^- Approved by / on:' "$p" | sed 's/<!--.*-->//g; s/^- Approved by \/ on:[[:space:]]*//; s/[[:space:]]*$//')
+  case "$approval" in
+    ""|"-"|"—") approved=0 ;;
+    *) approved=1 ;;
+  esac
+  if [ "$status" = "In progress" ] && [ "$approved" -eq 0 ]; then
+    warn "build started without recorded plan approval (spec $n is In progress, plan has no 'Approved by / on')"
+  fi
+done
+[ "$plans_checked" -gt 0 ] && ok "spec/plan consistency checked ($plans_checked plan(s))"
+
 # --- hygiene ---
 if [ -d "$ROOT/.claude/hooks" ]; then
   for h in "$ROOT/.claude/hooks/"*.sh; do

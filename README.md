@@ -67,6 +67,22 @@ INTENT → CLARIFY → SPEC → PLAN → [HUMAN APPROVAL] → BUILD
 
 Two human checkpoints are never automated: **plan approval** and **finding triage**.
 
+Each stage is a *segment* with an entry condition and a handoff written to files (the spec's
+`Status`, the plan's `Approved by / on` line). The rule:
+**Segments always stop; /new-feature flows only as far as the mode allows.**
+
+### Commands (Claude Code adapter)
+
+| Command | What it does | Stops at |
+|---|---|---|
+| `/analyze "<feature>"` | Intent → clarify → spec (+ self-critique); refuses to open a twin spec | Spec `Status: Approved` → "Next: /plan" |
+| `/plan <NNNN>` | Plan from the spec; **refuses unless the spec is Approved** | Approval recorded in the plan → "Next: /build" |
+| `/build <NNNN>` | Implements the plan; **refuses unless `Approved by / on` is filled**; sets `In progress` | `scripts/check` green with output → "Next: /review" |
+| `/review <NNNN>` | Independent read-only review (subagent) | Findings report → human triage |
+| `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
+| `/new-feature "<feature>"` | **Chainer.** `lite`: runs the segments in order, asks at every gate. `strict`: refuses and redirects to the segment commands. | Each gate |
+| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows; see `adapters/claude-code/README.md` | Their gates |
+
 ### Two operating modes
 
 Chosen at bootstrap, recorded in `AGENTS.md`, honored by every workflow:

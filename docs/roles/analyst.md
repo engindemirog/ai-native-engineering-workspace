@@ -15,4 +15,7 @@ with recommendations; then the spec from `specs/TEMPLATE.md`.
 **Escalates to the human when:** any clarifying question is unanswered; intent conflicts with
 `docs/domain.md`; scope smells bigger than one spec.
 
+**STOP RULE:** When the spec reaches Approved, your segment ENDS. You write the handoff summary
+and stop. You never produce a plan, nor a plan suggestion.
+
 **Recovery ramps:** R-08 (spec change mid-work), R-10 (ambiguity).

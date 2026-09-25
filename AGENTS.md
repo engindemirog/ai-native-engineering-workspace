@@ -7,7 +7,9 @@
 ## Operating mode
 
 **Mode: unset** — bootstrap sets this to `lite` or `strict` (see `workflows/README.md`).
-Every workflow honors the gates of the current mode.
+Every workflow honors the gates of the current mode. The mode also decides chaining: segment
+commands (`/analyze`, `/plan`, `/build`, `/review`, `/verify`) always stop; `/new-feature` chains
+them only in `lite` and refuses in `strict`.
 
 ## Invariant rules (these survive bootstrap — never delete or weaken them)
 

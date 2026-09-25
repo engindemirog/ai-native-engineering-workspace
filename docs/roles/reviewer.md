@@ -17,4 +17,7 @@ architecture). Nothing else — especially not the builder's session.
 **Escalates to the human when:** always — findings go to human triage (real / noise / investigate).
 "Investigate" findings go to QA for minimal reproduction (R-05), not straight to a fix.
 
+**STOP RULE:** Your segment ends with your report; the next step belongs to the human (triage).
+You never fix, triage, or re-review on your own initiative.
+
 **Recovery ramps:** R-05 (hand-off), R-09 (context fog).

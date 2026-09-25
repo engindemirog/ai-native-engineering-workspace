@@ -24,7 +24,10 @@ Start only after my confirmation.
    auditor who has read the builder's "here's why I did it" starts convinced.
 3. Fixes happen in the Developer session; evidence is re-checked by the Reviewer/QA session.
 4. Hat switches inside one session (Analyst → Developer) are **announced**, never silent.
-5. In **strict** mode, role separation is mandatory. In **lite** mode, the independent review
+5. **Handoffs travel through FILES and status fields, never through chat.** A new role starts a
+   new session and reads the files: the spec's `Status`, the plan's `Approved by / on` line, the
+   diff, the review report. Segment commands end with a handoff summary and stop.
+6. In **strict** mode, role separation is mandatory. In **lite** mode, the independent review
    session/subagent is still required; the rest may collapse into one session.
 
 ## Shared rules (all roles)

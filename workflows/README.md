@@ -29,4 +29,11 @@ Set at bootstrap, recorded in `AGENTS.md`:
 - **strict** — Intent → Clarify → Spec → **[GATE]** → Plan → **[GATE]** → Build → Independent
   Review → **[GATE: triage]** → Verify → **[GATE: ship]**. For teams and critical systems.
 
+**Segments and the chainer.** Each stage is a *segment command* (`/analyze`, `/plan`, `/build`,
+`/review`, `/verify` in the Claude Code adapter): canonical, entry-checked, and always ending at a
+handoff. `/new-feature` is a *chainer*. The rule everywhere:
+**Segments always stop; /new-feature flows only as far as the mode allows.**
+Lite lives with `/new-feature` (it chains the segments and asks at each gate); strict lives with
+the segment commands (`/new-feature` refuses and redirects to them, one role per session).
+
 If things go wrong at any step, don't improvise: `prompts/recovery/README.md` has the ramp.

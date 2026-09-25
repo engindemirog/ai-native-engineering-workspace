@@ -1,6 +1,9 @@
 # Spec NNNN — <short name>
 
 - Status: Draft | Approved | In progress | Shipped
+  <!-- State machine (who moves it): Draft → Approved (human approval, end of /analyze)
+       → In progress (Developer, when /build starts) → Shipped (human, at ship, when the file
+       moves to specs/done/). /plan refuses to run unless the status is Approved. -->
 - Mode: lite | strict (from AGENTS.md at creation time)
 - Plan: `specs/plans/NNNN-plan.md`
 

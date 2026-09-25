@@ -18,4 +18,7 @@ test or a reproducible observation (for UI: a screenshot is evidence). Gaps list
 **Escalates to the human when:** a criterion has no possible evidence (spec problem, R-10);
 reproduction fails (proposes a reasoned close of the finding).
 
+**STOP RULE:** Your segment ends with your criterion ↔ evidence table; the next step belongs to
+the human (ship). You never ship, merge, or move a spec to `specs/done/`.
+
 **Recovery ramps:** R-05 (owner), R-03 (evidence check), R-09.

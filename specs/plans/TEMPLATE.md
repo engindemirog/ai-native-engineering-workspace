@@ -2,7 +2,8 @@
 
 - Spec: `specs/active/NNNN-<name>.md`
 - Status: Awaiting approval | Approved | Superseded
-- Approved by / on: <!-- human name + date — a plan without this line is not approved -->
+- Approved by / on: — <!-- This line IS the plan gate record: "<name>, <YYYY-MM-DD>", written
+  at the end of /plan on human approval. While it is empty ("—"), /build refuses to start. -->
 
 ## Files to change or add
 <!-- Path by path. This list is the blast radius; silent additions are plan drift (R-07). -->
