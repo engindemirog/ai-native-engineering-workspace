@@ -14,7 +14,10 @@ INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 2. **INTERVIEW.** One topic at a time, every question carrying the agent's recommendation
    (proposal rule): product & domain terms, architecture style and module boundaries, forbidden
    dependencies, conventions that matter (data rules, error handling), testing expectations,
-   security posture, git rules, and **operating mode (lite/strict)**.
+   security posture, git rules, **trivial-change policy** (what label/typo-level changes
+   require — (1) PR + one reviewer, no spec [recommended: cheap safety net]; (2) direct commit
+   allowed on a trivial branch; (3) everything goes through a mini-spec [strictest] — written to
+   `docs/git.md` "Trivial changes"), and **operating mode (lite/strict)**.
    **[GATE: human]** — your answers are the input; nothing is assumed.
 
 3. **GENERATE.** The agent fills `docs/*.md` from the interview, writes `scripts/check.conf`

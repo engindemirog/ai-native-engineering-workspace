@@ -21,7 +21,7 @@ for f in \
   docs/architecture.md docs/domain.md docs/conventions.md docs/testing.md docs/security.md docs/git.md \
   docs/decisions/TEMPLATE.md docs/roles/README.md docs/roles/analyst.md docs/roles/developer.md \
   docs/roles/reviewer.md docs/roles/qa.md \
-  specs/TEMPLATE.md specs/plans/TEMPLATE.md \
+  specs/TEMPLATE.md specs/TEMPLATE-mini.md specs/plans/TEMPLATE.md \
   workflows/README.md workflows/bootstrap.md workflows/feature-development.md workflows/bug-fix.md \
   workflows/refactor.md workflows/incident.md workflows/segments.md \
   prompts/README.md prompts/bootstrap.md prompts/clarify.md prompts/spec.md prompts/plan.md \
@@ -74,6 +74,8 @@ else
 fi
 
 # --- spec/plan consistency (state machine: Draft -> Approved -> In progress -> Shipped) ---
+# Mini-specs (specs/TEMPLATE-mini.md) share the NNNN-<name>.md naming and the Status line, so the
+# checks below cover them unchanged. Mini-specs additionally need a Source work item.
 # gate() = WARN locally, FAIL under --strict (CI).
 plans_checked=0
 for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
@@ -105,6 +107,17 @@ for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
   fi
 done
 [ "$plans_checked" -gt 0 ] && ok "spec/plan consistency checked ($plans_checked plan(s))"
+
+minis=0
+for s in "$ROOT/specs/active/"[0-9]*.md; do
+  [ -f "$s" ] || continue
+  grep -q '^## Preserved behavior' "$s" || continue
+  minis=$((minis + 1))
+  n=$(basename "$s" | sed 's/-.*//')
+  source=$(grep -m1 '^- Source:' "$s" | sed 's/<!--.*-->//g; s/^- Source:[[:space:]]*//; s/[[:space:]]*$//')
+  [ -n "$source" ] || warn "mini-spec $n has no Source work item (specs/TEMPLATE-mini.md requires one)"
+done
+[ "$minis" -gt 0 ] && ok "mini-specs checked ($minis)"
 
 # --- hygiene ---
 if [ -d "$ROOT/.claude/hooks" ]; then

@@ -30,6 +30,9 @@ the review report. The next role starts a **new session** and reads them.
 | **REVIEW** | Reviewer | 6 | *Soft:* a branch/diff with commits and a spec `In progress` exist. | `prompts/review.md` | — | nothing (read-only) | findings verbatim, no softening · `Next: TRIAGE — human (real / noise / investigate); then Developer fix rounds, then VERIFY` |
 | **VERIFY** | QA | 9 | *Soft:* triage is complete — every finding real (fixed), noise (rationale written), or investigate. | `prompts/verify.md` | — | nothing (no production code) | criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)` |
 
+The CHANGE lane of `change-request.md` runs these same segments with `specs/TEMPLATE-mini.md`
+as the spec (Source mandatory, changed + preserved criteria); entry checks and gates are identical.
+
 Steps 7 (triage) and 10 (ship) belong to the human; step 8 (fix rounds) is the Developer applying
 triage with `prompts/build.md §fixes`, followed by REVIEW again on the fix diff.
 

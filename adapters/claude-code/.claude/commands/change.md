@@ -5,10 +5,9 @@ argument-hint: what should change, and the work item key
 Read AGENTS.md, workflows/change-request.md, and workflows/segments.md. Handle this change
 request: $ARGUMENTS
 
-1. **TRIAGE.** Apply the rubric in change-request.md in order — (a) deviation from the agreed
-   behavior? (b) behavior test: does any acceptance criterion change or appear? (c) blast
-   radius: shared code? Present the verdict WITH your rationale (proposal rule) and wait for my
-   confirmation. Read the trivial-change policy from docs/git.md ("Trivial changes") first.
+1. **TRIAGE.** Apply the three-question rubric in change-request.md, in its order, as written.
+   Present the verdict (BUG / TRIVIAL / CHANGE) WITH your rationale (proposal rule) and wait for
+   my confirmation. Read the trivial-change policy from docs/git.md ("Trivial changes") first.
 2. **BUG** → say so, point me to /fix-bug with the report, and STOP.
 3. **TRIVIAL** → restate the policy from docs/git.md, then run the trivial lane: one narrow
    commit, ./scripts/check green, PR/reviewer as the policy says. If it needs a second file or a

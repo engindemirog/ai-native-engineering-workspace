@@ -9,6 +9,7 @@ uses (`prompts/…`) — workflows never copy prompt text, so there is exactly o
 | `feature-development.md` | Any new behavior. |
 | `segments.md` | The feature workflow one stage at a time: entry checks, gates, handoffs, the chainer rule. Adapters map their commands onto it. |
 | `bug-fix.md` | Something works incorrectly. Reproduction comes before the fix. |
+| `change-request.md` | A behavior that exists must change. The most common enterprise work item. Triage rubric: deviation from the agreed behavior → bug; a criterion changes or appears (or shared code is touched) → mini-spec lane; otherwise trivial. |
 | `refactor.md` | Structure changes, behavior doesn't. |
 | `incident.md` | Production is on fire. Stabilize first, learn after. |
 

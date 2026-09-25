@@ -1,4 +1,5 @@
 # Spec NNNN — <short name>
+<!-- Small behavior changes use TEMPLATE-mini.md — brevity is sanctioned, discipline is not. -->
 
 - Status: Draft | Approved | In progress | Shipped
   <!-- State machine (who moves it): Draft → Approved (human approval, end of /analyze)

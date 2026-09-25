@@ -15,7 +15,7 @@ the core and point at it.
 | `cursor/` | Pointer rule file + segment commands + `/new-feature` chainer. Review runs in a fresh chat. |
 | `generic/` | Instructions for wiring any other agent, incl. a paste-by-hand table for the segments. |
 
-All adapters expose the same five segments and the same chainer rule from `workflows/segments.md`
+All adapters expose the same five segments, `/change` for change requests, and the same chainer rule from `workflows/segments.md`
 — *segments always stop; /new-feature flows only as far as the mode allows* — and none of them
 restates it: they point.
 

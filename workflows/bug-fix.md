@@ -1,6 +1,7 @@
 # Workflow: Bug Fix
 
 **Goal:** fix the cause, prove it stays fixed. **Iron rule: no fix before a failing reproduction.**
+*Not sure it's a bug? Run the triage rubric in `change-request.md` first.*
 
 ```
 REPORT → REPRODUCE (red test) → DIAGNOSE → FIX → PROVE → REVIEW → SHIP
@@ -18,5 +19,5 @@ REPORT → REPRODUCE (red test) → DIAGNOSE → FIX → PROVE → REVIEW → SH
 5. **PROVE.** Red test now green **and** whole suite green (`scripts/check`) — no new regressions
    (else R-04: revert first). The reproduction test stays forever as a regression guard.
 6. **REVIEW** — fresh session, narrow scope: the fix diff. **[GATE: human — strict]** triage.
-7. **SHIP.** Small bugs: PR referencing the report. Behavior-changing fixes: they're features —
-   write a mini-spec first.
+7. **SHIP.** Small bugs: PR referencing the report. Behavior-changing fixes are not bug fixes —
+   they take the CHANGE lane of `change-request.md` (mini-spec first).

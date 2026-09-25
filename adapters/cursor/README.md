@@ -10,6 +10,8 @@ What it adds on top of the core:
   file per segment of `workflows/segments.md`, each a pointer that runs the segment and stops at
   its handoff. `/new-feature` is the chainer: lite chains with gate approvals, strict refuses and
   redirects. *Segments always stop; /new-feature flows only as far as the mode allows.*
+- **Change requests** (`commands/change.md`): `/change` — triage rubric of
+  `workflows/change-request.md`, then the trivial or mini-spec lane by mode.
 
 Cursor has no read-only subagent or hook layer, so two rules are honored procedurally:
 - **Independent review:** run `/review` in a **fresh chat** that reads only the diff + spec.

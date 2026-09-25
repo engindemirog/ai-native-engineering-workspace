@@ -12,6 +12,9 @@ What it adds on top of the core:
   order and asks at each gate (spec, plan, triage, ship); in `strict` it refuses and redirects to
   the segment commands, one role per session. The rule:
   *Segments always stop; /new-feature flows only as far as the mode allows.*
+- **Change requests**: `/change` — runs the triage rubric of `workflows/change-request.md`
+  (bug / trivial / change) with a reasoned verdict, then the lane the behavior demands; in strict
+  mode it stops after the mini-spec, in lite it chains with gate approvals.
 - **Other commands**: `/bootstrap`, `/fix-bug`, `/refactor`, `/adr`, `/recover` — each loads the
   matching workflow and honors the operating mode. All commands are thin by design: they point to
   `workflows/` and `prompts/`, they don't restate them.

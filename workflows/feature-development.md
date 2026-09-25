@@ -1,6 +1,7 @@
 # Workflow: Feature Development
 
 **Goal:** new behavior, from intent to shipped, with evidence at every gate.
+*Changing a behavior that already exists? That is `change-request.md` (triage → trivial or mini-spec lane).*
 
 ```
 INTENT → CLARIFY → SPEC → PLAN → [APPROVAL] → BUILD → REVIEW → [TRIAGE] → VERIFY → SHIP
