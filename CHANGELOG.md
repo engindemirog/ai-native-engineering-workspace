@@ -5,6 +5,9 @@ the core is Markdown plus two scripts, so upgrades are file copies, not migratio
 
 ## Unreleased
 
+- Bootstrap asks the interview and document languages first; recorded as the `Language:` line in
+  `AGENTS.md` and a "Language" section in `docs/conventions.md`; `scripts/doctor` warns if unset.
+  Protocol fields and the ANEW core stay English.
 - Scripts and the Claude hook carry the executable bit in git; `.gitattributes` pins LF for them.
 - Lite mode: spec approval is a light yes/no gate, never skipped (it is PLAN's entry condition).
 - "No spec, no code" clarified for lanes without a spec file: bug fixes use report + reproduction

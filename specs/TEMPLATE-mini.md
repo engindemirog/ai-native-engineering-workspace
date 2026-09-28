@@ -1,4 +1,5 @@
 # Spec NNNN — <short name> (mini)
+<!-- Content in the document language from AGENTS.md; headings, labels and Status values stay English (protocol). -->
 
 - Status: Draft | Approved | In progress | Shipped
   <!-- Same state machine as TEMPLATE.md: Draft → Approved (human) → In progress (/build) → Shipped (ship). -->

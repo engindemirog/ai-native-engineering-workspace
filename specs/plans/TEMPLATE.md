@@ -1,4 +1,5 @@
 # Plan NNNN — <spec short name>
+<!-- Content in the document language from AGENTS.md; labels, Status values and "Approved by / on" stay English (protocol). -->
 
 - Spec: `specs/active/NNNN-<name>.md`
 - Status: Awaiting approval | Approved | Superseded

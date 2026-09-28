@@ -4,8 +4,17 @@
 **Prompt:** `prompts/bootstrap.md` · **Role:** Analyst (interview) → Developer (generation)
 
 ```
-INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
+LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 ```
+
+0. **LANGUAGE.** The first question, asked in the language the human used to start the session:
+   in which language to run the interview, and in which language to write the project documents
+   (docs/, specs, plans, ADRs, reports). Two settings, because international teams often talk in
+   one language and document in another. The agent recommends (proposal rule); the answer is
+   permanent — recorded in `AGENTS.md` (`Language:` line) and `docs/conventions.md` ("Language").
+   The ANEW core and every protocol field (`Status:` values, `Approved by / on:`, `Source:`,
+   template headings) stay English so the gates and `scripts/doctor` keep working.
+   **[GATE: human]**
 
 1. **INSPECT.** The agent examines the working tree. Empty (only ANEW files) → greenfield flow.
    Contains code → adoption flow: detect stack(s), build system, test setup, and existing
@@ -21,7 +30,7 @@ INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
    **[GATE: human]** — your answers are the input; nothing is assumed.
 
 3. **GENERATE.** The agent fills `docs/*.md` from the interview, writes `scripts/check.conf`
-   (build/test/lint commands for your stack), sets the mode line in `AGENTS.md`, and rewrites
+   (build/test/lint commands for your stack), sets the Mode and Language lines in `AGENTS.md`, and rewrites
    `AGENTS.md`'s project summary — **keeping the invariant rules block verbatim** and keeping the
    file ≤ 40 lines. For existing repos it may also propose toolchain steps for `.github/workflows/check.yml`.
 

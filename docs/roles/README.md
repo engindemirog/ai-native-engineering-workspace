@@ -33,6 +33,8 @@ Start only after my confirmation.
 ## Shared rules (all roles)
 
 - Read `AGENTS.md` first; follow the operating mode's gates.
+- Use the languages set in `AGENTS.md`: converse in the chat language; write specs, plans, ADRs
+  and reports in the document language. Field labels and status values stay English (protocol).
 - No claims without evidence; no completion reports without proof.
 - **Proposal rule:** every question, option, or finding is presented with your own recommendation
   and rationale. The human decides; nothing is applied without approval.

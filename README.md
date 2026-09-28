@@ -43,8 +43,9 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 #    Claude Code:  /bootstrap
 #    Other tools:  paste prompts/bootstrap.md
 
-# 3. The AI interviews you — product, domain, stack, boundaries, conventions, mode —
-#    and fills docs/, AGENTS.md, and scripts/check.conf from your answers.
+# 3. The AI first asks two things: interview language and document language (recorded in
+#    AGENTS.md — permanent). Then it interviews you — product, domain, stack, boundaries,
+#    conventions, mode — and fills docs/, AGENTS.md, and scripts/check.conf from your answers.
 
 ./scripts/doctor                  # 4. Confirm the workspace is healthy
 
@@ -150,6 +151,9 @@ Everything is plain Markdown and POSIX shell — edit, don't fork the philosophy
 
 - Gates too heavy? Switch the mode line in `AGENTS.md` to `lite`, or tailor workflows per project.
 - Tool not listed? Copy `adapters/generic/` and wire your own; core never changes.
+- Team doesn't work in English? The core stays English; your documents don't have to. Bootstrap asks
+  for the interview and document languages first and records them in `AGENTS.md`. Protocol fields
+  (`Status:` values, `Approved by / on:`) stay English so the gates keep working.
 - Want stack presets? That's the packs layer — coming after v1 proves the core.
 
 ## Origin

@@ -49,6 +49,14 @@ else
   ok "operating mode set"
 fi
 
+if grep -q "Language: unset" "$ROOT/AGENTS.md" 2>/dev/null; then
+  warn "chat/document language not set — bootstrap step 0 sets the Language line in AGENTS.md"
+elif grep -q "Language:" "$ROOT/AGENTS.md" 2>/dev/null; then
+  ok "language set"
+else
+  warn "AGENTS.md has no Language line — add 'Language: chat=<xx> · docs=<xx>' (see docs/conventions.md)"
+fi
+
 if grep -q "Invariant rules" "$ROOT/AGENTS.md" 2>/dev/null; then
   ok "AGENTS.md invariant rules block present"
 else

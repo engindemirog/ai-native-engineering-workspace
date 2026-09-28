@@ -3,6 +3,15 @@
 > **Template — filled during bootstrap.** Only rules that are real: every rule here should be
 > either enforced by tooling (preferred) or checked in review. Aspirations don't belong here.
 
+## Language
+<!-- Set at bootstrap (step 0) and mirrored in AGENTS.md. Changing it later is allowed — edit both
+     places; existing documents are not translated retroactively. -->
+- Chat language (interviews, sessions): <!-- e.g. Turkish -->
+- Document language (docs/, specs, plans, ADRs, review and verify reports): <!-- e.g. Turkish -->
+- Always English (protocol, not prose): ANEW core files, template headings and field labels,
+  `Status:` values (Draft / Approved / In progress / Shipped), `Approved by / on:`, `Source:`.
+- Code identifiers, branch names, commit messages: <!-- default English; decide consciously -->
+
 ## Language & framework versions
 <!-- Pin what matters. -->
 

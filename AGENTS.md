@@ -9,6 +9,7 @@
 **Mode: unset** — bootstrap sets this to `lite` or `strict` (see `workflows/README.md`).
 Every workflow honors the gates of the current mode. Segment commands always stop; `/new-feature`
 chains them only in `lite` (`workflows/segments.md`).
+**Language: unset** — bootstrap sets `chat=<xx> · docs=<xx>`; protocol fields stay English (`docs/conventions.md`).
 
 ## Invariant rules (these survive bootstrap — never delete or weaken them)
 

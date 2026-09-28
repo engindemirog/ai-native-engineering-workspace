@@ -3,6 +3,13 @@
 ```
 Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a real project.
 
+0. LANGUAGE — before anything else, in the language I used to start this session (English if
+   unclear, with a note that any language is fine): ask (a) which language to conduct the
+   interview in, (b) which language to write the project documents in (docs/, specs, plans,
+   ADRs, review reports). Recommend (a) = my language, (b) = the same unless the team is
+   international or a vendor/compliance rule requires English. Continue the interview in (a).
+   These become permanent: AGENTS.md "Language" line + docs/conventions.md "Language".
+   Field labels and Status values in templates stay English — they are protocol, not prose.
 1. INSPECT the working tree. If it contains application code, detect stack, build/test tooling and
    existing conventions from the code, and present what you found for confirmation. If empty,
    we start from my answers.
@@ -17,7 +24,7 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    strict — recommend one based on team size and risk).
 3. GENERATE from my answers: fill every template in docs/ (architecture, domain, conventions,
    testing, security, git); write scripts/check.conf with real build/test/lint commands for this
-   stack; set the Mode line in AGENTS.md; rewrite the AGENTS.md project summary.
+   stack; set the Mode and Language lines in AGENTS.md; rewrite the AGENTS.md project summary.
    HARD RULES: the "Invariant rules" block in AGENTS.md is kept verbatim; AGENTS.md stays a
    signpost ≤ 40 lines — it POINTS to docs, it never copies them.
 4. VERIFY: run ./scripts/doctor and ./scripts/check and show me the output.

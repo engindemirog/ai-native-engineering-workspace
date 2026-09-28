@@ -1,5 +1,7 @@
 # Spec NNNN — <short name>
 <!-- Small behavior changes use TEMPLATE-mini.md — brevity is sanctioned, discipline is not. -->
+<!-- Write the content in the document language from AGENTS.md. Headings, field labels and Status
+     values stay English: scripts/doctor and the segment entry checks read them. -->
 
 - Status: Draft | Approved | In progress | Shipped
   <!-- State machine (who moves it): Draft → Approved (human approval, end of /analyze)
