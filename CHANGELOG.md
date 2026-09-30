@@ -5,6 +5,8 @@ the core is Markdown plus two scripts, so upgrades are file copies, not migratio
 
 ## Unreleased
 
+- Lite mode starts with `/new-feature`, not the segment commands: said in `AGENTS.md`, in the
+  bootstrap report's closing `Next:` line, and in `workflows/segments.md`.
 - Bootstrap asks the interview and document languages first; recorded as the `Language:` line in
   `AGENTS.md` and a "Language" section in `docs/conventions.md`; `scripts/doctor` warns if unset.
   Protocol fields and the ANEW core stay English.

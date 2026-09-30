@@ -7,6 +7,10 @@ condition, does its work with the referenced prompt, stops at its gate, and ends
 
 **Segments always stop; /new-feature flows only as far as the mode allows.**
 
+Who calls a segment depends on the mode. In **lite**, the human runs `/new-feature`, which calls
+these segments in turn and asks at each gate — calling a segment directly is for resuming at a
+specific gate. In **strict**, each role runs its own segment command in its own session.
+
 ## Contract (every segment)
 
 1. **Entry check** — verify the condition below from *files*, never from chat. Hard checks

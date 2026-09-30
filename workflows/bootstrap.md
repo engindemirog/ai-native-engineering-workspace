@@ -31,8 +31,9 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 
 3. **GENERATE.** The agent fills `docs/*.md` from the interview, writes `scripts/check.conf`
    (build/test/lint commands for your stack), sets the Mode and Language lines in `AGENTS.md`, and rewrites
-   `AGENTS.md`'s project summary — **keeping the invariant rules block verbatim** and keeping the
-   file ≤ 40 lines. For existing repos it may also propose toolchain steps for `.github/workflows/check.yml`.
+   `AGENTS.md`'s project summary — **keeping the invariant rules block verbatim**, keeping the
+   "Start work" and "Language" sentences of the Operating mode section (values filled in), and
+   keeping the file ≤ 40 lines. For existing repos it may also propose toolchain steps for `.github/workflows/check.yml`.
 
 4. **VERIFY.** Run `./scripts/doctor` (structure + configuration) and `./scripts/check`
    (must pass; in an empty greenfield it may be a no-op with a note). Context quiz: open a *fresh*
@@ -41,3 +42,7 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 
 5. **REPORT.** What was generated, what was assumed, what still needs a human decision.
    **[GATE: human]** — you approve the workspace before the first feature starts.
+   The report ends with a handoff line that matches the chosen mode — never a generic pointer
+   to the segment commands: **lite** → `Next: /new-feature "<feature>"` (it chains the segments
+   and asks at each gate); **strict** → `Next: /analyze "<feature>"` in an Analyst session.
+   Changing an existing behavior → `/change "<request> <work item>"` in either mode.

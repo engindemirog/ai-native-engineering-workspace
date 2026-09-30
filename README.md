@@ -80,13 +80,13 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 
 | Command | What it does | Stops at |
 |---|---|---|
+| `/new-feature "<feature>"` | **Lite: start here.** Chainer — runs the segments below in order and asks at every gate. In `strict` it refuses and redirects to the segment commands. | Each gate |
 | `/analyze "<feature>"` | Intent → clarify → spec (+ self-critique); refuses to open a twin spec | Spec `Status: Approved` → "Next: /plan" |
 | `/plan <NNNN>` | Plan from the spec; **refuses unless the spec is Approved** | Approval recorded in the plan → "Next: /build" |
 | `/build <NNNN>` | Implements the plan; **refuses unless `Approved by / on` is filled**; sets `In progress` | `scripts/check` green with output → "Next: /review" |
 | `/review <NNNN>` | Independent read-only review (subagent) | Findings report → human triage |
 | `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
 | `/change "<request> <work item>"` | Change an existing behavior: triage rubric (bug → `/fix-bug` · trivial → one commit per `docs/git.md` policy · change → mini-spec lane), then the lane by mode (`workflows/change-request.md`) | Triage verdict; then the lane's gates |
-| `/new-feature "<feature>"` | **Chainer.** `lite`: runs the segments in order, asks at every gate. `strict`: refuses and redirects to the segment commands. | Each gate |
 | `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows (Claude Code); other tools paste the prompts | Their gates |
 
 Claude Code and Cursor expose these as slash commands, GitHub Copilot as prompt files, and any

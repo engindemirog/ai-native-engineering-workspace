@@ -6,9 +6,9 @@
 
 ## Operating mode
 
-**Mode: unset** — bootstrap sets this to `lite` or `strict` (see `workflows/README.md`).
-Every workflow honors the gates of the current mode. Segment commands always stop; `/new-feature`
-chains them only in `lite` (`workflows/segments.md`).
+**Mode: unset** — bootstrap sets `lite` or `strict` (`workflows/README.md`); every workflow honors its gates.
+**Start work** with `/new-feature` in lite (it chains the segments and asks at each gate) or with
+`/analyze` in strict (one segment per role). Segment commands always stop (`workflows/segments.md`).
 **Language: unset** — bootstrap sets `chat=<xx> · docs=<xx>`; protocol fields stay English (`docs/conventions.md`).
 
 ## Invariant rules (these survive bootstrap — never delete or weaken them)

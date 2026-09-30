@@ -25,9 +25,13 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
 3. GENERATE from my answers: fill every template in docs/ (architecture, domain, conventions,
    testing, security, git); write scripts/check.conf with real build/test/lint commands for this
    stack; set the Mode and Language lines in AGENTS.md; rewrite the AGENTS.md project summary.
-   HARD RULES: the "Invariant rules" block in AGENTS.md is kept verbatim; AGENTS.md stays a
-   signpost ≤ 40 lines — it POINTS to docs, it never copies them.
+   HARD RULES: the "Invariant rules" block in AGENTS.md is kept verbatim; the "Operating mode"
+   section keeps its "Start work" and "Language" lines (fill the values, keep the sentences);
+   AGENTS.md stays a signpost ≤ 40 lines — it POINTS to docs, it never copies them.
 4. VERIFY: run ./scripts/doctor and ./scripts/check and show me the output.
 5. REPORT: what you generated, what you assumed, and every open question that still needs my
-   decision — with your recommendations.
+   decision — with your recommendations. End with the first command for the mode you set:
+   lite → Next: /new-feature "<feature>" (it chains the segments and asks at each gate);
+   strict → Next: /analyze "<feature>" in an Analyst session. Do not recommend the segment
+   commands in lite mode — /new-feature calls them.
 ```

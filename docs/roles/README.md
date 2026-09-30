@@ -19,7 +19,9 @@ Start only after my confirmation.
 
 ## Session rules
 
-1. Every new spec/feature → a fresh Developer session. Context lives in files, not in chat history.
+1. Every new spec/feature → a fresh session (strict: one per role; lite: `/new-feature` may carry
+   the feature through one session, independent review excepted). Context lives in files, not in
+   chat history.
 2. Every review → a clean Reviewer/QA session. Never review inside the builder's session — the
    auditor who has read the builder's "here's why I did it" starts convinced.
 3. Fixes happen in the Developer session; evidence is re-checked by the Reviewer/QA session.
