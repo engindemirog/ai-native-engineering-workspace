@@ -45,7 +45,8 @@ triage with `prompts/build.md §fixes`, followed by REVIEW again on the fix diff
 `/new-feature` (or its equivalent in another tool) is **not** a segment. It reads `Mode` from
 `AGENTS.md` first:
 
-- **strict** — refuse before any stage: *"Mode is strict: stages are role-owned. Analyst starts
+- **strict** — refuse before any stage, in the chat language with command names verbatim: *"Mode
+  is strict: stages are role-owned. Analyst starts
   with ANALYZE; subsequent roles run PLAN, BUILD, REVIEW, VERIFY in their own sessions."*
 - **lite** — run the segments in order with their entry checks intact, stopping at four gates:
   spec approval · plan approval · triage · ship. Before opening a spec, look for an existing one

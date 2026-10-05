@@ -14,6 +14,8 @@ What it adds on top of the core:
   *Segments always stop; /new-feature flows only as far as the mode allows.*
 - **Change requests** (`prompts/change.prompt.md`): `/change` — triage rubric of
   `workflows/change-request.md`, then the trivial or mini-spec lane by mode.
+- **Workflow prompt files**: `/bootstrap`, `/fix-bug`, `/refactor`, `/adr`, `/recover` — the same
+  pointers as the Claude Code adapter.
 - **Read-only reviewer agent** (`agents/reviewer.agent.md`): a custom agent with no edit tools —
   the "producer never verifies its own work" rule at the tool level. Select it for `/review`.
 - **Immutability instruction** (`instructions/specs-done.instructions.md`, applies to

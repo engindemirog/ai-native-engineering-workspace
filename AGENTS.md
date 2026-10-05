@@ -32,9 +32,7 @@
 | Testing rules | `docs/testing.md` |
 | Security rules | `docs/security.md` |
 | Git & branching rules | `docs/git.md` |
-| Decisions with rationale (ADRs) | `docs/decisions/` |
-| Roles (who may do what) | `docs/roles/` |
+| Decisions (ADRs) · roles (who may do what) | `docs/decisions/` · `docs/roles/` |
 | Specs & plans | `specs/active/` · `specs/plans/` · shipped → `specs/done/` |
-| Processes & gates | `workflows/` |
-| Reusable prompts & recovery ramps | `prompts/` |
+| Processes & gates · prompts & recovery ramps | `workflows/` · `prompts/` |
 | The single verification command | `scripts/check` |

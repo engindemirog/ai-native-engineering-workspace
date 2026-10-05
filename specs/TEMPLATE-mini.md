@@ -12,7 +12,8 @@
 <!-- 2–3 sentences, business language: what changes, for whom, why now. -->
 
 ## Changed behavior
-<!-- 3–5 atomic, testable criteria describing the NEW behavior. -->
+<!-- 3–5 atomic, testable criteria describing the NEW behavior. For a refactor write exactly one line:
+     "none — no observable behavior change"; the Preserved behavior section carries the proof. -->
 - [ ] CB-1 —
 - [ ] CB-2 —
 - [ ] CB-3 —

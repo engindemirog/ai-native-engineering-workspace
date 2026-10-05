@@ -126,6 +126,13 @@ for s in "$ROOT/specs/active/"[0-9]*.md; do
   [ -n "$source" ] || warn "mini-spec $n has no Source work item (specs/TEMPLATE-mini.md requires one)"
 done
 [ "$minis" -gt 0 ] && ok "mini-specs checked ($minis)"
+dupsrc=$(for s in "$ROOT/specs/active/"[0-9]*.md; do
+  [ -f "$s" ] && grep -m1 '^- Source:' "$s" | sed 's/<!--.*-->//g; s/^- Source:[[:space:]]*//; s/[[:space:]]*$//'
+done | grep -v '^$' | sort | uniq -d)
+oldifs=$IFS; IFS='
+'
+for k in $dupsrc; do gate "two open specs share Source '$k' (twin change request)"; done
+IFS=$oldifs
 
 # --- spec numbering: one NNNN per piece of work; a duplicate is a twin spec ---
 dups=$(for f in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do

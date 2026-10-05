@@ -6,7 +6,8 @@ Read AGENTS.md and workflows/segments.md ("The chainer"). Determine the Mode lin
 
 Rule: Segments always stop; /new-feature flows only as far as the mode allows.
 
-**Mode: strict** — refuse before starting any stage. Reply exactly with:
+**Mode: strict** — refuse before starting any stage. Reply in the chat language (AGENTS.md),
+command names verbatim, with this meaning:
 "Mode is strict: stages are role-owned. Analyst starts with /analyze; subsequent roles run
 /plan, /build, /review, /verify in their own sessions." Then stop.
 

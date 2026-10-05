@@ -7,7 +7,7 @@
 
 Use this repo as a GitHub template (or drop it into an existing project), install the adapter for
 your AI tool, run the bootstrap workflow, and start your first feature. No frameworks, no
-dependencies, no code generators — a working *system*, written in Markdown plus two small scripts.
+dependencies, no code generators — a working *system*, written in Markdown plus three small scripts.
 
 ## Why this exists
 
@@ -40,7 +40,7 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 ./scripts/init claude-code        # or: github-copilot | cursor | generic
 
 # 2. Open your AI tool and run the bootstrap workflow
-#    Claude Code:  /bootstrap
+#    Claude Code / Cursor / Copilot:  /bootstrap
 #    Other tools:  paste prompts/bootstrap.md
 
 # 3. The AI first asks two things: interview language and document language (recorded in
@@ -87,7 +87,7 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 | `/review <NNNN>` | Independent read-only review (subagent) | Findings report → human triage |
 | `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
 | `/change "<request> <work item>"` | Change an existing behavior: triage rubric (bug → `/fix-bug` · trivial → one commit per `docs/git.md` policy · change → mini-spec lane), then the lane by mode (`workflows/change-request.md`) | Triage verdict; then the lane's gates |
-| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows (Claude Code); other tools paste the prompts | Their gates |
+| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows — same commands in Claude Code, Cursor and Copilot; any other tool pastes the prompts | Their gates |
 
 Claude Code and Cursor expose these as slash commands, GitHub Copilot as prompt files, and any
 other tool by pasting the prompts (`adapters/generic/README.md`). CI runs `scripts/doctor --strict`,
@@ -121,6 +121,8 @@ Pick per project — or per feature.
 | `adapters/` | Per-tool wiring. `scripts/init <tool>` installs one. |
 | `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. |
 | `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI). |
+| `scripts/init` | Installs an adapter; keeps existing files unless `--force`. |
+| `CHANGELOG.md` | What changed between versions of the workspace, for template users upgrading their copy. |
 | `.github/` | CI that runs the same `scripts/check` and `scripts/doctor --strict` + a PR template mirroring the gates. |
 
 ## Design principles

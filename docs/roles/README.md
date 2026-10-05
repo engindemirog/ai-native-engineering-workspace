@@ -32,6 +32,13 @@ Start only after my confirmation.
 6. In **strict** mode, role separation is mandatory. In **lite** mode, the independent review
    session/subagent is still required; the rest may collapse into one session.
 
+## The human's gates
+
+Roles produce and verify; the human decides. These are never delegated to an agent, in any mode:
+spec approval (light in lite) · plan approval, recorded in the plan file · finding triage
+(real / noise / investigate) · ship · the change-request triage verdict · the trivial-change
+policy and the operating mode (set at bootstrap).
+
 ## Shared rules (all roles)
 
 - Read `AGENTS.md` first; follow the operating mode's gates.

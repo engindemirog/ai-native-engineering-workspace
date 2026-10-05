@@ -3,7 +3,8 @@
 > **Template — adjust at bootstrap.** Defaults below are safe; loosen consciously, not accidentally.
 
 ## Branching
-- `feature/<spec-no>-<short-name>` — **no branch without a spec.**
+- `feature/<spec-no>-<short-name>` — **no branch without a spec.** Also for CHANGE-lane mini-specs.
+- Refactors: `refactor/<spec-no>-<short-name>` (mini-spec with Changed behavior = none).
 - Fixes: `fix/<report-id>-<short-name>` (bug fixes carry a report, not a spec number);
   incidents: `incident/<date>-<short-name>`; trivial changes: `trivial/<short-name>` (see below).
 

@@ -5,6 +5,12 @@ the core is Markdown plus two scripts, so upgrades are file copies, not migratio
 
 ## Unreleased
 
+- Refactors open a mini-spec (Changed behavior = none, Preserved = characterization); bug-fix triage
+  is a human gate in every mode; `refactor/` branches documented.
+- Cursor and Copilot gain `/bootstrap`, `/fix-bug`, `/refactor`, `/adr`, `/recover` and Cursor an
+  immutability rule for `specs/done/`; `scripts/init` keeps existing files unless `--force`.
+- Refusals and handoffs are written in the chat language, command names verbatim.
+- `scripts/doctor`: two open specs sharing a `Source:` key are reported (FAIL under `--strict`).
 - Lite mode starts with `/new-feature`, not the segment commands: said in `AGENTS.md`, in the
   bootstrap report's closing `Next:` line, and in `workflows/segments.md`.
 - Bootstrap asks the interview and document languages first; recorded as the `Language:` line in

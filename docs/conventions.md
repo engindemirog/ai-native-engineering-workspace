@@ -11,6 +11,8 @@
 - Always English (protocol, not prose): ANEW core files, template headings and field labels,
   `Status:` values (Draft / Approved / In progress / Shipped), `Approved by / on:`, `Source:`.
 - Code identifiers, branch names, commit messages: <!-- default English; decide consciously -->
+- Agent messages (handoff summaries, refusals, `Next:` lines): chat language; command names, file
+  paths and protocol fields verbatim.
 
 ## Language & framework versions
 <!-- Pin what matters. -->
