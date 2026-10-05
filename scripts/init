@@ -1,49 +1,67 @@
 #!/bin/sh
 # ANEW init — installs an AI tool adapter into the repo root.
-# Usage: ./scripts/init [claude-code|github-copilot|cursor|generic]
+# Usage: ./scripts/init [--force] <claude-code|github-copilot|cursor|generic>
+# Existing files are kept unless --force is given, so customized commands are never lost silently.
 set -e
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ADAPTERS="$ROOT/adapters"
+force=0
+kept=0
 
 usage() {
-  echo "Usage: ./scripts/init <adapter>"
+  echo "Usage: ./scripts/init [--force] <adapter>"
   echo ""
   echo "Available adapters:"
   echo "  claude-code      CLAUDE.md + .claude/ (commands, reviewer subagent, permissions, hooks)"
   echo "  github-copilot   .github/ (copilot-instructions.md, prompts/, agents/, instructions/)"
   echo "  cursor           .cursor/ (rules/, commands/)"
   echo "  generic          nothing to install — prints wiring instructions"
+  echo ""
+  echo "  --force          overwrite files that already exist (default: keep them)"
 }
 
+# put <src> <dst>: copy one file unless the destination exists (or --force).
+put() {
+  if [ -f "$2" ] && [ "$force" -eq 0 ]; then
+    echo "kept   ${2#"$ROOT"/} (exists — use --force to overwrite)"
+    kept=$((kept + 1))
+  else
+    mkdir -p "$(dirname "$2")"
+    cp "$1" "$2"
+  fi
+}
+# put_dir <srcdir> <dstdir>: copy every regular file in a directory tree, via put.
+put_dir() {
+  find "$1" -type f | while IFS= read -r f; do
+    put "$f" "$2/${f#"$1"/}"
+  done
+}
+
+[ "${1:-}" = "--force" ] && { force=1; shift; }
 [ $# -eq 1 ] || { usage; exit 1; }
 
 case "$1" in
   claude-code)
-    cp "$ADAPTERS/claude-code/CLAUDE.md" "$ROOT/CLAUDE.md"
-    mkdir -p "$ROOT/.claude"
-    cp -R "$ADAPTERS/claude-code/.claude/." "$ROOT/.claude/"
+    put "$ADAPTERS/claude-code/CLAUDE.md" "$ROOT/CLAUDE.md"
+    put_dir "$ADAPTERS/claude-code/.claude" "$ROOT/.claude"
     chmod +x "$ROOT/.claude/hooks/"*.sh 2>/dev/null || true
     echo "Installed: CLAUDE.md, .claude/ (commands, agents, hooks, settings)."
     echo "Next: open Claude Code here and run /bootstrap"
     ;;
   github-copilot)
-    mkdir -p "$ROOT/.github"
-    cp "$ADAPTERS/github-copilot/copilot-instructions.md" "$ROOT/.github/copilot-instructions.md"
+    put "$ADAPTERS/github-copilot/copilot-instructions.md" "$ROOT/.github/copilot-instructions.md"
     for d in prompts agents instructions; do
-      mkdir -p "$ROOT/.github/$d"
-      cp "$ADAPTERS/github-copilot/$d/"* "$ROOT/.github/$d/"
+      put_dir "$ADAPTERS/github-copilot/$d" "$ROOT/.github/$d"
     done
-    echo "Installed: .github/copilot-instructions.md, .github/prompts/ (segment commands),"
+    echo "Installed: .github/copilot-instructions.md, .github/prompts/ (all commands),"
     echo "           .github/agents/reviewer.agent.md, .github/instructions/specs-done.instructions.md."
-    echo "Next: open Copilot chat and paste prompts/bootstrap.md"
+    echo "Next: open Copilot chat and run /bootstrap"
     ;;
   cursor)
-    mkdir -p "$ROOT/.cursor/rules"
-    cp "$ADAPTERS/cursor/rules/anew.mdc" "$ROOT/.cursor/rules/anew.mdc"
-    mkdir -p "$ROOT/.cursor/commands"
-    cp "$ADAPTERS/cursor/commands/"*.md "$ROOT/.cursor/commands/"
-    echo "Installed: .cursor/rules/anew.mdc, .cursor/commands/ (segment commands)."
-    echo "Next: open Cursor here and paste prompts/bootstrap.md"
+    put_dir "$ADAPTERS/cursor/rules" "$ROOT/.cursor/rules"
+    put_dir "$ADAPTERS/cursor/commands" "$ROOT/.cursor/commands"
+    echo "Installed: .cursor/rules/ (pointer + specs/done rule), .cursor/commands/ (all commands)."
+    echo "Next: open Cursor here and run /bootstrap"
     ;;
   generic)
     echo "Nothing to install. See adapters/generic/README.md for wiring any tool:"
