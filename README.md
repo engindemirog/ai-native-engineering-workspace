@@ -11,6 +11,12 @@ dependencies, no code generators — a working *system*, written in Markdown plu
 
 ## Why this exists
 
+AI lowers development latency — and amplifies decision errors. A misunderstood requirement once
+cost a developer two weeks; an agent now ships the same misunderstanding in twenty minutes, with
+green tests. The bottleneck has moved from writing code to deciding correctly and proving it. ANEW
+is built for that bottleneck: it does not make the AI write more code; it makes the AI work inside
+an engineering process.
+
 Most AI coding advice is prose nobody enforces. An AI agent's behavior is only shaped by three
 mechanical channels:
 
@@ -61,7 +67,7 @@ and adapts the rules to what's already there).
 
 ## The loop
 
-Every piece of work runs through a workflow, and every workflow enforces the same spine:
+Every piece of work runs through a workflow, and every workflow follows the same spine:
 
 ```
 INTENT → CLARIFY → SPEC → PLAN → [HUMAN APPROVAL] → BUILD
@@ -84,7 +90,7 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 | `/analyze "<feature>"` | Intent → clarify → spec (+ self-critique); refuses to open a twin spec | Spec `Status: Approved` → "Next: /plan" |
 | `/plan <NNNN>` | Plan from the spec; **refuses unless the spec is Approved** | Approval recorded in the plan → "Next: /build" |
 | `/build <NNNN>` | Implements the plan; **refuses unless `Approved by / on` is filled**; sets `In progress` | `scripts/check` green with output → "Next: /review" |
-| `/review <NNNN>` | Independent read-only review (subagent) | Findings report → human triage |
+| `/review <NNNN>` | Independent review — read-only where the tool supports it (see "How strongly is each rule held?") | Findings report → human triage |
 | `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
 | `/change "<request> <work item>"` | Change an existing behavior: triage rubric (bug → `/fix-bug` · trivial → one commit per `docs/git.md` policy · change → mini-spec lane), then the lane by mode (`workflows/change-request.md`) | Triage verdict; then the lane's gates |
 | `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows — same commands in Claude Code, Cursor and Copilot; any other tool pastes the prompts | Their gates |
@@ -101,11 +107,37 @@ Chosen at bootstrap, recorded in `AGENTS.md`, honored by every workflow:
 |---|---|---|
 | Spine | Spec → Plan → Build → Review → Verify | Full spine incl. Intent → Clarify |
 | Human gates | Spec approval (light yes/no) · plan approval; `/new-feature` also asks at triage and ship | Spec approval · plan approval · finding triage · ship decision |
-| Review | Independent (separate session/subagent) | Independent + role separation enforced |
+| Review | Independent (separate session/subagent) | Independent + one role per session (Documented; see the table below) |
 | Ceremony | Minimum viable | Full evidence trail |
 
 Running the full process on every project is unnecessary cost; running none is uncontrolled risk.
 Pick per project — or per feature.
+
+### How strongly is each rule held?
+
+Not every rule is held the same way, and not every tool can hold it the same way. Three levels:
+
+- **Documented** — the rule is written down; the agent is instructed to follow it.
+- **Validated** — a script detects a violation (`scripts/doctor` / `scripts/check`, locally and in CI).
+- **Enforced** — the tool physically prevents the action.
+
+| Rule | Claude Code | GitHub Copilot | Cursor | Other tools |
+|---|---|---|---|---|
+| Spec approved before plan | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Plan approval recorded before build | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Who approved the plan | Documented | Documented | Documented | Documented |
+| Producer ≠ verifier | Enforced (reviewer subagent has no Edit/Write; Bash kept for `scripts/check`, instructed never to write) | Enforced (reviewer agent, no edit tools; `runCommands` kept) | Documented (fresh chat) | Documented (fresh session) |
+| Shipped specs immutable | Enforced (hook, editor tools) + Validated (CI) | Documented (instruction) + Validated (CI) | Documented (rule) + Validated (CI) | Validated (CI) |
+| No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented |
+| "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+
+Segment commands also refuse out-of-order work (entry checks) — that is the agent following a
+Documented rule; CI is what makes it Validated.
+
+"Who approved" is Documented because a line in a file cannot prove identity. The real fix lives
+in the hosting platform, not in this repo: in strict mode, protect the default branch and require
+a pull-request review from `CODEOWNERS` — then the approver's identity comes from GitHub. The same
+branch protection setting makes "no force-push" Enforced for every tool.
 
 ## What's in the box
 
@@ -146,6 +178,14 @@ recommendation and rationale. The human decides — faster, with the agent's rea
 
 **One verification contract.** There is exactly one way to ask "is this good?": `scripts/check`.
 The agent cannot pass locally and fail in CI by running different commands.
+
+## Scope
+
+ANEW governs the path from intent to merge: context, specification, plan, authorization,
+implementation, independent review, evidence. Release, deployment and production operations are
+deliberately out of scope — that is where organizations differ most and already have tooling;
+ANEW connects to it through `scripts/check` and CI instead of replacing it. The incident workflow
+(`workflows/incident.md`) is the existing bridge back from production into this loop.
 
 ## Adapting it
 

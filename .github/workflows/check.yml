@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # doctor diffs specs/done/ against the PR's merge-base; a shallow clone has no base
       - name: Workspace health (spec/plan gates are failures in CI)
         run: ./scripts/doctor --strict
 

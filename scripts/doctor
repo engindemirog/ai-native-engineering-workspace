@@ -19,11 +19,12 @@ echo "== ANEW doctor =="
 for f in \
   AGENTS.md README.md \
   docs/architecture.md docs/domain.md docs/conventions.md docs/testing.md docs/security.md docs/git.md \
-  docs/decisions/TEMPLATE.md docs/roles/README.md docs/roles/analyst.md docs/roles/developer.md \
-  docs/roles/reviewer.md docs/roles/qa.md \
+  docs/decisions/README.md docs/decisions/TEMPLATE.md \
+  docs/roles/README.md docs/roles/analyst.md docs/roles/developer.md docs/roles/reviewer.md docs/roles/qa.md \
   specs/TEMPLATE.md specs/TEMPLATE-mini.md specs/plans/TEMPLATE.md \
+  specs/active/README.md specs/plans/README.md specs/done/README.md \
   workflows/README.md workflows/bootstrap.md workflows/feature-development.md workflows/bug-fix.md \
-  workflows/refactor.md workflows/incident.md workflows/segments.md \
+  workflows/refactor.md workflows/incident.md workflows/segments.md workflows/change-request.md \
   prompts/README.md prompts/bootstrap.md prompts/clarify.md prompts/spec.md prompts/plan.md \
   prompts/build.md prompts/review.md prompts/verify.md prompts/adr.md prompts/recovery/README.md \
   scripts/check
@@ -145,6 +146,54 @@ for s in "$ROOT/specs/done/"[0-9]*.md; do
   [ -f "$s" ] || continue
   grep -q '^- Status:[[:space:]]*Shipped' "$s" || warn "specs/done/$(basename "$s") is not marked 'Status: Shipped'"
 done
+
+# --- shipped specs are immutable: no edit, deletion or rename under specs/done/ vs a base ref ---
+# gate() = WARN locally, FAIL under --strict (CI). Base ref: $ANEW_BASE_REF, else the merge-base
+# with the PR target ($GITHUB_BASE_REF, needs fetch-depth: 0), else HEAD (catches uncommitted edits).
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if [ -n "${ANEW_BASE_REF:-}" ]; then
+    base="$ANEW_BASE_REF"
+  elif [ -n "${GITHUB_BASE_REF:-}" ]; then
+    base=$(git -C "$ROOT" merge-base HEAD "origin/$GITHUB_BASE_REF" 2>/dev/null || true)
+  else
+    base=HEAD
+  fi
+  if [ -n "$base" ] && git -C "$ROOT" rev-parse --verify --quiet "$base^{commit}" >/dev/null 2>&1; then
+    changes=$(git -C "$ROOT" diff --name-status -M "$base" -- specs/done/ 2>/dev/null)
+    shipped_viol=0
+    oldifs=$IFS; IFS='
+'
+    for line in $changes; do
+      st=$(printf '%s' "$line" | cut -f1)
+      src=$(printf '%s' "$line" | cut -f2)
+      case "$st" in
+        M*|D*|R*|C*)
+          gate "shipped spec changed: $src — shipped specs are immutable; open a new change request (/change)"
+          shipped_viol=$((shipped_viol + 1)) ;;
+      esac
+    done
+    IFS=$oldifs
+    [ "$shipped_viol" -eq 0 ] && ok "shipped specs unchanged vs $base (specs/done/ immutable)"
+  else
+    warn "immutability check skipped — base ref '${base:-?}' cannot be resolved (CI needs fetch-depth: 0)"
+  fi
+else
+  warn "immutability check skipped — not a git repository"
+fi
+
+# --- adapter parity: every Claude Code command has a Cursor and a Copilot counterpart ---
+# Runs only where adapters/ exists (the template, and repos that kept it). Missing = FAIL: README
+# promises the same commands in all three tools.
+if [ -d "$ROOT/adapters/claude-code/.claude/commands" ]; then
+  parity_fails=0
+  for c in "$ROOT/adapters/claude-code/.claude/commands/"*.md; do
+    [ -f "$c" ] || continue
+    x=$(basename "$c" .md)
+    [ -f "$ROOT/adapters/cursor/commands/$x.md" ] || { fail "adapter parity: $x missing in cursor"; parity_fails=$((parity_fails + 1)); }
+    [ -f "$ROOT/adapters/github-copilot/prompts/$x.prompt.md" ] || { fail "adapter parity: $x missing in github-copilot"; parity_fails=$((parity_fails + 1)); }
+  done
+  [ "$parity_fails" -eq 0 ] && ok "adapter parity: every Claude Code command exists for Cursor and Copilot"
+fi
 
 # --- hygiene ---
 if [ -d "$ROOT/.claude/hooks" ]; then

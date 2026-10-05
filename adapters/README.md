@@ -10,7 +10,7 @@ the core and point at it.
 
 | Adapter | What you get |
 |---|---|
-| `claude-code/` | Pointer `CLAUDE.md` + segment commands (`/analyze` … `/verify`) + `/new-feature` chainer + other workflow commands + read-only `reviewer` subagent + permission denies + a hook that makes `specs/done/` physically immutable. Deepest integration. |
+| `claude-code/` | Pointer `CLAUDE.md` + segment commands (`/analyze` … `/verify`) + `/new-feature` chainer + other workflow commands + read-only `reviewer` subagent + permission denies + a hook that rejects editor-tool edits under `specs/done/` (CI validates the rest). Deepest integration. |
 | `github-copilot/` | Pointer `copilot-instructions.md` + every command as a prompt file (segments, `/new-feature`, `/change`, bootstrap, fix-bug, refactor, adr, recover) + read-only `reviewer` custom agent + an immutability instruction for `specs/done/`. |
 | `cursor/` | Pointer rule file + every command (`.cursor/commands/`) + an immutability rule for `specs/done/`. Review runs in a fresh chat. |
 | `generic/` | Instructions for wiring any other agent, incl. a paste-by-hand table for the segments. |

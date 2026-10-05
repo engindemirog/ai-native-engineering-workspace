@@ -19,7 +19,8 @@ What it adds on top of the core:
   matching workflow and honors the operating mode. All commands are thin by design: they point to
   `workflows/` and `prompts/`, they don't restate them.
 - **Read-only reviewer subagent** (`.claude/agents/reviewer.md`): the "producer never verifies its
-  own work" rule made *impossible to break* — the subagent has no Edit/Write tools.
+  own work" rule at the tool level — the subagent has no Edit/Write tools. Bash stays so it can run
+  `scripts/check`, and it is instructed never to write; CI review gates are the backstop.
 - **Permission denies** (`.claude/settings.json`): force push, hard reset, `git rebase`, `rm -rf`
   blocked by the tool, not by politeness.
 - **Immutability hook** (`.claude/hooks/protect-shipped.sh`): Edit/Write/MultiEdit/NotebookEdit

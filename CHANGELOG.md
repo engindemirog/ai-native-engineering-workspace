@@ -1,9 +1,28 @@
 # Changelog
 
 Template users: compare your copy against the version you started from and pull what you need —
-the core is Markdown plus two scripts, so upgrades are file copies, not migrations.
+the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
 
-## Unreleased
+## v1.3 — Hardening: ANEW applies ANEW to itself
+
+- `scripts/doctor` requires every core file (`workflows/change-request.md` and the specs/decisions
+  READMEs were missing from the list).
+- `scripts/doctor` validates `specs/done/` immutability against a base ref (uncommitted edits
+  locally, the PR merge-base in CI); FAIL under `--strict`. CI checkout uses `fetch-depth: 0`.
+- Adapter parity is checked by `scripts/doctor`: every Claude Code command must exist for Cursor
+  and Copilot (the five workflow commands were added in the previous release).
+- README states how strongly each rule is held — Documented / Validated / Enforced — per tool, and
+  no longer overclaims ("impossible to break", "physically immutable", "enforced" role separation).
+- README says why ANEW exists (decision errors, not typing speed) and where it stops (intent → merge).
+- ADR 0004 (enforcement levels) and ADR 0005 (scope boundary).
+
+### Upgrading
+
+Copy `scripts/doctor`; copy the five new command files per adapter (`adapters/cursor/commands/`,
+`adapters/github-copilot/prompts/`: bootstrap, fix-bug, refactor, adr, recover) and re-run
+`./scripts/init <tool>`; set `fetch-depth: 0` on the doctor job's checkout in your CI.
+
+### Also included (accumulated since the last release)
 
 - Refactors open a mini-spec (Changed behavior = none, Preserved = characterization); bug-fix triage
   is a human gate in every mode; `refactor/` branches documented.
