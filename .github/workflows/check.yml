@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # The bootstrap workflow may add toolchain setup steps here (e.g. setup-dotnet, setup-node)
+      # The bootstrap workflow may add toolchain setup steps here (e.g. setup-java, setup-node)
       # to match the commands it writes into scripts/check.conf.
       - name: Verification contract
         run: |

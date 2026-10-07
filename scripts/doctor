@@ -206,7 +206,7 @@ fi
 # One find pass; the root .git and node_modules are pruned. A nested clone is reported once and
 # nothing inside it is reported again. .git files (submodules, worktrees) are not clones; ignored.
 hyg=$(find "$ROOT" \( -path "$ROOT/.git" -o -name node_modules \) -prune -o \
-  -type d \( -name .git -print -prune -o -name evidence -print \) 2>/dev/null)
+  -type d \( -name .git -print -prune -o \( -name evidence -o -name .evidence \) -print \) 2>/dev/null)
 clones=$(printf '%s\n' "$hyg" | sed -n 's|/\.git$||p')
 oldifs=$IFS; IFS='
 '

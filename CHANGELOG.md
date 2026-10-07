@@ -3,6 +3,20 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
 
+## v1.6.1 — Fixes: no stack-specific example that breaks tests; `.evidence/` is evidence too
+
+- `scripts/check.conf.example` (v1.5): the resource-hygiene example added build flags to the test
+  command; some test runners forward such flags to the test process and run zero tests. The
+  example is now a JVM (Gradle) build, and the examples elsewhere in the core follow suit.
+- `prompts/bootstrap.md` Prove step: confirm every test step still runs the same number of tests
+  after the switches are added.
+- `scripts/doctor` and the Evidence policy cover `.evidence/` as well as `evidence/`.
+
+### Upgrading
+
+If you copied the v1.5 example into `scripts/check.conf`, check that your test step still runs your
+tests (count them), and drop any build-only flags from it. Copy `scripts/doctor`.
+
 ## v1.6 — User experience lives in the spec
 
 - `specs/TEMPLATE.md` gains a required "User experience" section: flow, states (empty, loading,
@@ -27,7 +41,7 @@ new specs use the section.
 - `prompts/bootstrap.md`: check.conf commands go through inventory → neutralize → prove; a
   bootstrap that fails the residue test is not done; adoption proposes flag changes, never imposes.
   `workflows/bootstrap.md` VERIFY runs the residue test.
-- `scripts/check.conf.example`: the .NET example follows the rule (no node reuse, no compiler server).
+- `scripts/check.conf.example`: the build example follows the rule (no warm build daemon).
 - ADR 0007 records the decision and why a per-stack switch list was rejected.
 
 ### Upgrading

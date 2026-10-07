@@ -35,10 +35,11 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
       (# resource hygiene: no build daemon). No switch → stop the process inside the SAME step,
       keeping its exit code (check fails fast; a separate last step is skipped on red):
       test: sh -c 'tool run; rc=$?; tool stop; exit $rc'
-      (Worked examples only, not a supported list: .NET -nodeReuse:false
-      -p:UseSharedCompilation=false · Gradle --no-daemon.)
+      (Worked examples only, not a supported list: Gradle --no-daemon · Playwright --workers=1.)
    c. Prove — in VERIFY, run the residue test and report it at the gate. A bootstrap whose check
-      fails the residue test is not done.
+      fails the residue test is not done. Also confirm every test step still runs the same number
+      of tests as before the switches: some runners forward unknown flags to the test process and
+      silently run zero tests.
    Adoption (existing code): changing build flags the team relies on is PROPOSED, not imposed;
    the residue test runs either way so the trade-off is visible.
 4. VERIFY: run ./scripts/doctor and ./scripts/check and show me the output; then the residue test

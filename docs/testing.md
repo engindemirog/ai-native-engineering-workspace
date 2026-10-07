@@ -40,8 +40,8 @@ A screenshot proves a criterion only against the spec's "User experience": every
 4. **Never clone or copy the repository inside its own working tree.** Clean-clone verification
    runs in a temporary directory outside the repo; only the one-line result (command + green/red)
    is recorded in the evidence table. The clone is always deleted, never kept.
-5. **There is no `evidence/` directory in this workspace.** An agent that feels the need to create
-   one is about to violate rule 1. `scripts/doctor` warns on both violations.
+5. **There is no `evidence/` (or `.evidence/`) directory in this workspace.** An agent that feels
+   the need to create one is about to violate rule 1. `scripts/doctor` warns on both violations.
 
 ## Resource hygiene
 1. **A check run leaves nothing running.** No survivors of any kind: build/compile daemons,

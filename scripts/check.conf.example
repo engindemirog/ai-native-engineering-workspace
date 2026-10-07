@@ -3,10 +3,10 @@
 # One step per line:  <name>: <command>   — runs in order, fails fast.
 # Every command must leave nothing running (docs/testing.md, Resource hygiene).
 #
-# .NET example:
-# resource hygiene: no MSBuild node reuse, no shared compiler server
-# build: dotnet build --nologo -warnaserror -nodeReuse:false -p:UseSharedCompilation=false
-# test: dotnet test --nologo -nodeReuse:false -p:UseSharedCompilation=false
+# JVM (Gradle, Java) example:
+# resource hygiene: no Gradle daemon
+# build: ./gradlew assemble --no-daemon
+# test: ./gradlew test --no-daemon
 #
 # Node example:
 # lint: npm run lint

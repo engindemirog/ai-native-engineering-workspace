@@ -3,8 +3,8 @@
 # Humans, agents, hooks, and CI all answer "is this good?" by running this one command.
 # Stack-specific internals live in scripts/check.conf (generated at bootstrap).
 # check.conf format: one step per line ->  <name>: <command>
-#   build: dotnet build -warnaserror
-#   test: dotnet test
+#   build: ./gradlew assemble --no-daemon
+#   test: ./gradlew test --no-daemon
 #   lint: npm run lint
 # Blank lines and lines starting with # are ignored. Steps run in order, fail fast.
 set -u

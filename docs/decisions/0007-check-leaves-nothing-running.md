@@ -8,8 +8,8 @@ Nearly every toolchain buys speed by keeping processes warm: build daemons, comp
 package-manager services, test hosts and workers, watchers, browsers, the app under test,
 containers, emulators. A human builds ~20 times a day; an agent runs `./scripts/check` ~200 times,
 so per-run residue compounds until the machine starves — on a 32 GB machine we measured 2.4 GB
-free and e2e failing with blank pages. The stack that day was .NET, but Gradle daemons,
-pytest-xdist workers and leaked Chromiums produce the same picture. ANEW's core is
+free and e2e failing with blank pages. That day it was build and compile servers, but Gradle
+daemons, pytest-xdist workers and leaked Chromiums produce the same picture. ANEW's core is
 language-agnostic, so the fix cannot be a list of tools.
 
 ## Decision
