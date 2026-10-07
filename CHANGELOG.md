@@ -3,6 +3,24 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
 
+## v1.5 — Check leaves nothing running
+
+- `docs/testing.md` gains "Resource hygiene": no daemons, servers, workers, browsers, app under
+  test or containers survive a check run; defined by the residue test (check twice, process count
+  and memory back to baseline). Categories only — no tool list.
+- `prompts/bootstrap.md`: check.conf commands go through inventory → neutralize → prove; a
+  bootstrap that fails the residue test is not done; adoption proposes flag changes, never imposes.
+  `workflows/bootstrap.md` VERIFY runs the residue test.
+- `scripts/check.conf.example`: the .NET example follows the rule (no node reuse, no compiler server).
+- ADR 0007 records the decision and why a per-stack switch list was rejected.
+
+### Upgrading
+
+Copy the "Resource hygiene" section of `docs/testing.md` and the bootstrap edits. Then, for your own
+`scripts/check.conf`: inventory what each command can leave running, add your stack's
+no-daemon / no-server switches (or stop inside the same step), set e2e to single-worker headless
+with one component owning the app lifecycle, and run the residue test to confirm.
+
 ## v1.4 — Evidence is referenced, not stored
 
 - `docs/testing.md` gains an "Evidence policy": evidence is a pointer (test name + command), never a

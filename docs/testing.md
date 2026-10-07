@@ -41,5 +41,18 @@ also show the preserved behavior. Screenshots go into the PR, not the repo (Evid
 5. **There is no `evidence/` directory in this workspace.** An agent that feels the need to create
    one is about to violate rule 1. `scripts/doctor` warns on both violations.
 
+## Resource hygiene
+1. **A check run leaves nothing running.** No survivors of any kind: build/compile daemons,
+   package-manager services, test hosts and parallel workers, watch modes, browsers, the application
+   under test, containers or emulators started for the run. Agents run check an order of magnitude
+   more often than humans; per-run residue compounds into machine starvation.
+2. **The residue test** (the rule's definition, not advice): run `./scripts/check` twice back to
+   back; after each run, process count and memory return to the baseline measured before the first.
+3. Warm-process caches trade memory for speed for humans who build rarely; with an agent, trade the
+   seconds back for a flat memory profile.
+4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e runs single-worker
+   and headless by default; one component owns the app-under-test lifecycle — started for the run,
+   stopped at the end, including on failure and timeout.
+
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.

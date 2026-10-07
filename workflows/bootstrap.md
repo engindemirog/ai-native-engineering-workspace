@@ -36,9 +36,10 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
    keeping the file ≤ 40 lines. For existing repos it may also propose toolchain steps for `.github/workflows/check.yml`.
 
 4. **VERIFY.** Run `./scripts/doctor` (structure + configuration) and `./scripts/check`
-   (must pass; in an empty greenfield it may be a no-op with a note). Context quiz: open a *fresh*
-   session and ask a project question (e.g. "what type do money fields use?") — the agent must
-   answer from files. If it can't, the docs aren't teaching; fix them.
+   (must pass; in an empty greenfield it may be a no-op with a note), then the residue test
+   (`docs/testing.md`, Resource hygiene) — reported at the gate; failing it means not done.
+   Context quiz: open a *fresh* session and ask a project question (e.g. "what type do money
+   fields use?") — the agent must answer from files. If it can't, the docs aren't teaching; fix them.
 
 5. **REPORT.** What was generated, what was assumed, what still needs a human decision.
    **[GATE: human]** — you approve the workspace before the first feature starts.
