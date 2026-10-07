@@ -3,6 +3,22 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
 
+## v1.6 — User experience lives in the spec
+
+- `specs/TEMPLATE.md` gains a required "User experience" section: flow, states (empty, loading,
+  error, success, no permission), design link, accessibility — or "none — no user interface".
+  Every listed state gets an acceptance criterion. `specs/TEMPLATE-mini.md` gains a `Design:` link.
+- `prompts/clarify.md` and `prompts/spec.md` ask for flow, states and the design link (never invent
+  visuals); `prompts/verify.md` and `docs/testing.md` check UI screenshots against that section.
+- ADR 0008 records why UX is a spec section, not a new segment, role or design-tool integration.
+
+### Upgrading
+
+Copy the "User experience" section of `specs/TEMPLATE.md`, the `Design:` line of
+`specs/TEMPLATE-mini.md`, and the edits to `prompts/clarify.md`, `prompts/spec.md`,
+`prompts/verify.md` and `docs/testing.md`. Specs already in `specs/active/` keep their shape;
+new specs use the section.
+
 ## v1.5 — Check leaves nothing running
 
 - `docs/testing.md` gains "Resource hygiene": no daemons, servers, workers, browsers, app under

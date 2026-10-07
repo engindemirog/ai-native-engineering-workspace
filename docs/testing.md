@@ -25,6 +25,8 @@ included. They are written from observation, not from what the code "should" do.
 ## Evidence for UI criteria
 A screenshot is evidence for a UI criterion; for change requests, before/after screenshots that
 also show the preserved behavior. Screenshots go into the PR, not the repo (Evidence policy).
+A screenshot proves a criterion only against the spec's "User experience": every state it lists
+(empty, loading, error, success, no permission), compared with the linked design if there is one.
 
 ## Evidence policy
 1. **Evidence is referenced, not stored.** Each acceptance criterion's evidence is a pointer: the
