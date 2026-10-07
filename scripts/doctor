@@ -203,18 +203,21 @@ if [ -d "$ROOT/.claude/hooks" ]; then
 fi
 
 # --- evidence hygiene (docs/testing.md Evidence policy): path checks only, every mode, WARN ---
-# One find pass; the root .git and node_modules are pruned, a nested .git is reported once and not
-# descended. .git files (submodules, worktrees) are not clones and are ignored.
+# One find pass; the root .git and node_modules are pruned. A nested clone is reported once and
+# nothing inside it is reported again. .git files (submodules, worktrees) are not clones; ignored.
 hyg=$(find "$ROOT" \( -path "$ROOT/.git" -o -name node_modules \) -prune -o \
   -type d \( -name .git -print -prune -o -name evidence -print \) 2>/dev/null)
+clones=$(printf '%s\n' "$hyg" | sed -n 's|/\.git$||p')
 oldifs=$IFS; IFS='
 '
+for c in $clones; do
+  warn "repository clone inside the working tree: ${c#"$ROOT"/} — clean-clone verification belongs in a temp dir outside the repo (docs/testing.md Evidence policy)"
+done
 for d in $hyg; do
-  rel=${d#"$ROOT"/}
-  case "$d" in
-    */.git) warn "repository clone inside the working tree: ${rel%/.git} — clean-clone verification belongs in a temp dir outside the repo (docs/testing.md Evidence policy)" ;;
-    *) warn "evidence directory found: $rel — evidence is referenced, not stored (docs/testing.md Evidence policy)" ;;
-  esac
+  case "$d" in */.git) continue ;; esac
+  inside=0
+  for c in $clones; do case "$d" in "$c"/*) inside=1 ;; esac; done
+  [ "$inside" -eq 0 ] && warn "evidence directory found: ${d#"$ROOT"/} — evidence is referenced, not stored (docs/testing.md Evidence policy)"
 done
 IFS=$oldifs
 
