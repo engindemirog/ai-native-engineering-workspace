@@ -202,6 +202,22 @@ if [ -d "$ROOT/.claude/hooks" ]; then
   done
 fi
 
+# --- evidence hygiene (docs/testing.md Evidence policy): path checks only, every mode, WARN ---
+# One find pass; the root .git and node_modules are pruned, a nested .git is reported once and not
+# descended. .git files (submodules, worktrees) are not clones and are ignored.
+hyg=$(find "$ROOT" \( -path "$ROOT/.git" -o -name node_modules \) -prune -o \
+  -type d \( -name .git -print -prune -o -name evidence -print \) 2>/dev/null)
+oldifs=$IFS; IFS='
+'
+for d in $hyg; do
+  rel=${d#"$ROOT"/}
+  case "$d" in
+    */.git) warn "repository clone inside the working tree: ${rel%/.git} — clean-clone verification belongs in a temp dir outside the repo (docs/testing.md Evidence policy)" ;;
+    *) warn "evidence directory found: $rel — evidence is referenced, not stored (docs/testing.md Evidence policy)" ;;
+  esac
+done
+IFS=$oldifs
+
 echo "== result: $fails fail, $warns warn =="
 [ "$fails" -eq 0 ] || exit 1
 exit 0

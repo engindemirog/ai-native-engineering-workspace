@@ -24,7 +24,22 @@ included. They are written from observation, not from what the code "should" do.
 
 ## Evidence for UI criteria
 A screenshot is evidence for a UI criterion; for change requests, before/after screenshots that
-also show the preserved behavior.
+also show the preserved behavior. Screenshots go into the PR, not the repo (Evidence policy).
+
+## Evidence policy
+1. **Evidence is referenced, not stored.** Each acceptance criterion's evidence is a pointer: the
+   test's name and the command that reproduces it (`./scripts/check`). The criterion ↔ evidence
+   table in the spec/plan is the only evidence artifact that lives in the repo.
+2. **Reproducible evidence is never filed.** No saved check output, console dumps, coverage reports
+   or log copies in the repo — git history and CI runs already archive every execution.
+3. **Non-reproducible evidence** (a screenshot of a manual UI check, a one-off measurement, an
+   external-system confirmation) goes into the pull request (description or attachment); the
+   evidence table links to it. It is the exception, not the rule.
+4. **Never clone or copy the repository inside its own working tree.** Clean-clone verification
+   runs in a temporary directory outside the repo; only the one-line result (command + green/red)
+   is recorded in the evidence table. The clone is always deleted, never kept.
+5. **There is no `evidence/` directory in this workspace.** An agent that feels the need to create
+   one is about to violate rule 1. `scripts/doctor` warns on both violations.
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.

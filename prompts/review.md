@@ -7,7 +7,8 @@ and run ./scripts/check; you may NOT write or modify anything.
 Review this change set against specs/active/<NNNN>-<name>.md:
 <diff or branch reference>
 
-For each dimension give concrete findings WITH EVIDENCE (file:line), or explicitly say "clean":
+For each dimension give concrete findings WITH EVIDENCE (file:line, commands to reproduce — never
+saved artifacts), or explicitly say "clean":
 - Correctness: are the acceptance criteria actually met?
 - Security: authz, input validation, data leaks, secrets (docs/security.md).
 - Edge cases: empty/extreme/boundary values, concurrency.

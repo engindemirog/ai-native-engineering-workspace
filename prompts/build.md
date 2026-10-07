@@ -12,6 +12,7 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
 
 Done means: all steps complete, ./scripts/check GREEN, changed-file list matches the plan.
 Return: changed files + check output. Do not self-review; that comes next, independently.
+Show check output in the conversation and reference it; never save it to a file.
 
 §fixes — For triaged review findings: fix ONLY findings marked real, smallest change per finding,
 one commit per finding referencing it. Full suite green after each. Never touch unrelated code.

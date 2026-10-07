@@ -3,6 +3,23 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
 
+## v1.4 — Evidence is referenced, not stored
+
+- `docs/testing.md` gains an "Evidence policy": evidence is a pointer (test name + command), never a
+  saved file; non-reproducible items go into the PR; no repo clones inside the repo; no `evidence/`.
+- `prompts/verify.md`, `prompts/build.md` and `prompts/review.md` apply the policy where evidence
+  is produced: pointers and commands, output shown in the conversation, nothing written to files.
+- `scripts/doctor` warns (every mode, never fails) on a nested `.git` directory and on any
+  `evidence/` directory in the working tree.
+- ADR 0006 records the decision and why retention/archive tooling was rejected.
+
+### Upgrading
+
+Copy the "Evidence policy" section of `docs/testing.md`, the edits to `prompts/verify.md`,
+`prompts/build.md` and `prompts/review.md`, and `scripts/doctor` (evidence hygiene checks). Then move
+any non-reproducible items from an existing `evidence/` directory into their PRs and delete the
+directory (and any repository clones inside your working tree).
+
 ## v1.3 — Hardening: ANEW applies ANEW to itself
 
 - `scripts/doctor` requires every core file (`workflows/change-request.md` and the specs/decisions
