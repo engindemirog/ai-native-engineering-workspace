@@ -30,6 +30,7 @@ with one component owning the app lifecycle, and run the residue test to confirm
 - `scripts/doctor` warns (every mode, never fails) on a nested `.git` directory and on any
   `evidence/` directory in the working tree.
 - ADR 0006 records the decision and why retention/archive tooling was rejected.
+- Fix: `scripts/doctor` reports a nested clone once, not the `evidence/` inside it (693d020).
 
 ### Upgrading
 
