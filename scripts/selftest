@@ -1,0 +1,134 @@
+#!/bin/sh
+# ANEW selftest — proves that scripts/check and scripts/doctor behave as documented.
+# Every scenario runs in a throwaway copy of this workspace in a temp dir OUTSIDE the repo
+# (docs/testing.md, Evidence policy), asserts on the real output and exit code, and is deleted.
+# Exit 0 = all scenarios pass, exit 1 = at least one failed. Runs in CI next to doctor.
+set -u
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+passed=0
+failed=0
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/anew-selftest.XXXXXX") || { echo "selftest: mktemp failed" >&2; exit 1; }
+trap 'rm -rf "$TMP"' EXIT INT TERM
+
+# --- assertions on the last run: $out (stdout+stderr) and $rc ---
+run()    { out=$("$@" 2>&1); rc=$?; }
+report() { if [ "$1" -eq 0 ]; then passed=$((passed + 1)); echo "ok    $2"
+           else failed=$((failed + 1)); echo "FAIL  $2"; printf '%s\n' "$out" | sed 's/^/      | /'; fi; }
+exits()  { [ "$rc" -eq "$1" ]; report $? "$2 (exit $1)"; }
+has()    { printf '%s\n' "$out" | grep -qF -- "$1"; report $? "$2"; }
+hasnt()  { if printf '%s\n' "$out" | grep -qF -- "$1"; then report 1 "$2"; else report 0 "$2"; fi; }
+
+# --- scripts/check: a bare copy of the script with a conf per scenario ---
+C="$TMP/check"
+mkdir -p "$C/scripts"
+cp "$ROOT/scripts/check" "$C/scripts/check"
+conf() { printf '%s\n' "$@" > "$C/scripts/check.conf"; }
+check() { run sh "$C/scripts/check" "$@"; }
+
+echo "== scripts/check =="
+check
+exits 1 "no check.conf → refuses";                has "no scripts/check.conf yet" "no check.conf → says so"
+conf '# only a comment'
+check
+exits 0 "conf without steps → greenfield no-op";  has "greenfield no-op" "no-op is named"
+conf 'compile [fast]: echo compile ran' 'unit [fast]: echo unit ran' 'e2e: echo e2e ran'
+check --fast
+exits 0 "--fast, tagged conf";                    has "CHECK GREEN (fast, 2 steps)" "--fast runs only [fast] steps"
+has "skip  e2e (full only)" "--fast names the skipped step";  hasnt "e2e ran" "--fast does not run untagged steps"
+has "==> unit" "tag is stripped from the displayed name";     hasnt "==> unit [fast]" "tag never shown as part of the name"
+check
+exits 0 "full, tagged conf";                      has "CHECK GREEN (full, 3 steps)" "full runs every step"
+conf 'compile: echo compile ran' 'e2e: echo e2e ran'
+check --fast
+has "CHECK GREEN (fast = full: no steps tagged fast, 2 steps)" "--fast on an untagged conf runs all and says so"
+conf 'compile: echo compile ran' 'unit: echo unit; exit 3' 'after: echo after ran'
+check
+exits 1 "red step fails the run";                 has "CHECK FAILED (full) at step: unit" "failure names profile and step"
+hasnt "after ran" "fail fast: later steps do not run"
+conf 'unit [fast]: exit 3'
+check --fast
+exits 1 "red fast step";                          has "CHECK FAILED (fast) at step: unit" "fast failure names the profile"
+check --fsat
+exits 2 "unknown argument";                       has "usage: ./scripts/check [--fast]" "unknown argument prints usage"
+check --fast extra
+exits 2 "extra argument";                         hasnt "==>" "a bad invocation runs nothing"
+conf 'first: echo first ran' 'greedy: cat > /dev/null; echo greedy ran' 'second: echo second ran'
+check
+has "second ran" "a step reading stdin cannot swallow the rest of check.conf"
+has "CHECK GREEN (full, 3 steps)" "every step after a stdin reader still counts"
+
+# --- scripts/doctor: a git-initialised copy of the ANEW core only, reset between scenarios ---
+# Only what doctor reads: no application code, and no real specs or plans (a project's own specs
+# would collide with the scenarios) — so the selftest behaves the same in the template and in
+# every bootstrapped project.
+W="$TMP/ws"
+mkdir -p "$W"
+( cd "$ROOT" && git ls-files --cached --others --exclude-standard ) \
+  | grep -E '^(AGENTS\.md|README\.md|docs/|workflows/|prompts/|scripts/|adapters/|specs/(TEMPLATE[^/]*\.md|(active|done|plans)/README\.md|plans/TEMPLATE\.md)$)' \
+  | ( cd "$ROOT" && tar -cf - -T - ) | ( cd "$W" && tar -xf - )
+git -C "$W" init -q
+git -C "$W" config core.autocrlf false   # the fixture is throwaway: no line-ending conversion noise
+git -C "$W" config core.safecrlf false
+git -C "$W" add -A
+git -C "$W" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm fixture
+BASE=$(git -C "$W" rev-parse HEAD)
+reset()  { git -C "$W" reset -q --hard "$BASE"; git -C "$W" clean -qfdx; }
+commit() { git -C "$W" add -A; git -C "$W" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm "$1"; }
+put()    { mkdir -p "$(dirname "$W/$1")"; f=$1; shift; printf '%s\n' "$@" > "$W/$f"; }
+# CI's base-ref variables would point the immutability check at refs the fixture doesn't have.
+doctor() { run sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
+
+echo "== scripts/doctor =="
+doctor
+exits 0 "clean workspace";                        has "== result: 0 fail" "clean workspace has no failures"
+hasnt "repository clone" "clean workspace: no clone warning"; hasnt "evidence directory" "clean workspace: no evidence warning"
+
+reset; put specs/plans/0001-plan.md '# Plan 0001' '- Approved by / on: —'
+doctor;            has "WARN  plan exists for unapproved spec 0001" "plan without a spec → WARN locally"
+doctor --strict;   exits 1 "plan without a spec under --strict"; has "FAIL  plan exists for unapproved spec 0001" "… FAIL under --strict"
+
+reset; put specs/active/0002-draft.md '# Spec 0002' '- Status: Draft'; put specs/plans/0002-plan.md '# Plan 0002' '- Approved by / on: —'
+doctor;            has "plan exists for unapproved spec 0002 (spec status: Draft)" "plan for a Draft spec is a gate violation"
+
+reset; put specs/active/0003-wip.md '# Spec 0003' '- Status: In progress'; put specs/plans/0003-plan.md '# Plan 0003' '- Approved by / on: —'
+doctor;            has "build started without recorded plan approval (spec 0003" "In progress without plan approval is caught"
+put specs/plans/0003-plan.md '# Plan 0003' '- Approved by / on: Ada, 2026-10-16'
+doctor;            hasnt "build started without recorded plan approval" "a recorded approval clears it"
+
+reset; put specs/done/0004-old.md '# Spec 0004' '- Status: Shipped'; commit "ship 0004"
+put specs/done/0004-old.md '# Spec 0004' '- Status: Shipped' 'edited after shipping'
+doctor --strict;   exits 1 "edited shipped spec under --strict"; has "shipped spec changed: specs/done/0004-old.md" "edit under specs/done/ is caught"
+
+reset; put specs/active/0005-a.md '# Spec 0005' '- Status: Draft'; put specs/done/0005-b.md '# Spec 0005' '- Status: Shipped'
+doctor;            has "duplicate spec number 0005" "twin spec numbers are caught"
+
+reset; put specs/done/0006-c.md '# Spec 0006' '- Status: Approved'
+doctor;            has "specs/done/0006-c.md is not marked 'Status: Shipped'" "unmarked shipped spec is caught"
+
+reset; put specs/active/0007-mini.md '# Spec 0007 (mini)' '- Status: Draft' '- Source:' '## Preserved behavior'
+doctor;            has "mini-spec 0007 has no Source work item" "mini-spec without Source is caught"
+
+reset; put specs/active/0008-x.md '# Spec 0008' '- Status: Draft' '- Source: WI-1'; put specs/active/0009-y.md '# Spec 0009' '- Status: Draft' '- Source: WI-1'
+doctor;            has "two open specs share Source 'WI-1'" "twin change requests are caught"
+
+reset; mkdir -p "$W/evidence/demo-clone/.git" "$W/evidence/demo-clone/evidence" "$W/.evidence" "$W/vendor/sub"
+printf 'gitdir: ../.git/modules/sub\n' > "$W/vendor/sub/.git"
+doctor
+exits 0 "evidence hygiene never fails";           has "repository clone inside the working tree: evidence/demo-clone" "nested clone is reported"
+has "evidence directory found: evidence " "evidence/ is reported";  has "evidence directory found: .evidence " ".evidence/ is reported"
+hasnt "evidence/demo-clone/evidence" "nothing inside a clone is reported twice"
+hasnt "clone inside the working tree: vendor/sub" "a .git FILE (submodule, worktree) is not a clone"
+
+if [ -f "$W/adapters/cursor/commands/plan.md" ]; then
+  reset; rm -f "$W/adapters/cursor/commands/plan.md"
+  doctor;          exits 1 "adapter parity broken"; has "FAIL  adapter parity: plan missing in cursor" "missing adapter command is a failure"
+else
+  echo "skip  adapter parity (no adapters/ in this repo)"
+fi
+
+reset; rm -f "$W/docs/testing.md"
+doctor;            exits 1 "core file missing"; has "FAIL  missing: docs/testing.md" "missing core file is a failure"
+
+echo "== selftest: $passed passed, $failed failed =="
+[ "$failed" -eq 0 ] || exit 1
+exit 0

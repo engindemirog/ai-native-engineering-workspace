@@ -7,7 +7,7 @@
 
 Use this repo as a GitHub template (or drop it into an existing project), install the adapter for
 your AI tool, run the bootstrap workflow, and start your first feature. No frameworks, no
-dependencies, no code generators — a working *system*, written in Markdown plus three small scripts.
+dependencies, no code generators — a working *system*, written in Markdown plus a few small POSIX scripts.
 
 ## Why this exists
 
@@ -130,6 +130,9 @@ Not every rule is held the same way, and not every tool can hold it the same way
 | Shipped specs immutable | Enforced (hook, editor tools) + Validated (CI) | Documented (instruction) + Validated (CI) | Documented (rule) + Validated (CI) | Validated (CI) |
 | No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented |
 | "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
+| `scripts/check` leaves nothing running | Documented (the residue test runs once, at bootstrap) | Documented (same) | Documented (same) | Documented (same) |
+| UI specs define flow, states and the design link | Documented | Documented | Documented | Documented |
 | Evidence cites the full profile, not `--fast` | Documented (the `(full, n)` / `(fast, n)` label shows it to the reviewer) | Documented (same label) | Documented (same label) | Documented (same label) |
 
 Segment commands also refuse out-of-order work (entry checks) — that is the agent following a
@@ -146,17 +149,18 @@ branch protection setting makes "no force-push" Enforced for every tool.
 |---|---|
 | `AGENTS.md` | The signpost every agent auto-loads: invariant rules, operating mode, where everything lives. Rewritten by bootstrap; invariants survive. |
 | `docs/` | Long-term memory: architecture, domain language, conventions, testing, security, git rules — templates filled at bootstrap. |
-| `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. ANEW's own design decisions are recorded there (0001–0003). |
+| `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. ANEW's own design decisions are recorded there (ADR 0001 onward). |
 | `docs/roles/` | Role cards bound to responsibility, not technology: analyst, developer, reviewer, QA. Producer and verifier are never the same session. |
 | `specs/` | One spec per piece of work: intent, behavior, testable acceptance criteria (`TEMPLATE-mini.md` for behavior changes: changed + preserved criteria). `active/` → `done/` (immutable once shipped). Plans live in `specs/plans/`. |
 | `workflows/` | The processes: bootstrap, feature-development, change-request, bug-fix, refactor, incident. Steps, roles, gates, evidence — each step points to its prompt. `segments.md` defines the feature stages as stop-at-handoff segments that every adapter maps onto. |
 | `prompts/` | Reusable prompt bodies with placeholders. `prompts/recovery/` is the catalog of safe ramps (R-01…R-12) for when things go wrong. |
 | `adapters/` | Per-tool wiring. `scripts/init <tool>` installs one. |
-| `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. |
-| `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI). |
+| `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. `--fast` runs only the steps tagged `[fast]` for the inner loop; only the full run is evidence. |
+| `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI), evidence hygiene warnings. |
+| `scripts/selftest` | Proves `scripts/check` and `scripts/doctor` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
 | `scripts/init` | Installs an adapter; keeps existing files unless `--force`. |
 | `CHANGELOG.md` | What changed between versions of the workspace, for template users upgrading their copy. |
-| `.github/` | CI that runs the same `scripts/check` and `scripts/doctor --strict` + a PR template mirroring the gates. |
+| `.github/` | CI that runs the same `scripts/check`, `scripts/doctor --strict` and `scripts/selftest` + a PR template mirroring the gates. |
 
 ## Design principles
 
@@ -172,13 +176,15 @@ a different sentence.
 subagent) that sees the diff and the spec — not the builder's rationalizations.
 
 **Evidence over claims.** "Done" means `scripts/check` is green and every acceptance criterion maps
-to a test or a reproducible observation. "It works" is not a status.
+to a test or a reproducible observation. "It works" is not a status. Evidence is a pointer (test
+name + command), never a filed copy of output.
 
 **Proposal rule.** Every question, option, or finding an agent raises must include its own
 recommendation and rationale. The human decides — faster, with the agent's reasoning visible.
 
 **One verification contract.** There is exactly one way to ask "is this good?": `scripts/check`.
-The agent cannot pass locally and fail in CI by running different commands.
+The agent cannot pass locally and fail in CI by running different commands. It has two speeds —
+`--fast` to iterate, the full run as the only evidence — but never two contracts.
 
 ## Scope
 

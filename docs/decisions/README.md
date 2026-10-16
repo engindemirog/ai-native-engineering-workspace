@@ -2,6 +2,7 @@
 
 Every significant, hard-to-reverse choice gets an ADR from `TEMPLATE.md`, numbered sequentially
 (`0001-...md`). Decisions are never edited after acceptance — superseded ones get a new ADR and a
-status update. Capture the decision *when it's made*: the rationale is the part that evaporates.
+status update. The one exception is an editorial correction that leaves the decision's meaning
+unchanged (wording, a broken link); it is recorded in the ADR as `- Revised: <date> — <why>`. Capture the decision *when it's made*: the rationale is the part that evaporates.
 
 Use `prompts/adr.md` to draft one with your AI, or `/adr` in Claude Code.

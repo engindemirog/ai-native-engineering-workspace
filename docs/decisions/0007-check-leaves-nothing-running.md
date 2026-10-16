@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-07
+- Revised: 2026-10-07 — editorial, stack-neutral wording; decision unchanged
 
 ## Context
 Nearly every toolchain buys speed by keeping processes warm: build daemons, compile servers,

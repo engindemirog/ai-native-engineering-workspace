@@ -1,7 +1,27 @@
 # Changelog
 
 Template users: compare your copy against the version you started from and pull what you need —
-the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
+the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
+
+## v1.8 — ANEW proves its own scripts
+
+- `scripts/selftest`: 50 scenario checks that `scripts/check` (profiles, tags, failures, arguments,
+  stdin) and `scripts/doctor` (every gate, `--strict`, immutability, twin specs, mini-specs,
+  evidence hygiene, adapter parity, missing core files) behave as documented. Each scenario runs
+  in a throwaway copy of the ANEW core outside the repo; a project's own specs and code are never
+  copied, so it behaves the same in the template and in bootstrapped projects. CI runs it after
+  doctor.
+- README catches up with v1.4–v1.7: the enforcement table gains evidence hygiene (Validated),
+  resource hygiene and the UX section (Documented); `--fast`, evidence pointers and the selftest
+  are described; the ADR range and the script count no longer go stale.
+- `docs/decisions/README.md`: accepted ADRs may take editorial corrections that leave the decision
+  unchanged, recorded as a `Revised:` line. ADR 0007 records its v1.6.1 wording change that way.
+
+### Upgrading
+
+Copy `scripts/selftest` (keep it executable) and add its step to your CI's doctor job
+(`.github/workflows/check.yml`). If you changed `scripts/check` or `scripts/doctor` locally, the
+selftest tells you where your copy now differs from the documented behavior.
 
 ## v1.7 — Two speeds, one contract
 

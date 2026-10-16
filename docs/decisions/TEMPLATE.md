@@ -2,6 +2,7 @@
 
 - Status: Proposed | Accepted | Superseded by ADR-NNNN
 - Date: YYYY-MM-DD
+- Revised: <!-- optional — editorial corrections only (decision unchanged): "<date> — <why>" -->
 
 ## Context
 <!-- The forces at play: what problem, what constraints, why now. Written so that someone in
