@@ -7,5 +7,5 @@ You are outside the approved plan. Do this:
 2) For each deviation: was it necessary? If yes, propose it as a plan amendment — I approve and it
    gets recorded in the plan. If no, REVERT that change.
 PROTECTION: while reverting, do not touch in-plan changes or tests. After cleanup run
-./scripts/check and show green. Plans are amended by approval, never silently.
+./scripts/check (full) and show green. Plans are amended by approval, never silently.
 ```

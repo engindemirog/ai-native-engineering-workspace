@@ -3,13 +3,27 @@
 # Humans, agents, hooks, and CI all answer "is this good?" by running this one command.
 # Stack-specific internals live in scripts/check.conf (generated at bootstrap).
 # check.conf format: one step per line ->  <name>: <command>
-#   build: ./gradlew assemble --no-daemon
+#   build [fast]: ./gradlew assemble --no-daemon
 #   test: ./gradlew test --no-daemon
-#   lint: npm run lint
+#   lint [fast]: npm run lint
 # Blank lines and lines starting with # are ignored. Steps run in order, fail fast.
+# Two speeds, one contract (docs/testing.md): ./scripts/check runs every step (full — the only
+# evidence); ./scripts/check --fast runs only steps whose name carries [fast] (inner loop).
+# A conf without [fast] tags runs every step in both profiles.
 set -u
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 CONF="$ROOT/scripts/check.conf"
+
+profile=full
+case "$#:${1:-}" in
+  0:) ;;
+  1:--fast) profile=fast ;;
+  *)
+    echo "usage: ./scripts/check [--fast]" >&2
+    echo "  (no argument)  full profile: every step — the only evidence" >&2
+    echo "  --fast         inner loop: only steps tagged [fast] in scripts/check.conf" >&2
+    exit 2 ;;
+esac
 
 if [ ! -f "$CONF" ]; then
   echo "check: no scripts/check.conf yet." >&2
@@ -18,15 +32,27 @@ if [ ! -f "$CONF" ]; then
   exit 1
 fi
 
+# --fast on a conf with no tagged step runs everything and says so (backward compatible).
+label=$profile
+if [ "$profile" = fast ] && ! grep -q '^[^#:]*\[fast\][^:]*:' "$CONF"; then
+  profile=full
+  label="fast = full: no steps tagged fast"
+fi
+
 steps=0
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in ''|\#*) continue ;; esac
   name=${line%%:*}
   cmd=${line#*:}
+  case "$name" in
+    *"[fast]"*) name=$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//') ;;
+    *) if [ "$profile" = fast ]; then echo "skip  $name (full only)"; continue; fi ;;
+  esac
   steps=$((steps + 1))
   echo "==> $name"
-  if ! ( cd "$ROOT" && sh -c "$cmd" ); then
-    echo "CHECK FAILED at step: $name" >&2
+  # </dev/null: a step that reads stdin must not swallow the rest of check.conf (silent false green).
+  if ! ( cd "$ROOT" && sh -c "$cmd" </dev/null ); then
+    echo "CHECK FAILED ($label) at step: $name" >&2
     exit 1
   fi
 done < "$CONF"
@@ -35,4 +61,4 @@ if [ "$steps" -eq 0 ]; then
   echo "check: check.conf has no steps — greenfield no-op. Add steps as soon as code exists."
   exit 0
 fi
-echo "CHECK GREEN ($steps steps)"
+echo "CHECK GREEN ($label, $steps steps)"

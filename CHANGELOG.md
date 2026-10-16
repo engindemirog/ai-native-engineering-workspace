@@ -3,6 +3,32 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus three scripts, so upgrades are file copies, not migrations.
 
+## v1.7 — Two speeds, one contract
+
+- `scripts/check --fast` runs only the steps tagged `[fast]` in their name; plain `./scripts/check`
+  still runs every step (full) and is the only evidence. Output names the profile
+  (`CHECK GREEN (fast, n)` / `(full, n)`, `CHECK FAILED (fast) at step: …`); unknown arguments are
+  an error. Untagged confs run everything in both profiles; tagged confs still run fully under the
+  v1.6.1 script.
+- `docs/testing.md` gains "Two speeds, one contract": fast iterates, full ships.
+- `prompts/build.md` (incl. §fixes), `workflows/refactor.md` and the recovery ramps R-01, R-02
+  iterate with `--fast`; handoffs, PROVE steps and every ramp exit (R-01, R-02, R-04, R-07, R-11)
+  run full. `prompts/verify.md` rejects fast output as evidence. `prompts/bootstrap.md` splits and
+  tags the steps and reports both durations; the residue test and test-count check cover both.
+- CI keeps running the full contract (now said in `check.yml`); README lists the new rule as
+  Documented. `scripts/check.conf.example` shows a `[fast]` step.
+- ADR 0009 records the decision and the per-commit trade-off.
+- Fix: `scripts/check` runs each step with stdin from `/dev/null` — a step that read stdin used to
+  swallow the remaining check.conf lines, skip them silently and still report green.
+
+### Upgrading
+
+Copy `scripts/check` and the edits to `docs/testing.md`, `prompts/build.md`, `prompts/verify.md`,
+`prompts/bootstrap.md`, `prompts/recovery/` (R-01, R-02, R-04, R-07, R-11), `workflows/refactor.md`
+and `workflows/bug-fix.md`. Tag the quick steps in your `scripts/check.conf` with `[fast]` in the
+step name (keep every test step actually running its tests — count them), and keep citing only
+full-profile output as evidence.
+
 ## v1.6.1 — Fixes: no stack-specific example that breaks tests; `.evidence/` is evidence too
 
 - `scripts/check.conf.example` (v1.5): the resource-hygiene example added build flags to the test

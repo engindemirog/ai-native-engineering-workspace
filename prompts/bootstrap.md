@@ -40,8 +40,11 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
       fails the residue test is not done. Also confirm every test step still runs the same number
       of tests as before the switches: some runners forward unknown flags to the test process and
       silently run zero tests.
-   Adoption (existing code): changing build flags the team relies on is PROPOSED, not imposed;
-   the residue test runs either way so the trade-off is visible.
+   d. Split — tag the quick steps [fast] in their name, leave e2e and long suites full-only
+      (docs/testing.md, Two speeds, one contract); report each profile's expected duration at the
+      gate. The residue test and the test-count check in (c) apply to BOTH profiles.
+   Adoption (existing code): changing build flags the team relies on, and the fast/full split, are
+   PROPOSED, not imposed; the residue test runs either way so the trade-off is visible.
 4. VERIFY: run ./scripts/doctor and ./scripts/check and show me the output; then the residue test
    (3c) with its baseline and both post-run measurements.
 5. REPORT: what you generated, what you assumed, and every open question that still needs my

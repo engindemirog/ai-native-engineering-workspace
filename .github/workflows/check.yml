@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       # The bootstrap workflow may add toolchain setup steps here (e.g. setup-java, setup-node)
       # to match the commands it writes into scripts/check.conf.
+      # --fast is for the inner loop only; CI always runs the full contract (docs/testing.md).
       - name: Verification contract
         run: |
           if [ -f scripts/check.conf ]; then

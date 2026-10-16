@@ -15,7 +15,8 @@ every listed state and the design link, not only the happy path). For each test,
 if the behavior broke — a test that can't fail is not evidence.
 Each row's evidence is a pointer — test name + reproduction command, or a PR link for
 non-reproducible evidence; show output in the conversation, write no output files
-(docs/testing.md, Evidence policy).
+(docs/testing.md, Evidence policy). Evidence cites a full-profile run — a CHECK GREEN (fast, …)
+line is not evidence (docs/testing.md, Two speeds, one contract).
 
 List explicitly: criteria WITHOUT real evidence, and tests that assert implementation details
 instead of behavior. No claims without proof; gaps are findings, not footnotes.

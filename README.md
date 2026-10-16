@@ -130,6 +130,7 @@ Not every rule is held the same way, and not every tool can hold it the same way
 | Shipped specs immutable | Enforced (hook, editor tools) + Validated (CI) | Documented (instruction) + Validated (CI) | Documented (rule) + Validated (CI) | Validated (CI) |
 | No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented |
 | "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Evidence cites the full profile, not `--fast` | Documented (the `(full, n)` / `(fast, n)` label shows it to the reviewer) | Documented (same label) | Documented (same label) | Documented (same label) |
 
 Segment commands also refuse out-of-order work (entry checks) — that is the agent following a
 Documented rule; CI is what makes it Validated.

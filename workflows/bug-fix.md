@@ -17,7 +17,8 @@ REPORT → REPRODUCE (red test) → DIAGNOSE → FIX → PROVE → REVIEW → SH
    assumption, why now. Diagnosis before any change.
 4. **FIX.** Smallest change that makes the red test green. Touch only files related to the root
    cause. Symptom-silencing (try/catch burial, test edits) is forbidden.
-5. **PROVE.** Red test now green **and** whole suite green (`scripts/check`) — no new regressions
+5. **PROVE.** Red test now green **and** whole suite green (`scripts/check`, full profile — PROVE
+   is an exit; `--fast` is for iterating in FIX) — no new regressions
    (else R-04: revert first). The reproduction test stays forever as a regression guard.
 6. **REVIEW** — fresh session, narrow scope: the fix diff. **[GATE: human]** triage (real / noise /
    investigate) — never automated, in any mode.

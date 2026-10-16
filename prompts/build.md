@@ -10,10 +10,13 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
   R-07 (deviations are proposed, not smuggled).
 - Problems: compile/runtime error → R-01 · red test → R-02 · you created a regression → R-04.
 
-Done means: all steps complete, ./scripts/check GREEN, changed-file list matches the plan.
+Iterate with ./scripts/check --fast; the handoff carries the FULL profile output, shown —
+CHECK GREEN (full, …) (docs/testing.md, Two speeds, one contract).
+Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan.
 Return: changed files + check output. Do not self-review; that comes next, independently.
 Show check output in the conversation and reference it; never save it to a file.
 
 §fixes — For triaged review findings: fix ONLY findings marked real, smallest change per finding,
-one commit per finding referencing it. Full suite green after each. Never touch unrelated code.
+one commit per finding referencing it. --fast green after each finding's commit; full green
+before the fix diff goes back to review. Never touch unrelated code.
 ```

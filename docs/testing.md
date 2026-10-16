@@ -56,5 +56,14 @@ A screenshot proves a criterion only against the spec's "User experience": every
    and headless by default; one component owns the app-under-test lifecycle — started for the run,
    stopped at the end, including on failure and timeout.
 
+## Two speeds, one contract
+1. `./scripts/check` is still the one way to ask "is this good?"; `--fast` is a speed of the
+   contract, not a second contract.
+2. **Fast green is a working state; only full green is evidence.** Per step, per finding, per
+   iteration → `--fast`. Segment exits, PROVE steps, recovery-ramp exits, the verify table and CI
+   → `CHECK GREEN (full, …)`.
+3. Fast: compile and the quick tests (unit, lint). Full only: e2e, long integration suites,
+   anything over ~a minute. Bootstrap decides per stack and tags the steps `[fast]` in check.conf.
+
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.
