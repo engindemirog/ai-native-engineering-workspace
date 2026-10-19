@@ -149,6 +149,14 @@ else
   echo "skip  adapter parity (no adapters/ in this repo)"
 fi
 
+if [ -f "$W/adapters/claude-code/.claude/commands/plan.md" ]; then
+  reset; sed '/^### `\/plan`$/d' "$W/docs/commands.md" > "$W/docs/commands.md.tmp" && mv "$W/docs/commands.md.tmp" "$W/docs/commands.md"
+  doctor;          exits 1 "command reference drift"; has "FAIL  command reference out of date: /plan missing from docs/commands.md" "a removed command section is a failure"
+  reset; doctor;   hasnt "command reference out of date" "restored reference is clean"
+else
+  echo "skip  command reference drift (no adapters/ in this repo)"
+fi
+
 reset; rm -f "$W/docs/testing.md"
 doctor;            exits 1 "core file missing"; has "FAIL  missing: docs/testing.md" "missing core file is a failure"
 

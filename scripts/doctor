@@ -27,6 +27,7 @@ for f in \
   workflows/refactor.md workflows/incident.md workflows/segments.md workflows/change-request.md \
   prompts/README.md prompts/bootstrap.md prompts/clarify.md prompts/spec.md prompts/plan.md \
   prompts/build.md prompts/review.md prompts/verify.md prompts/adr.md prompts/recovery/README.md \
+  docs/commands.md \
   scripts/check
 do
   if [ -f "$ROOT/$f" ]; then :; else fail "missing: $f"; fi
@@ -193,6 +194,18 @@ if [ -d "$ROOT/adapters/claude-code/.claude/commands" ]; then
     [ -f "$ROOT/adapters/github-copilot/prompts/$x.prompt.md" ] || { fail "adapter parity: $x missing in github-copilot"; parity_fails=$((parity_fails + 1)); }
   done
   [ "$parity_fails" -eq 0 ] && ok "adapter parity: every Claude Code command exists for Cursor and Copilot"
+  # Command reference (docs/commands.md) has a section for every command and script — a reference
+  # that falls behind the commands is worse than none.
+  ref_fails=0
+  for c in "$ROOT/adapters/claude-code/.claude/commands/"*.md; do
+    [ -f "$c" ] || continue
+    x=/$(basename "$c" .md)
+    grep -qF "### \`$x\`" "$ROOT/docs/commands.md" 2>/dev/null || { fail "command reference out of date: $x missing from docs/commands.md"; ref_fails=$((ref_fails + 1)); }
+  done
+  for s in init doctor check residue selftest; do
+    grep -qF "### \`scripts/$s\`" "$ROOT/docs/commands.md" 2>/dev/null || { fail "command reference out of date: scripts/$s missing from docs/commands.md"; ref_fails=$((ref_fails + 1)); }
+  done
+  [ "$ref_fails" -eq 0 ] && ok "command reference covers every command (docs/commands.md)"
 fi
 
 # --- hygiene ---

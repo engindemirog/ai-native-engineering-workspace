@@ -3,6 +3,25 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
 
+## v1.10 — The commands document themselves
+
+- `docs/commands.md`: one page for all 17 commands (5 scripts, 12 slash commands) — command map
+  with the four human gates, then for each: what it does, when to use it, reads / writes, stops
+  at, lite / strict, refusal (verbatim), common mistake; a quick-reference table and the two
+  golden rules. It points at the files that define the rules instead of restating them; the
+  recovery catalog stays in `prompts/recovery/README.md`.
+- README links it at the top ("New here?").
+- `scripts/doctor` requires `docs/commands.md` like any core file and, where `adapters/` exists,
+  fails when a command or script has no section in it
+  (`command reference out of date: /<x> missing from docs/commands.md`). `scripts/selftest` proves
+  the guard fires and clears.
+- No behavior changes.
+
+### Upgrading
+
+Copy `docs/commands.md`, the README "New here?" line, `scripts/doctor` and `scripts/selftest`.
+If you added your own commands, give each a ``### `/<name>` `` section in `docs/commands.md`.
+
 ## v1.9.1 — README stands on its own
 
 - README drops the "Origin" section that pointed to the course: ANEW is now its own environment,

@@ -5,6 +5,9 @@
 > It doesn't matter what you're building. ANEW gives you a starting environment where context,
 > decisions, specs, roles, quality gates, and verification are managed in files — not lost in chat.
 
+**New here?** The [command reference](docs/commands.md) shows every command, where it stops, and how
+lite and strict differ — one page.
+
 Use this repo as a GitHub template (or drop it into an existing project), install the adapter for
 your AI tool, run the bootstrap workflow, and start your first feature. No frameworks, no
 dependencies, no code generators — a working *system*, written in Markdown plus a few small POSIX scripts.
