@@ -3,6 +3,15 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
 
+## v1.9.1 — README stands on its own
+
+- README drops the "Origin" section that pointed to the course: ANEW is now its own environment,
+  separate from it. No change to the core.
+
+### Upgrading
+
+Nothing to copy.
+
 ## v1.9 — The residue test is one command
 
 - `scripts/residue` runs the residue test (`docs/testing.md`, Resource hygiene): it measures processes
