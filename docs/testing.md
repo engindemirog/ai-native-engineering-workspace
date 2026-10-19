@@ -50,6 +50,9 @@ A screenshot proves a criterion only against the spec's "User experience": every
    more often than humans; per-run residue compounds into machine starvation.
 2. **The residue test** (the rule's definition, not advice): run `./scripts/check` twice back to
    back; after each run, process count and memory return to the baseline measured before the first.
+   `./scripts/residue` runs it (`--fast` for the fast profile) and names every survivor with its
+   command line; it lists anything started meanwhile too, so run it on an otherwise idle machine.
+   Rerun it whenever `scripts/check.conf` changes.
 3. Warm-process caches trade memory for speed for humans who build rarely; with an agent, trade the
    seconds back for a flat memory profile.
 4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e runs single-worker

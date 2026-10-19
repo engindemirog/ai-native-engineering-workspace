@@ -12,7 +12,7 @@ jobs:
           fetch-depth: 0   # doctor diffs specs/done/ against the PR's merge-base; a shallow clone has no base
       - name: Workspace health (spec/plan gates are failures in CI)
         run: ./scripts/doctor --strict
-      - name: Self-test (scripts/check and scripts/doctor behave as documented)
+      - name: Self-test (scripts/check, doctor and residue behave as documented)
         run: ./scripts/selftest
 
   check:

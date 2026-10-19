@@ -131,7 +131,7 @@ Not every rule is held the same way, and not every tool can hold it the same way
 | No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented |
 | "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
 | Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
-| `scripts/check` leaves nothing running | Documented (the residue test runs once, at bootstrap) | Documented (same) | Documented (same) | Documented (same) |
+| `scripts/check` leaves nothing running | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI) | Documented (same) | Documented (same) | Documented (same) |
 | UI specs define flow, states and the design link | Documented | Documented | Documented | Documented |
 | Evidence cites the full profile, not `--fast` | Documented (the `(full, n)` / `(fast, n)` label shows it to the reviewer) | Documented (same label) | Documented (same label) | Documented (same label) |
 
@@ -157,7 +157,8 @@ branch protection setting makes "no force-push" Enforced for every tool.
 | `adapters/` | Per-tool wiring. `scripts/init <tool>` installs one. |
 | `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. `--fast` runs only the steps tagged `[fast]` for the inner loop; only the full run is evidence. |
 | `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI), evidence hygiene warnings. |
-| `scripts/selftest` | Proves `scripts/check` and `scripts/doctor` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
+| `scripts/residue` | The residue test (`docs/testing.md`, Resource hygiene): runs check twice and names every process or memory drop that outlives a run. Bootstrap runs it for both profiles; rerun it whenever check.conf changes. |
+| `scripts/selftest` | Proves `scripts/check`, `scripts/doctor` and `scripts/residue` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
 | `scripts/init` | Installs an adapter; keeps existing files unless `--force`. |
 | `CHANGELOG.md` | What changed between versions of the workspace, for template users upgrading their copy. |
 | `.github/` | CI that runs the same `scripts/check`, `scripts/doctor --strict` and `scripts/selftest` + a PR template mirroring the gates. |

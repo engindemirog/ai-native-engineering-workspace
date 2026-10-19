@@ -1,0 +1,114 @@
+#!/bin/sh
+# ANEW residue test — docs/testing.md, Resource hygiene: a check run leaves nothing running.
+# Measures processes and available memory, runs ./scripts/check twice back to back, and after
+# each run compares against the baseline taken before the first.
+#   ./scripts/residue          full profile (the one bootstrap reports at its gate)
+#   ./scripts/residue --fast   the fast profile (bootstrap runs both)
+# Exit 0 = clean, 1 = residue found or check red, 2 = usage. A new process counts as a survivor
+# only if it is still alive at a second look one settle period later, so short-lived background
+# activity drops out; anything else started meanwhile is listed — the list names it, you judge.
+# Tunables: ANEW_RESIDUE_SETTLE (seconds to wait after each run, default 5),
+#           ANEW_RESIDUE_MB (memory tolerance in MB, default 512).
+set -u
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+usage() {
+  echo "usage: ./scripts/residue [--fast]" >&2
+  echo "  runs ./scripts/check twice (same profile) and fails if processes or memory don't return" >&2
+  echo "  to baseline. Env: ANEW_RESIDUE_SETTLE=<seconds> (5), ANEW_RESIDUE_MB=<tolerance> (512)" >&2
+  exit 2
+}
+case "$#:${1:-}" in
+  0:) profile=full ;;
+  1:--fast) profile=fast ;;
+  *) usage ;;
+esac
+settle=${ANEW_RESIDUE_SETTLE:-5}
+tolerance=${ANEW_RESIDUE_MB:-512}
+case "$settle" in ''|*[!0-9]*) usage ;; esac
+case "$tolerance" in ''|*[!0-9]*) usage ;; esac
+
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/anew-residue.XXXXXX") || { echo "residue: mktemp failed" >&2; exit 1; }
+trap 'rm -rf "$TMP"' EXIT INT TERM
+
+# --- measure <file>: "pid<TAB>command" per process into <file>, available MB into $mem ---
+# The measuring processes themselves are left out, nothing else.
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) os=windows ;; *) os=posix ;; esac
+measure() {
+  mem=
+  if [ "$os" = windows ]; then
+    # One PowerShell call: it drops itself, its children and the shell stub that launched it.
+    powershell.exe -NoProfile -NonInteractive -Command '
+      $me = $PID; $all = Get-CimInstance Win32_Process
+      $stub = ($all | Where-Object { $_.ProcessId -eq $me }).ParentProcessId
+      "MEM`t" + (Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory).AvailableMBytes
+      $all | Where-Object { $_.ProcessId -ne $me -and $_.ProcessId -ne $stub -and $_.ParentProcessId -ne $me } |
+        ForEach-Object { "{0}`t{1}" -f $_.ProcessId, $(if ($_.CommandLine) { $_.CommandLine.Trim() } else { $_.Name }) }
+    ' </dev/null 2>/dev/null | tr -d '\r' > "$TMP/raw" || return 1
+    mem=$(awk -F'\t' '$1 == "MEM" { print $2 }' "$TMP/raw")
+    grep -v '^MEM	' "$TMP/raw" > "$1"
+  else
+    if [ -r /proc/meminfo ]; then
+      mem=$(awk '/^MemAvailable:/ { printf "%d", $2 / 1024 }' /proc/meminfo)
+    elif command -v vm_stat >/dev/null 2>&1; then
+      mem=$(vm_stat | awk '/page size of/ { ps = $8 } /^Pages (free|inactive|speculative)/ { gsub(/\./, "", $NF); n += $NF }
+                           END { if (ps) printf "%d", n * ps / 1048576 }')
+    fi
+    ps -e -o pid= -o args= > "$TMP/raw" || return 1
+    awk '{ pid = $1; sub(/^[ \t]*[0-9]+[ \t]+/, ""); if ($0 !~ /^ps -e -o pid= -o args=/) print pid "\t" $0 }' \
+      "$TMP/raw" > "$1"
+  fi
+  case "$mem" in *[!0-9]*) mem= ;; esac
+  [ -s "$1" ]
+}
+fail_measure() { echo "residue: cannot list processes on this platform" >&2; exit 2; }
+newer() { awk -F'\t' 'NR == FNR { seen[$1] = 1; next } !($1 in seen)' "$1" "$2"; }   # in $2, not in $1
+alive() { awk -F'\t' 'NR == FNR { now[$1] = 1; next } ($1 in now)' "$1" "$2"; }      # in $2, still in $1
+
+# Warm-up first: the first measurement can start helpers (e.g. a WMI host) that must be in the baseline.
+measure "$TMP/base" || fail_measure
+measure "$TMP/base" || fail_measure
+base_mem=$mem
+echo "== residue test ($profile profile; settle ${settle}s, memory tolerance ${tolerance} MB) =="
+echo "baseline: $(wc -l < "$TMP/base" | tr -d ' ') processes, ${base_mem:-?} MB available"
+[ -n "$base_mem" ] || echo "note: memory is not measurable on this platform; processes only"
+
+found=0
+for run in 1 2; do
+  if [ "$profile" = fast ]; then set -- --fast; else set --; fi
+  echo "==> run $run/2: ./scripts/check${1:+ $1}"
+  if ! sh "$ROOT/scripts/check" "$@" </dev/null; then
+    echo "RESIDUE TEST ABORTED ($profile): check failed in run $run — the residue test needs a green check" >&2
+    exit 1
+  fi
+  sleep "$settle"
+  measure "$TMP/run" || fail_measure
+  run_mem=$mem
+  newer "$TMP/base" "$TMP/run" > "$TMP/new"
+  if [ -s "$TMP/new" ]; then          # second look: transient processes have exited by now
+    sleep "$settle"
+    measure "$TMP/again" || fail_measure
+    alive "$TMP/again" "$TMP/new" > "$TMP/survivors"
+  else
+    : > "$TMP/survivors"
+  fi
+  n=$(wc -l < "$TMP/survivors" | tr -d ' ')
+  line="after run $run: $(wc -l < "$TMP/run" | tr -d ' ') processes, $n survivor(s)"
+  if [ -n "$base_mem" ] && [ -n "$run_mem" ]; then
+    line="$line; $run_mem MB available ($((run_mem - base_mem)) MB vs baseline)"
+    if [ $((base_mem - run_mem)) -gt "$tolerance" ]; then
+      line="$line — over the ${tolerance} MB tolerance"; found=1
+    fi
+  fi
+  echo "$line"
+  if [ "$n" -gt 0 ]; then
+    found=1
+    awk -F'\t' '{ printf "  survivor  %s  %s\n", $1, $2 }' "$TMP/survivors"
+  fi
+done
+
+if [ "$found" -ne 0 ]; then
+  echo "RESIDUE FOUND ($profile): stop what survived inside the step that starts it (docs/testing.md, Resource hygiene)" >&2
+  exit 1
+fi
+echo "RESIDUE CLEAN ($profile, 2 runs)"

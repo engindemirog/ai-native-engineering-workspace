@@ -3,6 +3,24 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
 
+## v1.9 — The residue test is one command
+
+- `scripts/residue` runs the residue test (`docs/testing.md`, Resource hygiene): it measures processes
+  and available memory, runs `./scripts/check` twice (`--fast` for the fast profile), and names
+  every survivor with its command line; memory over the tolerance (`ANEW_RESIDUE_MB`, 512 MB) is
+  residue too. A process only counts if it is still alive at a second look. Unix-likes via `ps`,
+  Windows (Git Bash) via PowerShell/CIM. A red check aborts it: the test needs a green check.
+- `docs/testing.md`, `prompts/bootstrap.md` and `workflows/bootstrap.md` name the command, for both
+  profiles; `docs/testing.md` adds: rerun it whenever `scripts/check.conf` changes.
+- `scripts/selftest` covers it (usage, red check, `--fast`, a leaked process named, a waited-for
+  child not reported). Its assertions look for the scenario's own marker, so a busy machine cannot
+  make them flaky.
+
+### Upgrading
+
+Copy `scripts/residue` (keep it executable) and `scripts/selftest`, then run `./scripts/residue` and
+`./scripts/residue --fast` against your `scripts/check.conf`.
+
 ## v1.8 — ANEW proves its own scripts
 
 - `scripts/selftest`: 50 scenario checks that `scripts/check` (profiles, tags, failures, arguments,

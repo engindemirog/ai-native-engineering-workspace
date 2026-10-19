@@ -1,5 +1,5 @@
 #!/bin/sh
-# ANEW selftest — proves that scripts/check and scripts/doctor behave as documented.
+# ANEW selftest — proves that scripts/check, scripts/doctor and scripts/residue behave as documented.
 # Every scenario runs in a throwaway copy of this workspace in a temp dir OUTSIDE the repo
 # (docs/testing.md, Evidence policy), asserts on the real output and exit code, and is deleted.
 # Exit 0 = all scenarios pass, exit 1 = at least one failed. Runs in CI next to doctor.
@@ -56,6 +56,29 @@ conf 'first: echo first ran' 'greedy: cat > /dev/null; echo greedy ran' 'second:
 check
 has "second ran" "a step reading stdin cannot swallow the rest of check.conf"
 has "CHECK GREEN (full, 3 steps)" "every step after a stdin reader still counts"
+
+# --- scripts/residue: same bare copy. Assertions never require an idle machine: they look for
+# this run's own marker, so another process starting meanwhile cannot make them flaky.
+cp "$ROOT/scripts/residue" "$C/scripts/residue"
+residue() { run env ANEW_RESIDUE_SETTLE=1 ANEW_RESIDUE_MB=1000000 sh "$C/scripts/residue" "$@"; }
+LEAK=anew-residue-leak-$$
+
+echo "== scripts/residue =="
+residue --fsat
+exits 2 "residue: unknown argument";             has "usage: ./scripts/residue [--fast]" "residue: prints usage"
+conf 'unit [fast]: exit 3'
+residue
+exits 1 "residue: red check";                    has "RESIDUE TEST ABORTED (full): check failed in run 1" "red check aborts the residue test"
+conf "unit [fast]: sh -c 'sleep 1; :' $LEAK" "e2e: echo e2e ran"
+residue --fast
+has "baseline: " "residue: measures a baseline";   has "after run 2: " "residue: measures after both runs"
+has "==> run 2/2: ./scripts/check --fast" "residue --fast runs the fast profile twice"; hasnt "e2e ran" "residue --fast skips full-only steps"
+if printf '%s\n' "$out" | grep '^  survivor  ' | grep -qF "$LEAK"; then report 1 "a step that waits for its child leaves no survivor"
+else report 0 "a step that waits for its child leaves no survivor"; fi
+conf "unit: echo unit ran" "server: sh -c 'sleep 25; :' $LEAK >/dev/null 2>&1 &"
+residue
+exits 1 "residue: leaked process";               has "RESIDUE FOUND (full)" "leak is reported"
+has "$LEAK" "the survivor is named with its command line"
 
 # --- scripts/doctor: a git-initialised copy of the ANEW core only, reset between scenarios ---
 # Only what doctor reads: no application code, and no real specs or plans (a project's own specs
