@@ -10,6 +10,8 @@
 # Two speeds, one contract (docs/testing.md): ./scripts/check runs every step (full — the only
 # evidence); ./scripts/check --fast runs only steps whose name carries [fast] (inner loop).
 # A conf without [fast] tags runs every step in both profiles.
+# Output: "==> <step>" before each step, "<== <step> (n s)" after it, and the total in the green
+# line: CHECK GREEN (full, 14 steps, 1080 s).
 set -u
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 CONF="$ROOT/scripts/check.conf"
@@ -39,6 +41,12 @@ if [ "$profile" = fast ] && ! grep -q '^[^#:]*\[fast\][^:]*:' "$CONF"; then
   label="fast = full: no steps tagged fast"
 fi
 
+# Wall-clock seconds per step and in total (docs/testing.md, Two speeds): `date +%s` needs no bc
+# and works in Git Bash, macOS and Linux. Where it doesn't yield a number, times are left out.
+now() { t=$(date +%s 2>/dev/null); case "$t" in ''|*[!0-9]*) echo ;; *) echo "$t" ;; esac; }
+took() { [ -n "$1" ] && [ -n "$2" ] && echo " ($(($2 - $1)) s)"; }   # " (12 s)" or nothing
+start=$(now)
+
 steps=0
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in ''|\#*) continue ;; esac
@@ -50,15 +58,20 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
   steps=$((steps + 1))
   echo "==> $name"
+  t0=$(now)
   # </dev/null: a step that reads stdin must not swallow the rest of check.conf (silent false green).
   if ! ( cd "$ROOT" && sh -c "$cmd" </dev/null ); then
+    echo "<== $name$(took "$t0" "$(now)")"
     echo "CHECK FAILED ($label) at step: $name" >&2
     exit 1
   fi
+  echo "<== $name$(took "$t0" "$(now)")"
 done < "$CONF"
 
 if [ "$steps" -eq 0 ]; then
   echo "check: check.conf has no steps — greenfield no-op. Add steps as soon as code exists."
   exit 0
 fi
-echo "CHECK GREEN ($label, $steps steps)"
+total=$(took "$start" "$(now)")   # " (n s)" → ", n s" inside the green line
+total=${total# (}; total=${total%)}
+echo "CHECK GREEN ($label, $steps steps${total:+, $total})"

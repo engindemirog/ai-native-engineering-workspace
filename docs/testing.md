@@ -65,8 +65,19 @@ A screenshot proves a criterion only against the spec's "User experience": every
 2. **Fast green is a working state; only full green is evidence.** Per step, per finding, per
    iteration → `--fast`. Segment exits, PROVE steps, recovery-ramp exits, the verify table and CI
    → `CHECK GREEN (full, …)`.
-3. Fast: compile and the quick tests (unit, lint). Full only: e2e, long integration suites,
-   anything over ~a minute. Bootstrap decides per stack and tags the steps `[fast]` in check.conf.
+3. Fast: compile and the quick tests (unit, lint). Full only: e2e, long integration suites, and
+   any single step over ~a minute — the minute is a per-step threshold, not a total for the fast
+   profile; fast has no fixed total. Bootstrap decides per stack and tags the steps `[fast]` in
+   check.conf. When fast grows too long to iterate with, take steps out in this order: lint
+   first, then formatting, then unit tests; compilation stays longest.
+4. **Split a test step by a selector, never by a list.** The fast step selects with a filter
+   (a category, trait, tag or namespace) and the full-only step runs the same filter inverted,
+   so "fast ∪ the rest = every test" holds by construction: a test added later still runs in
+   one of them. Splitting by naming projects or files leaves a silent hole — a new one that is
+   not added to check.conf runs in neither profile while check stays green.
+5. Durations come from check itself (`<== <step> (n s)` per step, the total in the green line).
+   Decide a split, or report a profile's duration, on the median of at least 3 runs — single
+   runs vary too much to decide on.
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.

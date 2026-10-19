@@ -84,7 +84,7 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   step, ramp exit and in CI.
 - **Reads / writes:** reads `scripts/check.conf` (format: `scripts/check.conf.example`); writes
   only what its steps write.
-- **Stops at:** `CHECK GREEN (full, n steps)` (exit 0) or `CHECK FAILED (full) at step: <name>` (exit 1).
+- **Stops at:** `CHECK GREEN (full, n steps, t s)` (exit 0) or `CHECK FAILED (full) at step: <name>` (exit 1).
 - **Lite / Strict:** no difference.
 - **Refusal:** `check: no scripts/check.conf yet.` (exit 1); an unknown argument prints the
   usage (exit 2).

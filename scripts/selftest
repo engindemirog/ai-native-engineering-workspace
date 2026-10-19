@@ -33,14 +33,14 @@ check
 exits 0 "conf without steps → greenfield no-op";  has "greenfield no-op" "no-op is named"
 conf 'compile [fast]: echo compile ran' 'unit [fast]: echo unit ran' 'e2e: echo e2e ran'
 check --fast
-exits 0 "--fast, tagged conf";                    has "CHECK GREEN (fast, 2 steps)" "--fast runs only [fast] steps"
+exits 0 "--fast, tagged conf";                    has "CHECK GREEN (fast, 2 steps" "--fast runs only [fast] steps"
 has "skip  e2e (full only)" "--fast names the skipped step";  hasnt "e2e ran" "--fast does not run untagged steps"
 has "==> unit" "tag is stripped from the displayed name";     hasnt "==> unit [fast]" "tag never shown as part of the name"
 check
-exits 0 "full, tagged conf";                      has "CHECK GREEN (full, 3 steps)" "full runs every step"
+exits 0 "full, tagged conf";                      has "CHECK GREEN (full, 3 steps" "full runs every step"
 conf 'compile: echo compile ran' 'e2e: echo e2e ran'
 check --fast
-has "CHECK GREEN (fast = full: no steps tagged fast, 2 steps)" "--fast on an untagged conf runs all and says so"
+has "CHECK GREEN (fast = full: no steps tagged fast, 2 steps" "--fast on an untagged conf runs all and says so"
 conf 'compile: echo compile ran' 'unit: echo unit; exit 3' 'after: echo after ran'
 check
 exits 1 "red step fails the run";                 has "CHECK FAILED (full) at step: unit" "failure names profile and step"
@@ -55,7 +55,18 @@ exits 2 "extra argument";                         hasnt "==>" "a bad invocation 
 conf 'first: echo first ran' 'greedy: cat > /dev/null; echo greedy ran' 'second: echo second ran'
 check
 has "second ran" "a step reading stdin cannot swallow the rest of check.conf"
-has "CHECK GREEN (full, 3 steps)" "every step after a stdin reader still counts"
+has "CHECK GREEN (full, 3 steps" "every step after a stdin reader still counts"
+# Durations: asserted present, never their value.
+matches() { printf '%s\n' "$out" | grep -qE -- "$1"; report $? "$2"; }
+conf 'compile [fast]: echo compile ran' 'unit: exit 3'
+check --fast
+matches '^<== compile \([0-9]+ s\)$' "each step reports its duration"
+matches '^CHECK GREEN \(fast, 1 steps, [0-9]+ s\)$' "the green line carries the total duration"
+check
+matches '^<== unit \([0-9]+ s\)$' "a failing step still reports its duration"
+mkdir -p "$TMP/nodate"; printf '#!/bin/sh\necho unknown\n' > "$TMP/nodate/date"; chmod +x "$TMP/nodate/date"
+run env PATH="$TMP/nodate:$PATH" sh "$C/scripts/check" --fast
+matches '^CHECK GREEN \(fast, 1 steps\)$' "no usable clock: times are left out, the run still counts"
 
 # --- scripts/residue: same bare copy. Assertions never require an idle machine: they look for
 # this run's own marker, so another process starting meanwhile cannot make them flaky.

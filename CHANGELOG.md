@@ -3,6 +3,31 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
 
+## v1.12 — Check tells you how long it took
+
+From a field report (a two-stack project that adopted v1.7): the split between fast and full is
+decided on step durations, and nothing in ANEW measured them.
+
+- `scripts/check` prints `<== <step> (n s)` after every step (red ones too) and the total in the
+  green line: `CHECK GREEN (full, 14 steps, 1080 s)`. `date +%s`, no `bc`; where the clock gives
+  no number, times are left out and the run still counts. The `==> <step>` lines and the
+  `CHECK GREEN (<profile>, n steps` / `CHECK FAILED (<profile>) at step:` prefixes are unchanged.
+- `docs/testing.md`, Two speeds: "~a minute" is a per-step threshold, not a fast total; when fast
+  grows too long, drop lint, then formatting, then unit tests. New rule 4: split a test step by a
+  selector (category, trait, tag, namespace) and its inverse, never by a list — a test added
+  later then still runs in one profile. New rule 5: decide on the median of at least 3 runs.
+- `prompts/bootstrap.md` (3d) applies rules 4 and 5 at the gate.
+- `scripts/selftest` checks that durations are present (never their value) and that a missing
+  clock leaves them out.
+
+### Upgrading
+
+`scripts/check` (behavior, for copies you extended): time each step with `date +%s` and print
+`<== <step> (n s)` after it, red or green; append `, <total> s` inside the green line; print no
+time when `date +%s` is not a number. Anything that parses the green line must accept the extra
+field. `docs/testing.md`: Two speeds rule 3 (per-step threshold, removal order), new rules 4 and 5.
+`prompts/bootstrap.md` 3d: selector split, median of 3. Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.11...v1.12
+
 ## v1.11 — Codex becomes a first-class adapter
 
 - `adapters/codex/`: every command as a project-level Codex skill (`skills/<name>/SKILL.md`, the
