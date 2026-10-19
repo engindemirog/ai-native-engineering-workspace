@@ -206,13 +206,6 @@ Everything is plain Markdown and POSIX shell — edit, don't fork the philosophy
   (`Status:` values, `Approved by / on:`) stay English so the gates keep working.
 - Want stack presets? That's the packs layer — coming after v1 proves the core.
 
-## Origin
-
-ANEW distills the methodology behind the course *AI-Native Software Engineering* by
-[Engin Demiroğ](https://www.udemy.com/user/engindemirog/) — where the full discipline is taught by
-building a production system from an empty folder. The workspace is the system; the course is the
-mastery of it.
-
 ## License
 
 MIT
