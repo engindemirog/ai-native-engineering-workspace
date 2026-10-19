@@ -1,6 +1,6 @@
 #!/bin/sh
 # ANEW init — installs an AI tool adapter into the repo root.
-# Usage: ./scripts/init [--force] <claude-code|github-copilot|cursor|generic>
+# Usage: ./scripts/init [--force] <claude-code|github-copilot|cursor|codex|generic>
 # Existing files are kept unless --force is given, so customized commands are never lost silently.
 set -e
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -15,6 +15,7 @@ usage() {
   echo "  claude-code      CLAUDE.md + .claude/ (commands, reviewer subagent, permissions, hooks)"
   echo "  github-copilot   .github/ (copilot-instructions.md, prompts/, agents/, instructions/)"
   echo "  cursor           .cursor/ (rules/, commands/)"
+  echo "  codex            .agents/skills/ (every command as a Codex skill; AGENTS.md is read natively)"
   echo "  generic          nothing to install — prints wiring instructions"
   echo ""
   echo "  --force          overwrite files that already exist (default: keep them)"
@@ -62,6 +63,12 @@ case "$1" in
     put_dir "$ADAPTERS/cursor/commands" "$ROOT/.cursor/commands"
     echo "Installed: .cursor/rules/ (pointer + specs/done rule), .cursor/commands/ (all commands)."
     echo "Next: open Cursor here and run /bootstrap"
+    ;;
+  codex)
+    put_dir "$ADAPTERS/codex/skills" "$ROOT/.agents/skills"
+    echo "Installed: .agents/skills/ (every command as a project-level Codex skill, explicit only)."
+    echo "AGENTS.md needs no wiring: Codex reads it natively."
+    echo "Next: open Codex here and run \$bootstrap"
     ;;
   generic)
     echo "Nothing to install. See adapters/generic/README.md for wiring any tool:"

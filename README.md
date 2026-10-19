@@ -39,17 +39,17 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 | Layer | What | Ages with |
 |---|---|---|
 | **Core** (`docs/`, `specs/`, `workflows/`, `prompts/`, `scripts/`, `AGENTS.md`) | The system: context, specs, ADRs, roles, gates, verification, recovery. 100% tool- and stack-agnostic. | Engineering practice (slowly) |
-| **Adapters** (`adapters/`) | Thin per-tool wiring: Claude Code, GitHub Copilot, Cursor, generic. Pointers + tool-specific extras only — rules are never duplicated here. | AI tools (they change; core doesn't) |
+| **Adapters** (`adapters/`) | Thin per-tool wiring: Claude Code, GitHub Copilot, Cursor, Codex, generic. Pointers + tool-specific extras only — rules are never duplicated here. | AI tools (they change; core doesn't) |
 | **Packs** (roadmap) | Optional stack presets (JVM/Spring, Node, Python, React): conventions/testing/CI suggestions. Not in v1 — the core works without them. | Ecosystems |
 
 ## Quickstart
 
 ```bash
 # 1. Use this template on GitHub (or copy the files into an existing repo), then:
-./scripts/init claude-code        # or: github-copilot | cursor | generic
+./scripts/init claude-code        # or: github-copilot | cursor | codex | generic
 
 # 2. Open your AI tool and run the bootstrap workflow
-#    Claude Code / Cursor / Copilot:  /bootstrap
+#    Claude Code / Cursor / Copilot:  /bootstrap    Codex:  $bootstrap
 #    Other tools:  paste prompts/bootstrap.md
 
 # 3. The AI first asks two things: interview language and document language (recorded in
@@ -58,7 +58,8 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 
 ./scripts/doctor                  # 4. Confirm the workspace is healthy
 
-# 5. Start your first feature (Claude Code, Cursor and Copilot share the same commands)
+# 5. Start your first feature (Claude Code, Cursor, Copilot and Codex share the same commands;
+#    in Codex they are skills, typed with $ instead of /: $new-feature, $analyze, ...)
 #    lite mode:     /new-feature "short description"    # chains the segments, asks at each gate
 #    strict mode:   /analyze "short description"        # one segment per role, one role per session
 #    existing behavior must change:  /change "<request> <work item>"
@@ -96,9 +97,10 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 | `/review <NNNN>` | Independent review — read-only where the tool supports it (see "How strongly is each rule held?") | Findings report → human triage |
 | `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
 | `/change "<request> <work item>"` | Change an existing behavior: triage rubric (bug → `/fix-bug` · trivial → one commit per `docs/git.md` policy · change → mini-spec lane), then the lane by mode (`workflows/change-request.md`) | Triage verdict; then the lane's gates |
-| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows — same commands in Claude Code, Cursor and Copilot; any other tool pastes the prompts | Their gates |
+| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows — same commands in Claude Code, Cursor, Copilot and Codex; any other tool pastes the prompts | Their gates |
 
-Claude Code and Cursor expose these as slash commands, GitHub Copilot as prompt files, and any
+Claude Code and Cursor expose these as slash commands, GitHub Copilot as prompt files, Codex as
+project-level skills (`$analyze`, explicit only; it reads `AGENTS.md` natively), and any
 other tool by pasting the prompts (`adapters/generic/README.md`). CI runs `scripts/doctor --strict`,
 so the spec/plan gates hold whichever tool produced the PR.
 
@@ -124,19 +126,19 @@ Not every rule is held the same way, and not every tool can hold it the same way
 - **Validated** — a script detects a violation (`scripts/doctor` / `scripts/check`, locally and in CI).
 - **Enforced** — the tool physically prevents the action.
 
-| Rule | Claude Code | GitHub Copilot | Cursor | Other tools |
-|---|---|---|---|---|
-| Spec approved before plan | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
-| Plan approval recorded before build | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
-| Who approved the plan | Documented | Documented | Documented | Documented |
-| Producer ≠ verifier | Enforced (reviewer subagent has no Edit/Write; Bash kept for `scripts/check`, instructed never to write) | Enforced (reviewer agent, no edit tools; `runCommands` kept) | Documented (fresh chat) | Documented (fresh session) |
-| Shipped specs immutable | Enforced (hook, editor tools) + Validated (CI) | Documented (instruction) + Validated (CI) | Documented (rule) + Validated (CI) | Validated (CI) |
-| No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented |
-| "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
-| Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
-| `scripts/check` leaves nothing running | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI) | Documented (same) | Documented (same) | Documented (same) |
-| UI specs define flow, states and the design link | Documented | Documented | Documented | Documented |
-| Evidence cites the full profile, not `--fast` | Documented (the `(full, n)` / `(fast, n)` label shows it to the reviewer) | Documented (same label) | Documented (same label) | Documented (same label) |
+| Rule | Claude Code | GitHub Copilot | Cursor | Codex | Other tools |
+|---|---|---|---|---|---|
+| Spec approved before plan | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Plan approval recorded before build | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Who approved the plan | Documented | Documented | Documented | Documented | Documented |
+| Producer ≠ verifier | Enforced (reviewer subagent has no Edit/Write; Bash kept for `scripts/check`, instructed never to write) | Enforced (reviewer agent, no edit tools; `runCommands` kept) | Documented (fresh chat) | Documented (fresh session) | Documented (fresh session) |
+| Shipped specs immutable | Enforced (hook, editor tools) + Validated (CI) | Documented (instruction) + Validated (CI) | Documented (rule) + Validated (CI) | Validated (CI) | Validated (CI) |
+| No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented | Documented |
+| "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
+| Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
+| `scripts/check` leaves nothing running | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI) | Documented (same) | Documented (same) | Documented (same) | Documented (same) |
+| UI specs define flow, states and the design link | Documented | Documented | Documented | Documented | Documented |
+| Evidence cites the full profile, not `--fast` | Documented (the `(full, n)` / `(fast, n)` label shows it to the reviewer) | Documented (same label) | Documented (same label) | Documented (same label) | Documented (same label) |
 
 Segment commands also refuse out-of-order work (entry checks) — that is the agent following a
 Documented rule; CI is what makes it Validated.

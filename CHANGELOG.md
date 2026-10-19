@@ -3,6 +3,26 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
 
+## v1.11 — Codex becomes a first-class adapter
+
+- `adapters/codex/`: every command as a project-level Codex skill (`skills/<name>/SKILL.md`, the
+  same pointers as the Cursor commands), invoked as `$analyze`, `$plan 0003`, … No pointer file:
+  Codex reads `AGENTS.md` natively. Each skill is explicit only (`agents/openai.yaml`:
+  `allow_implicit_invocation: false`), so Codex never starts a gated stage by itself. Review runs
+  in a fresh Codex session; `specs/done/` is backed by CI. The deprecated user-level custom
+  prompts (`~/.codex/prompts/`) are not used.
+- `./scripts/init codex` installs the skills to `.agents/skills/` (kept unless `--force`).
+- `scripts/doctor`: adapter parity covers Codex (`adapter parity: <x> missing in codex`) and fails
+  on a Codex skill that is not explicit-only; `.agents/skills/` counts as an installed adapter.
+  `scripts/selftest` covers both checks.
+- README (quickstart, command sentences, a Codex column in "How strongly is each rule held?"),
+  `adapters/README.md` and `docs/commands.md` list Codex next to the other tools.
+
+### Upgrading
+
+Where Codex is used, run `./scripts/init codex` and commit `.agents/skills/`. Template users copy
+`adapters/codex/` and the `scripts/init`, `scripts/doctor` and `scripts/selftest` changes.
+
 ## v1.10 — The commands document themselves
 
 - `docs/commands.md`: one page for all 17 commands (5 scripts, 12 slash commands) — command map

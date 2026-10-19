@@ -145,6 +145,11 @@ hasnt "clone inside the working tree: vendor/sub" "a .git FILE (submodule, workt
 if [ -f "$W/adapters/cursor/commands/plan.md" ]; then
   reset; rm -f "$W/adapters/cursor/commands/plan.md"
   doctor;          exits 1 "adapter parity broken"; has "FAIL  adapter parity: plan missing in cursor" "missing adapter command is a failure"
+  reset; rm -rf "$W/adapters/codex/skills/plan"
+  doctor;          exits 1 "codex parity broken"; has "FAIL  adapter parity: plan missing in codex" "missing codex skill is a failure"
+  reset; rm -f "$W/adapters/codex/skills/plan/agents/openai.yaml"
+  doctor;          has "FAIL  adapter parity: codex skill plan is not explicit-only" "a codex skill Codex could start by itself is a failure"
+  reset; doctor;   hasnt "missing in codex" "restored codex adapter is clean"
 else
   echo "skip  adapter parity (no adapters/ in this repo)"
 fi

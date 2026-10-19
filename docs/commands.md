@@ -51,11 +51,12 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 
 ### `scripts/init`
 - **What it does:** installs one AI tool adapter into the repo root: `claude-code`,
-  `github-copilot`, `cursor` or `generic`.
+  `github-copilot`, `cursor`, `codex` or `generic`.
 - **When to use it:** once, before `/bootstrap`; again to add or refresh an adapter.
 - **Reads / writes:** reads `adapters/<tool>/`; writes `CLAUDE.md` + `.claude/`, or `.github/`
   (`copilot-instructions.md`, `prompts/`, `agents/`, `instructions/`), or `.cursor/` (`rules/`,
-  `commands/`). Existing files are kept unless `--force`; `generic` writes nothing.
+  `commands/`), or `.agents/skills/` (Codex). Existing files are kept unless `--force`; `generic`
+  writes nothing.
 - **Stops at:** no gate; it prints the next step (`Next: open Claude Code here and run /bootstrap`).
 - **Lite / Strict:** no difference — it runs before a mode exists.
 - **Refusal:** an unknown adapter prints `Unknown adapter: <name>` and the usage (exit 1).
@@ -300,7 +301,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 2. **The four human gates — spec approval, plan approval, triage, ship — are never automated, in
    any mode.**
 
-The same commands exist in Claude Code, Cursor and GitHub Copilot (`scripts/init`); any other
-tool, Codex included, uses the generic adapter and pastes the prompts
-(`adapters/generic/README.md`). How strongly each rule holds per tool is the README's
-"How strongly is each rule held?" table.
+The same commands exist in Claude Code, Cursor, GitHub Copilot and Codex (`./scripts/init <tool>`;
+in Codex they are skills, typed `$analyze` instead of `/analyze`); any other tool uses the generic
+adapter and pastes the prompts (`adapters/generic/README.md`). How strongly each rule holds per
+tool is the README's "How strongly is each rule held?" table.
