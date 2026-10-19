@@ -64,7 +64,8 @@ A screenshot proves a criterion only against the spec's "User experience": every
    contract, not a second contract.
 2. **Fast green is a working state; only full green is evidence.** Per step, per finding, per
    iteration → `--fast`. Segment exits, PROVE steps, recovery-ramp exits, the verify table and CI
-   → `CHECK GREEN (full, …)`.
+   → `CHECK GREEN (full, …)`. `scripts/doctor` warns when a shipped spec, or in CI the pull
+   request description, shows `CHECK GREEN (fast, …)` and no `(full, …)`.
 3. Fast: compile and the quick tests (unit, lint). Full only: e2e, long integration suites, and
    any single step over ~a minute — the minute is a per-step threshold, not a total for the fast
    profile; fast has no fixed total. Bootstrap decides per stack and tags the steps `[fast]` in

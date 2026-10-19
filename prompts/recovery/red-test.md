@@ -2,6 +2,8 @@
 
 ```
 These tests are red: <test names>.
+Many unrelated tests red at once (timeouts, refused connections)? Check the ENVIRONMENT first —
+daemons, containers, ports. A crashed environment is not a code fault; restore it and re-run.
 Before fixing anything, DECIDE with rationale — which one is wrong?
 a) CODE is wrong (test demands correct behavior) → fix the code.
 b) TEST is wrong (encodes wrong behavior) → prove it to me; change the test only WITH MY APPROVAL,

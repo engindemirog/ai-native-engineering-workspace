@@ -109,8 +109,10 @@ BASE=$(git -C "$W" rev-parse HEAD)
 reset()  { git -C "$W" reset -q --hard "$BASE"; git -C "$W" clean -qfdx; }
 commit() { git -C "$W" add -A; git -C "$W" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm "$1"; }
 put()    { mkdir -p "$(dirname "$W/$1")"; f=$1; shift; printf '%s\n' "$@" > "$W/$f"; }
-# CI's base-ref variables would point the immutability check at refs the fixture doesn't have.
-doctor() { run sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
+# CI's base-ref and event variables would point doctor at refs and a payload the fixture doesn't
+# have; doctor_pr <payload> sets the event payload on purpose.
+doctor() { run sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF GITHUB_EVENT_PATH; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
+doctor_pr() { run sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF; GITHUB_EVENT_PATH=$1; export GITHUB_EVENT_PATH; shift; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
 
 echo "== scripts/doctor =="
 doctor
@@ -138,6 +140,17 @@ doctor;            has "duplicate spec number 0005" "twin spec numbers are caugh
 
 reset; put specs/done/0006-c.md '# Spec 0006' '- Status: Approved'
 doctor;            has "specs/done/0006-c.md is not marked 'Status: Shipped'" "unmarked shipped spec is caught"
+
+reset; put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast, 2 steps, 4 s) |'
+doctor;            exits 0 "fast evidence only warns"; has "WARN  fast output cited as evidence: specs/done/0010-fast.md" "a shipped spec citing only fast output is reported"
+put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast, 2 steps, 4 s) · CHECK GREEN (full, 5 steps, 90 s) |'
+doctor;            hasnt "fast output cited as evidence" "fast output next to full output is fine"
+put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast = full: no steps tagged fast, 2 steps) |'
+doctor;            hasnt "fast output cited as evidence" "an untagged conf's --fast run is a full run"
+reset; printf '{"action":"opened","pull_request":{"body":"Evidence: CHECK GREEN (fast, 3 steps, 9 s)"}}\n' > "$TMP/pr.json"
+doctor_pr "$TMP/pr.json"; has "WARN  fast output cited as evidence: the pull request description" "a PR citing only fast output is reported (CI)"
+printf '{"action":"opened","pull_request":{"body":"Evidence: CHECK GREEN (full, 9 steps, 300 s)"}}\n' > "$TMP/pr.json"
+doctor_pr "$TMP/pr.json"; hasnt "fast output cited as evidence" "a PR citing full output is fine"
 
 reset; put specs/active/0007-mini.md '# Spec 0007 (mini)' '- Status: Draft' '- Source:' '## Preserved behavior'
 doctor;            has "mini-spec 0007 has no Source work item" "mini-spec without Source is caught"

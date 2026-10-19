@@ -19,6 +19,33 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.14 — Fast output is caught as evidence
+
+From the same field report; it is also ANEW-0009's first revisit trigger.
+
+- `scripts/doctor` warns (every mode, never fails) when a shipped spec, or in CI the pull request
+  description, shows `CHECK GREEN (fast, …)` and no `CHECK GREEN (full, …)`. The description is
+  read from the event payload (`$GITHUB_EVENT_PATH`), no network; it is checked when the PR is
+  opened, reopened or pushed to, not on a description-only edit. An untagged conf's
+  `(fast = full: …)` run counts as full. The rule moves from Documented to Validated.
+- R-02 (red test): many unrelated tests red at once → check the environment first (daemons,
+  containers, ports); a crashed environment is not a code fault.
+- `scripts/selftest` covers the warning for specs and PR descriptions, and that full output, or an
+  untagged `--fast` run, is not reported.
+
+### Upgrading
+
+- `scripts/doctor` (behavior): for each `specs/done/*.md`, and for `$GITHUB_EVENT_PATH` when it is
+  a pull-request payload, warn if the text contains `CHECK GREEN (fast,` and not
+  `CHECK GREEN (full,`.
+- `scripts/selftest` (behavior): the doctor wrapper also unsets `GITHUB_EVENT_PATH`; new
+  `doctor_pr <payload>` helper; the scenarios above.
+- `docs/testing.md`: intent — Two speeds rule 2 names the doctor warning.
+- `prompts/recovery/red-test.md`: intent — environment first when many unrelated tests are red.
+- README: the "Evidence cites the full profile" row is Validated.
+- `.anew-version`: `v1.14`.
+- Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.13...v1.14
+
 ## v1.13 — Upgrades without collisions
 
 From the same field report: upgrading a derived project meant guessing its base, renumbering the

@@ -225,6 +225,17 @@ if [ -d "$ROOT/.claude/hooks" ]; then
   done
 fi
 
+# --- fast output cited as evidence (docs/testing.md, Two speeds rule 2): every mode, WARN ---
+# Fast green is a working state; only full green is evidence. Shipped specs, and in CI the pull
+# request description from the event payload ($GITHUB_EVENT_PATH — read locally, no network).
+fast_only() { grep -qF 'CHECK GREEN (fast,' "$1" && ! grep -qF 'CHECK GREEN (full,' "$1"; }
+for s in "$ROOT"/specs/done/*.md; do
+  [ -f "$s" ] && fast_only "$s" && warn "fast output cited as evidence: ${s#"$ROOT"/} shows CHECK GREEN (fast, …) and no (full, …)"
+done
+if [ -f "${GITHUB_EVENT_PATH:-}" ] && grep -q '"pull_request"' "$GITHUB_EVENT_PATH" && fast_only "$GITHUB_EVENT_PATH"; then
+  warn "fast output cited as evidence: the pull request description shows CHECK GREEN (fast, …) and no (full, …)"
+fi
+
 # --- evidence hygiene (docs/testing.md Evidence policy): path checks only, every mode, WARN ---
 # One find pass; the root .git and node_modules are pruned. A nested clone is reported once and
 # nothing inside it is reported again. .git files (submodules, worktrees) are not clones; ignored.

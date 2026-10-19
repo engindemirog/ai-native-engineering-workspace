@@ -66,7 +66,7 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **What it does:** workspace health — required core files, recovery catalog, configuration
   (`AGENTS.md`, mode, language, `scripts/check.conf`), the ANEW base version (`.anew-version`),
   adapter presence and parity, this page's coverage, spec/plan gate consistency, twin and shipped specs, `specs/done/` immutability,
-  evidence hygiene. `--strict` turns gate warnings into failures; CI runs it that way.
+  evidence hygiene, fast-only evidence. `--strict` turns gate warnings into failures; CI runs it that way.
 - **When to use it:** after bootstrap, before a PR, whenever the workspace feels off.
 - **Reads / writes:** reads the working tree (and git, for `specs/done/` against a base ref);
   writes nothing.

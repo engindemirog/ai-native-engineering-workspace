@@ -138,7 +138,7 @@ Not every rule is held the same way, and not every tool can hold it the same way
 | Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
 | `scripts/check` leaves nothing running | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI) | Documented (same) | Documented (same) | Documented (same) | Documented (same) |
 | UI specs define flow, states and the design link | Documented | Documented | Documented | Documented | Documented |
-| Evidence cites the full profile, not `--fast` | Documented (the `(full, n)` / `(fast, n)` label shows it to the reviewer) | Documented (same label) | Documented (same label) | Documented (same label) | Documented (same label) |
+| Evidence cites the full profile, not `--fast` | Validated (doctor warns: shipped specs, and the PR description in CI) | Validated (same) | Validated (same) | Validated (same) | Validated (same) |
 
 Segment commands also refuse out-of-order work (entry checks) — that is the agent following a
 Documented rule; CI is what makes it Validated.
