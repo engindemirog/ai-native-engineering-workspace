@@ -35,4 +35,5 @@
 | Decisions (ADRs) · roles (who may do what) | `docs/decisions/` · `docs/roles/` |
 | Specs & plans | `specs/active/` · `specs/plans/` · shipped → `specs/done/` |
 | Processes & gates · prompts & recovery ramps | `workflows/` · `prompts/` |
+| Every command: what it does, where it stops, lite vs strict | `docs/commands.md` |
 | The single verification command | `scripts/check` |
