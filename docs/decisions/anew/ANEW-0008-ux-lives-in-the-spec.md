@@ -1,7 +1,8 @@
-# ADR 0008 — User experience lives in the spec
+# ANEW-0008 — User experience lives in the spec
 
 - Status: Accepted
 - Date: 2026-10-07
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0008 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 ANEW has software design (`docs/architecture.md`, the plan, ADRs) but no place for user experience.
@@ -13,14 +14,14 @@ path and the empty, error and no-permission states go unspecified, unbuilt and u
 User experience is part of the spec, owned by the Analyst in ANALYZE: a required "User experience"
 section (flow, states, design link, accessibility — or "none — no user interface"), one acceptance
 criterion per listed state, and VERIFY checks screenshots against that section. Designs are linked,
-never copied into the repo (ADR 0006). Mini-specs carry a `Design:` link for UI changes.
+never copied into the repo (ANEW-0006). Mini-specs carry a `Design:` link for UI changes.
 
 ## Consequences
 - Benefits: UI states are decided before the plan, become testable criteria, and VERIFY has
   something to compare against; no new workflow, role, segment or gate.
 - Costs: specs for UI work get longer; ANEW still cannot judge visual quality — it checks that the
   designed states exist and behave, not that they look right. The section is Documented only
-  (ADR 0004): `scripts/doctor` does not validate it.
+  (ANEW-0004): `scripts/doctor` does not validate it.
 
 ## Alternatives considered
 - A DESIGN segment with a Designer role and its own gate: rejected — adds a stage ANEW cannot

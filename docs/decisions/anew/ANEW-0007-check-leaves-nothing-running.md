@@ -1,8 +1,9 @@
-# ADR 0007 — Check leaves nothing running
+# ANEW-0007 — Check leaves nothing running
 
 - Status: Accepted
 - Date: 2026-10-07
 - Revised: 2026-10-07 — editorial, stack-neutral wording; decision unchanged
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0007 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 Nearly every toolchain buys speed by keeping processes warm: build daemons, compile servers,

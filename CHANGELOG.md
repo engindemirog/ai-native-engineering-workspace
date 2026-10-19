@@ -1,7 +1,56 @@
 # Changelog
 
 Template users: compare your copy against the version you started from and pull what you need —
-the core is Markdown plus a few POSIX scripts, so upgrades are file copies, not migrations.
+the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not migrations.
+
+## How to upgrade
+
+1. **Your base** is the version in `.anew-version` (doctor prints it). If it is missing, find the
+   template tag your `scripts/` match and write it there.
+2. **Read every entry above your base**, oldest first. From v1.12 on, each "Upgrading" section
+   gives a **behavior list** for every changed script and a **one-line intent** for every
+   changed document, plus the full diff link (`/compare/vX...vY`).
+3. **Scripts:** an unmodified copy may simply be copied. A copy you extended gets the behavior
+   list applied — never a plain copy, which would delete your extensions. `./scripts/selftest`
+   then tells you where your copy no longer behaves as documented.
+4. **Documents** you translated or extended: apply each intent in your own words; a patch will not
+   apply to them, and doesn't need to.
+5. **Decisions:** take new `docs/decisions/anew/ANEW-*.md` files as they are (ANEW-0010); your own
+   ADRs are never renumbered.
+6. Write the new version into `.anew-version`.
+
+## v1.13 — Upgrades without collisions
+
+From the same field report: upgrading a derived project meant guessing its base, renumbering the
+template's ADRs around the project's own, and losing local script extensions to "copy".
+
+- `.anew-version` records the ANEW version a workspace is based on; `scripts/doctor` prints it
+  (`ok ANEW base version: v1.13`) and warns when it is missing. In the template, `scripts/selftest`
+  checks it matches the newest CHANGELOG entry.
+- The template's decisions move to `docs/decisions/anew/` as `ANEW-0001` … `ANEW-0009` (each
+  with a `Revised:` line; decisions unchanged), plus ANEW-0010 recording why. Project ADRs number
+  from 0001 in `docs/decisions/` with no collisions; `prompts/adr.md` counts only those.
+- CHANGELOG opens with "How to upgrade": base from `.anew-version`, behavior lists for scripts,
+  one-line intents for documents, a diff link per release.
+- `scripts/selftest` checks usage output by its `usage:` prefix and exit code, not its full text,
+  so a legitimate extension of a script's arguments is not reported as a difference.
+
+### Upgrading
+
+- `.anew-version` (new): one line, `v1.13`.
+- `scripts/doctor` (behavior): print `ANEW base version: <first line of .anew-version>` as ok;
+  warn when the file is missing. Never fail on it.
+- `scripts/selftest` (behavior): usage assertions match `usage:` only; fixture copies
+  `.anew-version`; the version scenarios above.
+- `docs/decisions/`: move the template decisions you have (ADR 0001–0009 as shipped by ANEW, if
+  you kept them in your own range) to `docs/decisions/anew/` under their `ANEW-NNNN` names, or take
+  the folder from v1.13 and delete your copies. Your own ADRs stay where they are; one that had
+  to be renumbered around a template ADR may keep its number. Add ANEW-0010.
+- `docs/decisions/README.md`: intent — two owners, two places; the next project number counts
+  only `docs/decisions/`.
+- `prompts/adr.md`: intent — NNNN is the highest in `docs/decisions/` + 1, `anew/` excluded.
+- README: the `docs/decisions/` row names the two places.
+- Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.12...v1.13
 
 ## v1.12 — Check tells you how long it took
 

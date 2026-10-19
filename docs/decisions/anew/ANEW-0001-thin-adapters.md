@@ -1,7 +1,8 @@
-# ADR 0001 — Rules live in the core; adapters only point
+# ANEW-0001 — Rules live in the core; adapters only point
 
 - Status: Accepted
 - Date: 2026-09-25
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0001 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 AI coding tools (Claude Code, Cursor, GitHub Copilot, others) each have their own way of loading

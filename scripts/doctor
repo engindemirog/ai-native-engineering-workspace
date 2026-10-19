@@ -76,6 +76,13 @@ else
   warn "scripts/check.conf missing — bootstrap generates it; until then './scripts/check' has nothing to run"
 fi
 
+# --- template version: the base an upgrade diffs against (CHANGELOG, "How to upgrade") ---
+if [ -f "$ROOT/.anew-version" ]; then
+  ok "ANEW base version: $(head -n 1 "$ROOT/.anew-version" | tr -d '\r')"
+else
+  warn ".anew-version missing — write the ANEW version this workspace is based on (e.g. v1.13) so upgrades know their base"
+fi
+
 # --- adapter presence ---
 if [ -f "$ROOT/CLAUDE.md" ] || [ -f "$ROOT/.github/copilot-instructions.md" ] || [ -d "$ROOT/.cursor/rules" ] || [ -f "$ROOT/.agents/skills/analyze/SKILL.md" ]; then
   ok "an AI tool adapter is installed"

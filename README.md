@@ -154,7 +154,7 @@ branch protection setting makes "no force-push" Enforced for every tool.
 |---|---|
 | `AGENTS.md` | The signpost every agent auto-loads: invariant rules, operating mode, where everything lives. Rewritten by bootstrap; invariants survive. |
 | `docs/` | Long-term memory: architecture, domain language, conventions, testing, security, git rules — templates filled at bootstrap. |
-| `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. ANEW's own design decisions are recorded there (ADR 0001 onward). |
+| `docs/decisions/` | ADRs — decisions with rationale, so "why" survives the people and the sessions. The project's own decisions number from 0001; ANEW's design decisions live in `docs/decisions/anew/` (ANEW-0001 onward), so upgrades never collide with them. |
 | `docs/roles/` | Role cards bound to responsibility, not technology: analyst, developer, reviewer, QA. Producer and verifier are never the same session. |
 | `specs/` | One spec per piece of work: intent, behavior, testable acceptance criteria (`TEMPLATE-mini.md` for behavior changes: changed + preserved criteria). `active/` → `done/` (immutable once shipped). Plans live in `specs/plans/`. |
 | `workflows/` | The processes: bootstrap, feature-development, change-request, bug-fix, refactor, incident. Steps, roles, gates, evidence — each step points to its prompt. `segments.md` defines the feature stages as stop-at-handoff segments that every adapter maps onto. |
@@ -166,6 +166,7 @@ branch protection setting makes "no force-push" Enforced for every tool.
 | `scripts/selftest` | Proves `scripts/check`, `scripts/doctor` and `scripts/residue` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
 | `scripts/init` | Installs an adapter; keeps existing files unless `--force`. |
 | `CHANGELOG.md` | What changed between versions of the workspace, for template users upgrading their copy. |
+| `.anew-version` | The ANEW version this workspace is based on — the starting point of every upgrade (CHANGELOG, "How to upgrade"). `scripts/doctor` prints it. |
 | `.github/` | CI that runs the same `scripts/check`, `scripts/doctor --strict` and `scripts/selftest` + a PR template mirroring the gates. |
 
 ## Design principles

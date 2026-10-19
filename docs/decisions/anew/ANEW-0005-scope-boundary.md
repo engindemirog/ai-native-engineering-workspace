@@ -1,7 +1,8 @@
-# ADR 0005 — ANEW governs intent → merge; release and operations are out of scope
+# ANEW-0005 — ANEW governs intent → merge; release and operations are out of scope
 
 - Status: Accepted
 - Date: 2026-10-05
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0005 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 Requests to add deployment pipelines, environment promotion, feature flags, observability and
@@ -20,7 +21,7 @@ collect evidence, root-cause, then fix through the bug-fix workflow.
 
 ## Consequences
 - Benefits: the core stays tool- and stack-agnostic and small; every rule in it can be held at a
-  known level (ADR 0004); users keep their existing release tooling.
+  known level (ANEW-0004); users keep their existing release tooling.
 - Costs: ANEW does not prove that what was merged is what runs — that proof belongs to the
   organization's pipeline; teams without one get no help from ANEW for it.
 
@@ -28,7 +29,7 @@ collect evidence, root-cause, then fix through the bug-fix workflow.
 - A "packs" layer with release presets per platform: still possible later (README roadmap), but
   as optional add-ons, never as core.
 - Extending the spine with RELEASE and OPERATE stages: rejected — gates that ANEW cannot validate
-  or enforce would be Documented only, which is exactly the overclaim ADR 0004 removes.
+  or enforce would be Documented only, which is exactly the overclaim ANEW-0004 removes.
 
 ## Revisit triggers
 - A stack-agnostic, file-based release gate emerges that `scripts/doctor` could validate.

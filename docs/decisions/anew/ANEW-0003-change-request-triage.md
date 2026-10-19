@@ -1,7 +1,8 @@
-# ADR 0003 — Change requests are triaged by the behavior test, not by apparent size
+# ANEW-0003 — Change requests are triaged by the behavior test, not by apparent size
 
 - Status: Accepted
 - Date: 2026-09-25
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0003 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 Most enterprise work is neither a new feature nor a bug: an existing behavior must change. Routing

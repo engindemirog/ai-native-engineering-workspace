@@ -1,7 +1,8 @@
-# ADR 0006 — Evidence is referenced, not stored
+# ANEW-0006 — Evidence is referenced, not stored
 
 - Status: Accepted
 - Date: 2026-10-07
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0006 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 "Evidence over claims" is an invariant rule, but it never said where evidence lives. In projects

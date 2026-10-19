@@ -1,7 +1,8 @@
-# ADR 0004 — Every rule is labeled Documented, Validated or Enforced
+# ANEW-0004 — Every rule is labeled Documented, Validated or Enforced
 
 - Status: Accepted
 - Date: 2026-10-05
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0004 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 ANEW's rules are held by different mechanisms depending on the tool. Claude Code has hooks,
@@ -31,7 +32,7 @@ lower than it should be, the table says what would raise it (for example, branch
 - Claim uniform enforcement and let users discover the differences: rejected — it is the failure
   mode this ADR exists to end.
 - Only support tools where everything can be Enforced (Claude Code): rejected — excludes most
-  users and contradicts ADR 0001.
+  users and contradicts ANEW-0001.
 
 ## Revisit triggers
 - A tool gains a mechanism that moves a cell up a level (then the table and this ADR update).

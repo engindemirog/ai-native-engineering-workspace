@@ -1,7 +1,8 @@
-# ADR 0002 — Segments always stop; the chainer flows only as far as the mode allows
+# ANEW-0002 — Segments always stop; the chainer flows only as far as the mode allows
 
 - Status: Accepted
 - Date: 2026-09-25
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0002 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 A single "do the whole feature" command is convenient for a solo developer, but in a team it

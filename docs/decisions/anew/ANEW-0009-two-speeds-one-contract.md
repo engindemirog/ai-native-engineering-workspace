@@ -1,7 +1,8 @@
-# ADR 0009 — Two speeds, one contract
+# ANEW-0009 — Two speeds, one contract
 
 - Status: Accepted
 - Date: 2026-10-16
+- Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0009 (template namespace, ANEW-0010); decision unchanged
 
 ## Context
 Agents run `./scripts/check` after every fix and before every handoff. When the contract holds

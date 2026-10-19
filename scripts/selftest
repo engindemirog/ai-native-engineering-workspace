@@ -49,7 +49,7 @@ conf 'unit [fast]: exit 3'
 check --fast
 exits 1 "red fast step";                          has "CHECK FAILED (fast) at step: unit" "fast failure names the profile"
 check --fsat
-exits 2 "unknown argument";                       has "usage: ./scripts/check [--fast]" "unknown argument prints usage"
+exits 2 "unknown argument";                       has "usage:" "unknown argument prints usage"
 check --fast extra
 exits 2 "extra argument";                         hasnt "==>" "a bad invocation runs nothing"
 conf 'first: echo first ran' 'greedy: cat > /dev/null; echo greedy ran' 'second: echo second ran'
@@ -76,7 +76,7 @@ LEAK=anew-residue-leak-$$
 
 echo "== scripts/residue =="
 residue --fsat
-exits 2 "residue: unknown argument";             has "usage: ./scripts/residue [--fast]" "residue: prints usage"
+exits 2 "residue: unknown argument";             has "usage:" "residue: prints usage"
 conf 'unit [fast]: exit 3'
 residue
 exits 1 "residue: red check";                    has "RESIDUE TEST ABORTED (full): check failed in run 1" "red check aborts the residue test"
@@ -98,7 +98,7 @@ has "$LEAK" "the survivor is named with its command line"
 W="$TMP/ws"
 mkdir -p "$W"
 ( cd "$ROOT" && git ls-files --cached --others --exclude-standard ) \
-  | grep -E '^(AGENTS\.md|README\.md|docs/|workflows/|prompts/|scripts/|adapters/|specs/(TEMPLATE[^/]*\.md|(active|done|plans)/README\.md|plans/TEMPLATE\.md)$)' \
+  | grep -E '^(AGENTS\.md|README\.md|\.anew-version|docs/|workflows/|prompts/|scripts/|adapters/|specs/(TEMPLATE[^/]*\.md|(active|done|plans)/README\.md|plans/TEMPLATE\.md)$)' \
   | ( cd "$ROOT" && tar -cf - -T - ) | ( cd "$W" && tar -xf - )
 git -C "$W" init -q
 git -C "$W" config core.autocrlf false   # the fixture is throwaway: no line-ending conversion noise
@@ -171,6 +171,17 @@ if [ -f "$W/adapters/claude-code/.claude/commands/plan.md" ]; then
   reset; doctor;   hasnt "command reference out of date" "restored reference is clean"
 else
   echo "skip  command reference drift (no adapters/ in this repo)"
+fi
+
+if [ -f "$W/.anew-version" ]; then
+  reset; doctor;   has "ok    ANEW base version: $(head -n 1 "$W/.anew-version" | tr -d '\r')" "doctor reports the ANEW base version"
+  rm -f "$W/.anew-version"
+  doctor;          exits 0 "missing .anew-version only warns"; has "WARN  .anew-version missing" "a missing version marker is reported"
+fi
+# The template itself (unconfigured AGENTS.md): the marker must match the newest CHANGELOG entry.
+if grep -q 'STATUS: NOT CONFIGURED' "$ROOT/AGENTS.md" 2>/dev/null && [ -f "$ROOT/CHANGELOG.md" ]; then
+  out="changelog: $(sed -n 's/^## \(v[0-9][0-9.]*\) .*/\1/p' "$ROOT/CHANGELOG.md" | head -n 1) · .anew-version: $(head -n 1 "$ROOT/.anew-version" 2>/dev/null | tr -d '\r')"
+  [ "${out%% ·*}" = "changelog: ${out##*.anew-version: }" ]; report $? "template: .anew-version matches the newest CHANGELOG entry"
 fi
 
 reset; rm -f "$W/docs/testing.md"
