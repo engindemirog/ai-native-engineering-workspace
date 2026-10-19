@@ -8,4 +8,6 @@ This session's context has become unreliable (too long, contradictory, or drifti
 PROTECTION: nothing may be claimed "done" in the state file without evidence — the next session
 will trust this file. After writing it, I will close this session and open a fresh one that starts
 by reading the state file.
+LIFECYCLE: the fresh session deletes the state file once it has taken the work over; anything in
+it that must outlive the handoff moves into the plan first. No handoff file is left at ship.
 ```

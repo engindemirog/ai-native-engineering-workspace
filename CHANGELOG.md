@@ -19,6 +19,39 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.15 — Prompts close their gaps
+
+A review of every prompt against the roles, workflows and testing rules. Text only — no script
+changes; every rule added here is Documented.
+
+- `review.md`: loads the approved plan too (the Tests dimension checks its criterion ↔ test map);
+  new **Plan conformance** dimension — changed files outside the plan's list are findings (R-07);
+  Correctness covers every User experience state and accessibility.
+- `build.md`: an error from the current plan step is fixed inside BUILD; R-01 starts when the error
+  comes from outside the step or survives two attempts. The ramp list adds R-03, R-10 and R-09.
+- `plan.md` and `specs/plans/TEMPLATE.md`: the criterion ↔ test map has a **Profile** column
+  (fast or full); a new test must be caught by its step's selector (testing.md, rule 4).
+- `spec.md`, `plan.md`, `adr.md`, `review.md`, `verify.md`: write in the docs language from
+  AGENTS.md; field labels stay English.
+- `spec.md`: ask for a link to a fixed version of the design (or a dated export); a design that
+  changes later is a spec change (R-08).
+- `clarify.md`: at most ~7 questions, ordered by impact; the rest wait for the self-critique.
+- `verify.md`: the evidence paragraph is a list; "a test that can't fail" is checked by reading
+  the assert or by breaking the code in a temporary copy outside the repo, never committed.
+- `bootstrap.md`: the testing interview asks, for UI work, the e2e tool and who owns the
+  app-under-test lifecycle.
+- R-09: the fresh session deletes the state file once it has taken over; nothing outlives it
+  unless moved into the plan. R-03, R-08, R-12 end with `./scripts/check (full)` green. R-05, R-06,
+  R-09 and R-10 change no code (R-05's red reproduction is the point), so they carry no check exit.
+
+### Upgrading
+
+- Documents (intent, apply in your own words if you translated them): each bullet above is the
+  intent for its file; `docs/commands.md` — `/review` reads the plan.
+- `specs/plans/TEMPLATE.md`: add the Profile column; existing plans need no change.
+- `.anew-version`: `v1.15`.
+- Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.14...v1.15
+
 ## v1.14 — Fast output is caught as evidence
 
 From the same field report; it is also ANEW-0009's first revisit trigger.

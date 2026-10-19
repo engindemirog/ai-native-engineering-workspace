@@ -17,9 +17,9 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    question (proposal rule):
    product & goal · domain terms and business rules · architecture style & module boundaries ·
    forbidden dependencies · conventions (data rules, error handling, naming) · testing
-   expectations · security posture · git rules · trivial-change policy ("what do label/typo-level
-   changes require?" — (1) PR + one reviewer, no spec [recommend this: cheap safety net];
-   (2) direct commit allowed on a trivial branch; (3) everything goes through a mini-spec
+   expectations (UI work: the e2e tool, and who owns the app-under-test lifecycle) · security
+   posture · git rules · trivial-change policy ("what do label/typo-level changes require?" —
+   (1) PR + one reviewer, no spec [recommend this: cheap safety net]; (2) direct commit allowed on a trivial branch; (3) everything goes through a mini-spec
    [strictest]; write the answer to docs/git.md "Trivial changes") · operating mode (lite or
    strict — recommend one based on team size and risk).
 3. GENERATE from my answers: fill every template in docs/ (architecture, domain, conventions,

@@ -9,6 +9,7 @@ you change it (revisit triggers), and evaluate alternatives seriously — no str
 
 After I decide, write docs/decisions/<NNNN>-<slug>.md using docs/decisions/TEMPLATE.md — NNNN is
 the highest number in docs/decisions/ + 1 (ANEW's own decisions in docs/decisions/anew/ don't count).
+Write in the docs language (AGENTS.md, Language); field labels stay English.
 Consequences must include BOTH the benefits AND the costs. The test of a good ADR: someone in
 6 months can answer "why did they do it this way?" from this file alone.
 ```

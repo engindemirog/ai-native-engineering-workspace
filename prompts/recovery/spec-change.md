@@ -7,4 +7,5 @@ scope notes. 2) Produce a DELTA PLAN: which plan steps survive, which die, what'
 already-built work. 3) Wait for my approval, then continue.
 PROTECTION: no code against the new requirement before the spec and delta plan are approved —
 otherwise the spec stops being the source of truth.
+EXIT: once the delta plan is built, ./scripts/check (full) green, output shown.
 ```

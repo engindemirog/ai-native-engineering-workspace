@@ -186,8 +186,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ### `/review`
 - **What it does:** an independent, read-only review of the diff against the spec.
 - **When to use it:** after a build, and again on every fix diff.
-- **Reads / writes:** reads the diff and the spec in `specs/active/`, `prompts/review.md`; writes
-  nothing.
+- **Reads / writes:** reads the diff, the spec in `specs/active/`, its plan in `specs/plans/`
+  (file list, criterion ↔ test map), `prompts/review.md`; writes nothing.
 - **Stops at:** the findings report, verbatim · `Next: TRIAGE — human (real / noise / investigate); then Developer fix rounds, then VERIFY`.
 - **Lite / Strict:** no difference — independent review is never optional, in any mode: a
   read-only reviewer (the `reviewer` subagent in Claude Code) or a fresh session.

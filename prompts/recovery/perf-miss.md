@@ -8,4 +8,5 @@ them. 2) Identify the dominant cost with evidence (profile/explain/timings), not
 4) RE-MEASURE with the exact same method; show before/after.
 PROTECTION: no speculative optimization sprees; one change per round, each proven. Correctness
 tests stay green throughout.
+EXIT: ./scripts/check (full) green, output shown.
 ```

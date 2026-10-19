@@ -16,7 +16,9 @@
 <!-- Each with YOUR recommendation and rationale (proposal rule). Unresolved questions block build. -->
 
 ## Criterion ↔ test map
-| Acceptance criterion | Proven by |
-|---|---|
-| AC-1 | |
-| AC-2 | |
+<!-- Profile: fast or full — the check.conf step whose selector runs the test
+     (docs/testing.md, Two speeds, rule 4). -->
+| Acceptance criterion | Proven by | Profile |
+|---|---|---|
+| AC-1 | | |
+| AC-2 | | |

@@ -8,7 +8,10 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
 - Write the tests from the criterion↔test map as you go — tests assert behavior.
 - After each plan step: brief note on what you did. Needing to leave the plan? STOP → recovery
   R-07 (deviations are proposed, not smuggled).
-- Problems: compile/runtime error → R-01 · red test → R-02 · you created a regression → R-04.
+- Problems: an error from the plan step you are on is fixed inside BUILD. Compile/runtime error
+  from outside the current step, or the same error still there after two attempts → R-01 ·
+  red test → R-02 · flaky test → R-03 · you created a regression → R-04 · ambiguity or a
+  docs–code conflict → R-10 · the session's context is drifting on a long build → R-09.
 
 Iterate with ./scripts/check --fast; the handoff carries the FULL profile output, shown —
 CHECK GREEN (full, …) (docs/testing.md, Two speeds, one contract).
