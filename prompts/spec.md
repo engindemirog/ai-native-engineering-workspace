@@ -16,5 +16,8 @@ Write in the docs language (AGENTS.md, Language); field labels and Status values
 
 Then run a SELF-CRITIQUE pass as a hostile reader: which questions would a developer still have?
 (ambiguous criteria, missing boundary values, undefined error behavior). List each gap with your
-recommendation; I will approve which ones get folded in. Do not write a plan or code.
+recommendation; I will approve which ones get folded in.
+SIZE: more than one user capability, or more than ~8–10 acceptance criteria → recommend a split:
+name the specs and their order. If I keep it as one, write that into Constraints & out of scope
+(Split: proposed <specs>; kept as one — <who>, <reason>). Do not write a plan or code.
 ```

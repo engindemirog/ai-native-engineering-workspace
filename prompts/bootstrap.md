@@ -30,7 +30,7 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    AGENTS.md stays a signpost ≤ 40 lines — it POINTS to docs, it never copies them.
    RESOURCE HYGIENE for check.conf (docs/testing.md, Resource hygiene):
    a. Inventory — for each command, name every process it can leave behind (the categories in
-      that section). Consult your toolchain's docs for its no-daemon / no-server / run-once switch.
+      that section) and the data it leaves for the next run (rule 5: databases, files, queues). Consult your toolchain's docs for its no-daemon / no-server / run-once switch.
    b. Neutralize — add those switches or env vars, each with a one-line comment naming the rule
       (# resource hygiene: no build daemon). No switch → stop the process inside the SAME step,
       keeping its exit code (check fails fast; a separate last step is skipped on red):

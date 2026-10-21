@@ -31,7 +31,8 @@ what is deliberately NOT being done. Decisions from clarifying questions are fol
 <!-- Hard limits (performance targets, compliance) and conscious V1 exclusions. -->
 
 ## Acceptance criteria
-<!-- Each line independently testable. Cover the happy path, boundaries, empties, and error cases. -->
+<!-- Each line independently testable. Cover the happy path, boundaries, empties, and error cases.
+     More than one user capability or ~8–10 criteria → propose a split (prompts/spec.md, SIZE). -->
 - [ ] AC-1 —
 - [ ] AC-2 —
 - [ ] AC-3 —

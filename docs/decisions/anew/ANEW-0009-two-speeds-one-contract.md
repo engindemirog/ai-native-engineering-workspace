@@ -3,6 +3,10 @@
 - Status: Accepted
 - Date: 2026-10-16
 - Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0009 (template namespace, ANEW-0010); decision unchanged
+- Revised: 2026-10-21 — v1.16, from a field project where one feature took a working day: a full
+  green is evidence for its commit and is cited, not re-run, by review, verify and the gates
+  (`docs/testing.md`, Two speeds rule 6); running the one test being written is authoring, not a
+  second contract, and never evidence (rule 7). Only full green is evidence — unchanged.
 
 ## Context
 Agents run `./scripts/check` after every fix and before every handoff. When the contract holds

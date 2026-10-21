@@ -10,6 +10,9 @@
 
 ## Commits
 - Conventional Commits, with a plan reference: `feat(catalog): paging endpoint [plan 0001/3]`.
+  Review fixes name their fix round instead of the step:
+  `fix(catalog): empty page size [plan 0001/fix-2]` — the reviewer counts rounds from these
+  (R-06 after round 3).
 - Agent commits follow the same standard: the agent writes the message, the human approves.
 
 ## Forbidden

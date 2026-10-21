@@ -19,6 +19,41 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.16 — A feature fits in a day
+
+From a field project where one feature (22 acceptance criteria, four fix rounds) took over a
+working day. The root cause was size, magnified by repeated full runs and a dirty e2e database.
+Text only — no script changes; every rule here is Documented.
+
+- **Size signal:** the spec's self-critique recommends a split when a spec holds more than one user
+  capability or more than ~8–10 criteria; keeping it as one is recorded in the spec. R-08: a new
+  capability mid-work is a new spec, not a change.
+- **Data counts too** (testing.md, Resource hygiene rule 5; ANEW-0007 revised): every run starts
+  from a known state; what a run writes never reaches the next one. Bootstrap's inventory names it.
+- **A full green is evidence for its commit — run it once** (Two speeds rule 6; ANEW-0009
+  revised): review, verify and gates cite the existing `CHECK GREEN (full, …)` of the exact commit
+  (handoff, or a CI run whose SHA equals HEAD) instead of re-running. **Writing one test runs that
+  test** (rule 7): authoring, never evidence; repeat runs only for R-03.
+- **Fix rounds are counted:** fix commits carry `[plan NNNN/fix-k]`; the review report opens with
+  `Review round n · fix rounds so far: k`; a fourth round is not started before R-06.
+
+### Upgrading
+
+- `docs/testing.md`: intent — Resource hygiene rule 5 (data); Two speeds rules 6 (cite, don't
+  re-run, same SHA) and 7 (one test while writing it; repeats only in R-03).
+- `prompts/spec.md`: intent — SIZE step in the self-critique. `specs/TEMPLATE.md`: the same hint
+  in the Acceptance criteria comment.
+- `prompts/build.md`: intent — rule 7 while iterating; `[plan NNNN/fix-k]` on fix commits, no
+  fourth round before R-06. `docs/git.md`: the fix-commit format.
+- `prompts/review.md`: intent — cite an existing full green for the commit; open with the round
+  count; flag R-06 after round 3. `prompts/verify.md`: intent — cite, don't re-run.
+- `prompts/recovery/spec-change.md` (R-08): intent — a new capability is a new spec.
+- `prompts/bootstrap.md`: intent — the inventory names data left for the next run.
+- `workflows/feature-development.md`, `prompts/recovery/README.md`, README: the matching lines.
+- `docs/decisions/anew/ANEW-0007`, `ANEW-0009`: take as they are (each gains a `Revised:` line).
+- `.anew-version`: `v1.16`.
+- Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.15...v1.16
+
 ## v1.15 — Prompts close their gaps
 
 A review of every prompt against the roles, workflows and testing rules. Text only — no script

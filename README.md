@@ -136,7 +136,7 @@ Not every rule is held the same way, and not every tool can hold it the same way
 | No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented | Documented |
 | "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
 | Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
-| `scripts/check` leaves nothing running | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI) | Documented (same) | Documented (same) | Documented (same) | Documented (same) |
+| `scripts/check` leaves nothing running, and no data for the next run | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI; it does not measure data) | Documented (same) | Documented (same) | Documented (same) | Documented (same) |
 | UI specs define flow, states and the design link | Documented | Documented | Documented | Documented | Documented |
 | Evidence cites the full profile, not `--fast` | Validated (doctor warns: shipped specs, and the PR description in CI) | Validated (same) | Validated (same) | Validated (same) | Validated (same) |
 

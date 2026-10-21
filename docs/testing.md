@@ -58,6 +58,11 @@ A screenshot proves a criterion only against the spec's "User experience": every
 4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e runs single-worker
    and headless by default; one component owns the app-under-test lifecycle — started for the run,
    stopped at the end, including on failure and timeout.
+5. **Data counts too.** Every run starts from a known state: what a run writes — database rows,
+   files, queues, uploaded objects — never reaches the next run, also after a run killed halfway.
+   Use a fresh database (or schema) per run, or seed and clean up inside the same step, keeping its
+   exit code. The residue test measures processes and memory only; tests that pass on a clean state
+   and fail on a used one are this rule failing, not the code (R-02, environment first).
 
 ## Two speeds, one contract
 1. `./scripts/check` is still the one way to ask "is this good?"; `--fast` is a speed of the
@@ -79,6 +84,14 @@ A screenshot proves a criterion only against the spec's "User experience": every
 5. Durations come from check itself (`<== <step> (n s)` per step, the total in the green line).
    Decide a split, or report a profile's duration, on the median of at least 3 runs — single
    runs vary too much to decide on.
+6. **A full green is evidence for its commit — run it once.** When `CHECK GREEN (full, …)` exists
+   for the exact commit at hand (the builder's handoff, or a CI run), review, verify and the gates
+   cite it — the line, plus the CI run link and its commit SHA, which must equal HEAD — instead of
+   running full again. A new commit needs a new full run.
+7. **Writing one test runs that test.** While writing or fixing a single test, run it alone with
+   the test tool's own filter, without the suites that depend on it. That is authoring, never
+   evidence; `scripts/check` stays the way to ask "is this good?". Repeat runs are for the
+   flaky-test hunt only (R-03).
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.

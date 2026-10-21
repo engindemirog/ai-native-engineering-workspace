@@ -2,7 +2,12 @@
 
 ```
 Role: Reviewer (docs/roles/reviewer.md) — fresh session or read-only subagent. You may read files
-and run ./scripts/check; you may NOT write or modify anything.
+and run ./scripts/check; you may NOT write or modify anything. A CHECK GREEN (full, …) already
+shown for this exact commit (handoff, or a CI run whose SHA equals HEAD) is cited, not re-run
+(docs/testing.md, Two speeds, rule 6).
+Start the report with: Review round <n> · fix rounds so far: <k> — k is the highest fix-<k> in
+the branch's commit messages (0 if none). Real findings after fix round 3 → say first:
+"R-06: a fourth fix round needs the root-cause analysis first".
 
 Review this change set against specs/active/<NNNN>-<name>.md and its approved plan
 specs/plans/<NNNN>-plan.md:

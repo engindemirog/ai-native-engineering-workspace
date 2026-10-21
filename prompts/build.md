@@ -13,13 +13,15 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
   red test → R-02 · flaky test → R-03 · you created a regression → R-04 · ambiguity or a
   docs–code conflict → R-10 · the session's context is drifting on a long build → R-09.
 
-Iterate with ./scripts/check --fast; the handoff carries the FULL profile output, shown —
-CHECK GREEN (full, …) (docs/testing.md, Two speeds, one contract).
+Iterate with ./scripts/check --fast; writing one test, run that test alone (docs/testing.md,
+Two speeds, rule 7). The handoff carries the FULL profile output, shown — CHECK GREEN (full, …)
+(docs/testing.md, Two speeds, one contract).
 Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan.
 Return: changed files + check output. Do not self-review; that comes next, independently.
 Show check output in the conversation and reference it; never save it to a file.
 
 §fixes — For triaged review findings: fix ONLY findings marked real, smallest change per finding,
-one commit per finding referencing it. --fast green after each finding's commit; full green
-before the fix diff goes back to review. Never touch unrelated code.
+one commit per finding referencing it and the round: [plan <NNNN>/fix-<k>], k = this fix round
+(1, 2, 3). A fourth round is not started: R-06 first. --fast green after each finding's commit;
+full green before the fix diff goes back to review. Never touch unrelated code.
 ```

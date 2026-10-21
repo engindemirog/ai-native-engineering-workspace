@@ -2,6 +2,8 @@
 
 ```
 The requirement changed while work is in progress: <what changed>.
+A NEW capability is not a change: it becomes its own spec (prompts/spec.md), shipped after this
+one or before it if this one depends on it. R-08 is for changed criteria of THIS spec.
 Order is fixed: 1) UPDATE THE SPEC first (specs/active/…) — new/changed acceptance criteria,
 scope notes. 2) Produce a DELTA PLAN: which plan steps survive, which die, what's new; impact on
 already-built work. 3) Wait for my approval, then continue.

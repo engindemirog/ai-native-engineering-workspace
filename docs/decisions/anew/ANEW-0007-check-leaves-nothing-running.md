@@ -4,6 +4,10 @@
 - Date: 2026-10-07
 - Revised: 2026-10-07 — editorial, stack-neutral wording; decision unchanged
 - Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0007 (template namespace, ANEW-0010); decision unchanged
+- Revised: 2026-10-21 — extended to data (v1.16): a field project lost hours to e2e runs that
+  started on a database left dirty by earlier, half-finished runs. What a run writes never reaches
+  the next run (`docs/testing.md`, Resource hygiene rule 5); the residue test still measures
+  processes and memory only, so the data half is Documented.
 
 ## Context
 Nearly every toolchain buys speed by keeping processes warm: build daemons, compile servers,
