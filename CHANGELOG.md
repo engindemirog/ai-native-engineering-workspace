@@ -19,6 +19,28 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.17 — Kernel threads are not residue
+
+From a field project whose residue test went red on a Linux CI agent: `ps` lists kernel threads
+(`[kworker/0:1-events]`), which the kernel starts and stops on its own, so every run "leaked" one.
+Windows never takes that path, so the template's selftest did not see it.
+
+- **`scripts/residue`** leaves out processes whose whole command line is one bracketed name. A
+  zombie (`[x] <defunct>`) still counts.
+- **`scripts/selftest`** runs the POSIX path on every machine with a fake `uname` and `ps`. A kernel
+  thread must not be a survivor; a zombie must be one.
+
+### Upgrading
+
+- `scripts/residue`, behavior: on the POSIX path, a process whose command line matches
+  `^\[[^]]*\]$` is not measured. A copy that carries a local kernel-thread fix (e.g. marked
+  `LOCAL CHANGE`) drops it for this one.
+- `scripts/selftest`, behavior: four new residue assertions (kernel thread clean, not listed;
+  zombie red, named).
+- `docs/testing.md`: intent: Resource hygiene rule 2 names what is left out and what still counts.
+- `.anew-version`: `v1.17`.
+- Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.16...v1.17
+
 ## v1.16 — A feature fits in a day
 
 From a field project where one feature (22 acceptance criteria, four fix rounds) took over a

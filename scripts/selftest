@@ -90,6 +90,26 @@ conf "unit: echo unit ran" "server: sh -c 'sleep 25; :' $LEAK >/dev/null 2>&1 &"
 residue
 exits 1 "residue: leaked process";               has "RESIDUE FOUND (full)" "leak is reported"
 has "$LEAK" "the survivor is named with its command line"
+# The POSIX path on any machine: a fake uname and ps. After the baseline, a kernel thread appears
+# (never a survivor) and, with $ZOMBIE set, a zombie too (always one).
+mkdir -p "$TMP/fakeps"
+printf '#!/bin/sh\necho Linux\n' > "$TMP/fakeps/uname"
+cat > "$TMP/fakeps/ps" <<'EOF'
+#!/bin/sh
+n=$(($(cat "$PSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$PSCOUNT"
+echo "    1 /sbin/init"
+[ "$n" -gt 2 ] || exit 0
+echo " 4242 [kworker/0:1-events]"
+[ -z "${ZOMBIE:-}" ] || echo " 4243 [anew-zombie] <defunct>"
+EOF
+chmod +x "$TMP/fakeps/uname" "$TMP/fakeps/ps"
+conf 'unit [fast]: echo unit ran'
+fakeps() { rm -f "$TMP/fakeps/count"; run env PATH="$TMP/fakeps:$PATH" PSCOUNT="$TMP/fakeps/count" "$@" \
+             ANEW_RESIDUE_SETTLE=1 ANEW_RESIDUE_MB=1000000 sh "$C/scripts/residue" --fast; }
+fakeps
+exits 0 "residue: a kernel thread is not a survivor"; hasnt "kworker" "kernel threads are never listed"
+fakeps ZOMBIE=1
+exits 1 "residue: a zombie is a survivor";       has "[anew-zombie] <defunct>" "the zombie is named"
 
 # --- scripts/doctor: a git-initialised copy of the ANEW core only, reset between scenarios ---
 # Only what doctor reads: no application code, and no real specs or plans (a project's own specs

@@ -54,8 +54,11 @@ measure() {
       mem=$(vm_stat | awk '/page size of/ { ps = $8 } /^Pages (free|inactive|speculative)/ { gsub(/\./, "", $NF); n += $NF }
                            END { if (ps) printf "%d", n * ps / 1048576 }')
     fi
+    # Kernel threads ("[kworker/0:1]" on Linux) come and go with no user-space step behind them:
+    # a bare bracketed name is one and is left out. A zombie ("[x] <defunct>") still counts.
     ps -e -o pid= -o args= > "$TMP/raw" || return 1
-    awk '{ pid = $1; sub(/^[ \t]*[0-9]+[ \t]+/, ""); if ($0 !~ /^ps -e -o pid= -o args=/) print pid "\t" $0 }' \
+    awk '{ pid = $1; sub(/^[ \t]*[0-9]+[ \t]+/, "")
+           if ($0 !~ /^ps -e -o pid= -o args=/ && $0 !~ /^\[[^]]*\]$/) print pid "\t" $0 }' \
       "$TMP/raw" > "$1"
   fi
   case "$mem" in *[!0-9]*) mem= ;; esac
