@@ -156,7 +156,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
   `Status: Approved`.
 - **Stops at:** spec approval — "no open questions remain" · `Next: PLAN — Developer`.
 - **Lite / Strict:** lite folds clarify into the draft and the approval is a quick yes/no — never
-  skipped; strict clarifies first, then drafts.
+  skipped; strict clarifies first, then drafts. A sensitive area (`docs/domain.md`) clarifies
+  first in lite too.
 - **Refusal:** no fixed message — a matching spec in `specs/active/` is offered for resuming; a
   second spec for the same work is never opened.
 - **Common mistake:** asking it for a plan — it never produces one.
@@ -185,10 +186,11 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 
 ### `/review`
 - **What it does:** an independent, read-only review of the diff against the spec.
-- **When to use it:** after a build, and again on every fix diff.
+- **When to use it:** after a build, and again on a fix diff with a Medium or higher finding
+  (in a sensitive area: every fix diff).
 - **Reads / writes:** reads the diff, the spec in `specs/active/`, its plan in `specs/plans/`
   (file list, criterion ↔ test map), `prompts/review.md`; writes nothing.
-- **Stops at:** the findings report, verbatim · `Next: TRIAGE — human (real / noise / investigate); then Developer fix rounds, then VERIFY`.
+- **Stops at:** the findings report, verbatim · `Next: TRIAGE — human (real / noise / defer / investigate); then Developer fix rounds, then VERIFY`.
 - **Lite / Strict:** no difference — independent review is never optional, in any mode: a
   read-only reviewer (the `reviewer` subagent in Claude Code) or a fresh session.
 - **Refusal:** none — a soft check: without a branch/diff and a spec `In progress`, it says so and asks.

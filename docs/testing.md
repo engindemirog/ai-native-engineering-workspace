@@ -96,3 +96,5 @@ A screenshot proves a criterion only against the spec's "User experience": every
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.
+An infrastructure failure outside the tests (mirror timeout, lost runner) is not a flake: rerun
+only the failed jobs and write the cause down (R-03 tells the two apart).

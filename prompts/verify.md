@@ -21,8 +21,13 @@ line is not evidence (docs/testing.md, Two speeds, one contract). A full green a
 this exact commit (handoff, or a CI run whose SHA equals HEAD) is cited, not re-run (rule 6).
 
 For each test, check it would FAIL if the behavior broke — a test that can't fail is not
-evidence. Check it by reading the assert, or by breaking the code on purpose in a temporary copy
-outside the repo and watching the test go red; nothing of that is committed.
+evidence. Reading the assert is enough by default. Break the code on purpose — in a temporary
+copy outside the repo, watching the test go red, nothing committed — for risky behavior:
+concurrency, money, authorization, boundary values (typically 4–5 per spec), and for every
+criterion in a sensitive area (docs/domain.md). Name in the table which ones you broke.
+
+A fix round with only Low/Info findings skipped re-review: read its diff — anything beyond the
+finding is a finding. Each deferred finding has its entry in specs/backlog.md.
 
 List explicitly: criteria WITHOUT real evidence, and tests that assert implementation details
 instead of behavior. No claims without proof; gaps are findings, not footnotes.

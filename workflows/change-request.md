@@ -42,7 +42,7 @@ Same segments as `feature-development.md` (see `segments.md`), same gates, small
 | **PLAN** — `specs/plans/NNNN-plan.md` | Developer | `prompts/plan.md` | Short: files + steps + criterion↔test map covering *both* changed and preserved criteria. **[GATE: human]** plan approval — **never skipped in this lane**; `Approved by / on` must be filled before build. |
 | **BUILD** | Developer | `prompts/build.md` | Spec → `In progress`; `scripts/check` green; changed files match the plan. |
 | **REVIEW** — narrow: the change diff | Reviewer (fresh session / read-only subagent) | `prompts/review.md` | Findings or "clean". |
-| **TRIAGE** | Human | — | **[GATE: human]** real / noise / investigate. |
+| **TRIAGE** | Human | — | **[GATE: human]** real / noise / defer / investigate. |
 | **VERIFY** | QA | `prompts/verify.md` | Criterion ↔ evidence table for changed **and** preserved criteria. **UI change: before/after screenshots are the evidence.** |
 | **SHIP** | Human | — | **[GATE: human]** DoD → PR → merge → mini-spec moves to `specs/done/`, `Status: Shipped`. |
 

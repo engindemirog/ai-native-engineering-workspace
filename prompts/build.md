@@ -3,7 +3,8 @@
 ```
 Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by step.
 
-- Work on branch <type>/<NNNN>-<name> (docs/git.md). Conventional Commits with plan references.
+- Work on branch <type>/<NNNN>-<name> (docs/git.md). Conventional Commits with plan references;
+  commit named paths only (git commit -- <paths>), never everything staged.
 - Follow docs/conventions.md and docs/security.md.
 - Write the tests from the criterion↔test map as you go — tests assert behavior.
 - After each plan step: brief note on what you did. Needing to leave the plan? STOP → recovery
@@ -17,11 +18,15 @@ Iterate with ./scripts/check --fast; writing one test, run that test alone (docs
 Two speeds, rule 7). The handoff carries the FULL profile output, shown — CHECK GREEN (full, …)
 (docs/testing.md, Two speeds, one contract).
 Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan.
+The full green may be CI's run of the pushed commit (SHA = HEAD): hand off with its link while
+it runs — REVIEW may start; TRIAGE waits for it to be green, and a red run returns to BUILD.
 Return: changed files + check output. Do not self-review; that comes next, independently.
 Show check output in the conversation and reference it; never save it to a file.
 
 §fixes — For triaged review findings: fix ONLY findings marked real, smallest change per finding,
 one commit per finding referencing it and the round: [plan <NNNN>/fix-<k>], k = this fix round
 (1, 2, 3). A fourth round is not started: R-06 first. --fast green after each finding's commit;
-full green before the fix diff goes back to review. Never touch unrelated code.
+full green before the fix diff goes on — back to review, or to VERIFY when the round holds only
+Low/Info findings outside a sensitive area (workflows/feature-development.md, step 8).
+Never touch unrelated code.
 ```

@@ -7,6 +7,9 @@
   green is evidence for its commit and is cited, not re-run, by review, verify and the gates
   (`docs/testing.md`, Two speeds rule 6); running the one test being written is authoring, not a
   second contract, and never evidence (rule 7). Only full green is evidence — unchanged.
+- Revised: 2026-10-27 — v1.18: the full green may be CI's run of the pushed commit; REVIEW may
+  start while it runs, TRIAGE waits for it to be green (`prompts/build.md`, `prompts/review.md`).
+  Only full green is evidence — unchanged.
 
 ## Context
 Agents run `./scripts/check` after every fix and before every handoff. When the contract holds

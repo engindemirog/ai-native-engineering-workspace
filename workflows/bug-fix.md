@@ -21,6 +21,6 @@ REPORT → REPRODUCE (red test) → DIAGNOSE → FIX → PROVE → REVIEW → SH
    is an exit; `--fast` is for iterating in FIX) — no new regressions
    (else R-04: revert first). The reproduction test stays forever as a regression guard.
 6. **REVIEW** — fresh session, narrow scope: the fix diff. **[GATE: human]** triage (real / noise /
-   investigate) — never automated, in any mode.
+   defer / investigate) — never automated, in any mode.
 7. **SHIP.** Small bugs: PR referencing the report. Behavior-changing fixes are not bug fixes —
    they take the CHANGE lane of `change-request.md` (mini-spec first).

@@ -10,7 +10,8 @@
 <!-- Path by path. This list is the blast radius; silent additions are plan drift (R-07). -->
 
 ## Ordered steps
-<!-- Which layer/part first and why. Keep steps commit-sized. -->
+<!-- Which layer/part first and why. Keep steps commit-sized. A plan over ~150 lines means the
+     spec is too big (prompts/plan.md, SIZE). -->
 
 ## Risks & open questions
 <!-- Each with YOUR recommendation and rationale (proposal rule). Unresolved questions block build. -->
@@ -22,3 +23,7 @@
 |---|---|---|
 | AC-1 | | |
 | AC-2 | | |
+
+## Amendments
+<!-- Approved changes after the plan gate (review triage, R-07), never silent. One line each:
+     A-1 — <what changes: files, steps> — <why; source: review round n / R-07> — <name>, <YYYY-MM-DD> -->

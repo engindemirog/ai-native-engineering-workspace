@@ -28,17 +28,19 @@ the review report. The next role starts a **new session** and reads them.
 
 | Segment | Role | Steps | Entry check | Prompt(s) | Gate | Sets | Handoff |
 |---|---|---|---|---|---|---|---|
-| **ANALYZE** | Analyst | 1–2 | *Hard:* no twin — if a spec in `specs/active/` matches the request, offer to resume it; never open a second spec for the same work. New number = highest in `active/`, `done/`, `plans/` + 1. | `prompts/clarify.md`, then `prompts/spec.md` (incl. self-critique) | Spec approval (always, in every mode — it is PLAN's entry condition; lite folds clarify into the draft) | spec `Status: Approved` | "no open questions remain" · `Next: PLAN — Developer` |
+| **ANALYZE** | Analyst | 1–2 | *Hard:* no twin — if a spec in `specs/active/` matches the request, offer to resume it; never open a second spec for the same work. New number = highest in `active/`, `done/`, `plans/` + 1. | `prompts/clarify.md`, then `prompts/spec.md` (incl. self-critique) | Spec approval (always, in every mode — it is PLAN's entry condition; lite folds clarify into the draft, except in a sensitive area — `docs/domain.md`) | spec `Status: Approved` | "no open questions remain" · `Next: PLAN — Developer` |
 | **PLAN** | Developer | 3–4 | *Hard:* spec has `Status: Approved` (or `In progress` when revising mid-work). Else refuse: **"Spec not approved — run ANALYZE or get approval first."** If a plan file exists, offer to revise it. | `prompts/plan.md` | Plan approval; never start building | plan `Status: Approved` + `Approved by / on: <name>, <YYYY-MM-DD>` (ask for the name; propose `git config user.name`) | `Next: BUILD — Developer` |
 | **BUILD** | Developer | 5 | *Hard:* plan's `Approved by / on` holds a name and date (empty, `—`, or comment only = not approved). Else refuse: **"Plan not approved — run PLAN and get the approval recorded first."** | `prompts/build.md` | — (deviation → R-07) | spec `Status: In progress` before the first change; if already `In progress`, resume from the plan's next unfinished step | changed files vs. plan list + real `./scripts/check` output · `Next: INDEPENDENT REVIEW — fresh session / read-only reviewer` |
-| **REVIEW** | Reviewer | 6 | *Soft:* a branch/diff with commits and a spec `In progress` exist. | `prompts/review.md` | — | nothing (read-only) | findings verbatim, no softening · `Next: TRIAGE — human (real / noise / investigate); then Developer fix rounds, then VERIFY` |
-| **VERIFY** | QA | 9 | *Soft:* triage is complete — every finding real (fixed), noise (rationale written), or investigate. | `prompts/verify.md` | — | nothing (no production code) | criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)` |
+| **REVIEW** | Reviewer | 6 | *Soft:* pushed commits on the branch and a spec `In progress` exist. It does not wait for CI's full run — TRIAGE does. | `prompts/review.md` | — | nothing (read-only) | findings verbatim, no softening · `Next: TRIAGE — human (real / noise / defer / investigate); then Developer fix rounds, then VERIFY` |
+| **VERIFY** | QA | 9 | *Soft:* triage is complete — every finding real (fixed), noise (rationale written), defer (entry in `specs/backlog.md`), or investigate. | `prompts/verify.md` | — | nothing (no production code) | criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)` |
 
 The CHANGE lane of `change-request.md` runs these same segments with `specs/TEMPLATE-mini.md`
 as the spec (Source mandatory, changed + preserved criteria); entry checks and gates are identical.
 
 Steps 7 (triage) and 10 (ship) belong to the human; step 8 (fix rounds) is the Developer applying
-triage with `prompts/build.md §fixes`, followed by REVIEW again on the fix diff.
+triage with `prompts/build.md §fixes`, followed by REVIEW again on the fix diff when the round
+holds a Medium or higher finding; a Low/Info-only round goes on to VERIFY
+(`feature-development.md`, step 8).
 
 ## The chainer
 

@@ -19,6 +19,59 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.18 — Field rules, generalized
+
+From a field project that changed the process on its own and kept shipping. Its generic rules
+come back here. Text only, no script changes.
+
+- **Defer is a triage outcome:** real / noise / **defer** / investigate. A deferred finding is real
+  but fixed later by a human decision. It gets an entry in the new `specs/backlog.md` (source,
+  severity, recommendation, who and when), which is deleted with the work that closes it.
+- **Severity drives re-review:** findings carry Critical / High / Medium / Low / Info. A fix round
+  with a Medium or higher finding is re-reviewed. A Low/Info-only round goes to VERIFY, which reads
+  its diff, so the producer still never verifies its own work.
+- **Targeted red evidence:** reading the assert is the default. Breaking the code on purpose is
+  required for concurrency, money, authorization and boundary values (typically 4–5 per spec).
+- **Sensitive areas** (`docs/domain.md`, asked at bootstrap): in every mode the clarify gate is
+  asked, every fix round is re-reviewed, and every criterion is proven red by breaking the code.
+- **Plan amendments** are recorded in the plan as `A-n — what — why — name, date`. Review counts
+  their files as in-plan.
+- **Plan size signal:** a plan over ~150 lines means the spec is too big. Recommend a split.
+- **Review does not wait for CI:** BUILD may hand off with the CI run of the pushed commit still
+  going. REVIEW starts; TRIAGE waits for it to be green (ANEW-0009 revised).
+- **Commit named paths only** (`git commit -- <paths>`), because a parallel session may have
+  staged files in the same tree.
+- **Infrastructure is not a flake** (R-03): a job failing outside the tests (mirror timeout, lost
+  runner) is rerun with its cause written down. A test that fails and then passes is flaky, and a
+  rerun is never the fix.
+
+### Upgrading
+
+- `specs/backlog.md`: new, take as is.
+- `prompts/review.md`: intent: severity scale; defer in the triage list; amendments count as
+  in-plan; may start before CI's full run ends. `docs/roles/reviewer.md`, `docs/roles/README.md`,
+  `docs/commands.md`, `.github/pull_request_template.md`, `specs/TEMPLATE.md`,
+  `specs/TEMPLATE-mini.md`, `workflows/bug-fix.md`, `refactor.md`, `change-request.md`: defer in
+  the triage list, the DoD and the scorecard.
+- `workflows/feature-development.md`, `workflows/segments.md`: intent: defer and amendments at
+  triage; Low/Info-only fix rounds go to VERIFY; review starts on pushed commits; clarify is
+  asked in a sensitive area.
+- `prompts/build.md`: intent: CI's full run as the handoff green; named-path commits;
+  where a fix round goes next. `docs/git.md`: the named-path rule.
+- `prompts/verify.md`: intent: when to break the code; read Low/Info-only fix diffs; deferred
+  findings have entries. `docs/roles/qa.md`: the matching power.
+- `prompts/plan.md`, `specs/plans/TEMPLATE.md`: intent: SIZE at ~150 lines; the Amendments
+  section. `prompts/recovery/plan-drift.md`: amendments are recorded as A-n.
+- `docs/domain.md`: intent: a Sensitive areas section. `prompts/bootstrap.md`: asks for it.
+  `prompts/spec.md`: names it in Constraints. `workflows/README.md`: what it changes.
+- `prompts/recovery/flaky-test.md`, `docs/testing.md` (Determinism): intent: infrastructure vs.
+  flake.
+- `AGENTS.md`: the Specs row points at `specs/backlog.md`. A bootstrapped AGENTS.md gets the same
+  pointer.
+- `docs/decisions/anew/ANEW-0009`: take as is (gains a `Revised:` line).
+- `.anew-version`: `v1.18`.
+- Full diff: https://github.com/engindemirog/ai-native-engineering-workspace/compare/v1.17...v1.18
+
 ## v1.17 — Kernel threads are not residue
 
 From a field project whose residue test went red on a Linux CI agent: `ps` lists kernel threads

@@ -33,7 +33,7 @@
 | Security rules | `docs/security.md` |
 | Git & branching rules | `docs/git.md` |
 | Decisions (ADRs) · roles (who may do what) | `docs/decisions/` · `docs/roles/` |
-| Specs & plans | `specs/active/` · `specs/plans/` · shipped → `specs/done/` |
+| Specs & plans | `specs/active/` · `specs/plans/` · shipped → `specs/done/` · deferred findings → `specs/backlog.md` |
 | Processes & gates · prompts & recovery ramps | `workflows/` · `prompts/` |
 | Every command: what it does, where it stops, lite vs strict | `docs/commands.md` |
 | The single verification command | `scripts/check` |

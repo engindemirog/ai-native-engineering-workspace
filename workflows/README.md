@@ -17,7 +17,7 @@ uses (`prompts/…`) — workflows never copy prompt text, so there is exactly o
 
 - **[GATE: human]** — a human decision. Never automated, in any mode.
 - **[GATE: human — strict]** — required in strict mode; in lite mode the agent states its
-  assumption and proceeds unless you object.
+  assumption and proceeds unless you object — except in a sensitive area, where it is asked.
 - **[GATE: light]** — asked in every mode, but in lite it is a quick yes/no (spec approval): it is
   never skipped, because it is the entry condition of the next segment.
 - **Role:** who executes the step (see `docs/roles/`). In strict mode, role = separate session.
@@ -33,6 +33,10 @@ Set at bootstrap, recorded in `AGENTS.md`:
   (a subagent or second window) and catches what the producer can't.
 - **strict** — Intent → Clarify → Spec → **[GATE]** → Plan → **[GATE]** → Build → Independent
   Review → **[GATE: triage]** → Verify → **[GATE: ship]**. For teams and critical systems.
+
+**Sensitive areas** (`docs/domain.md`, set at bootstrap) are stricter in every mode: the clarify
+gate is asked in lite too, every fix round is re-reviewed (no Low/Info shortcut), and every
+criterion is proven red by breaking the code (`prompts/verify.md`).
 
 **Segments and the chainer** (`segments.md`). Each stage is a *segment* — ANALYZE, PLAN, BUILD,
 REVIEW, VERIFY — canonical, entry-checked, and always ending at a handoff. Adapters expose them

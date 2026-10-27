@@ -40,7 +40,7 @@ what is deliberately NOT being done. Decisions from clarifying questions are fol
 ## Definition of Done
 - [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
 - [ ] `scripts/check` green
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale
+- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `specs/backlog.md`
 - [ ] Docs / ADRs updated if behavior or architecture changed
 - [ ] Spec moved to `specs/done/` (it becomes immutable there)
 
@@ -49,6 +49,6 @@ what is deliberately NOT being done. Decisions from clarifying questions are fol
 |---|---|
 | Spec revisions | |
 | Fix rounds | |
-| Review findings: real / noise | |
+| Review findings: real / noise / deferred | |
 | Regressions introduced | |
 | Bugs escaped to production | |

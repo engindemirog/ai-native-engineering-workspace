@@ -14,6 +14,8 @@
   `fix(catalog): empty page size [plan 0001/fix-2]` — the reviewer counts rounds from these
   (R-06 after round 3).
 - Agent commits follow the same standard: the agent writes the message, the human approves.
+- Commit named paths only: `git commit -- <paths>`, never `git add -A`, `git add .` or
+  `commit -a`. Another session or tool may have written or staged files in the same tree.
 
 ## Forbidden
 - Direct commits to the default branch.

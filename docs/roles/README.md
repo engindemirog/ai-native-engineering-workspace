@@ -36,8 +36,8 @@ Start only after my confirmation.
 
 Roles produce and verify; the human decides. These are never delegated to an agent, in any mode:
 spec approval (light in lite) · plan approval, recorded in the plan file · finding triage
-(real / noise / investigate) · ship · the change-request triage verdict · the trivial-change
-policy and the operating mode (set at bootstrap).
+(real / noise / defer / investigate) · ship · the change-request triage verdict · the
+trivial-change policy and the operating mode (set at bootstrap).
 
 ## Shared rules (all roles)
 

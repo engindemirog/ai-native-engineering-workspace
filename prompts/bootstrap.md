@@ -15,7 +15,8 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    we start from my answers.
 2. INTERVIEW me one topic at a time — with your own recommendation and rationale for every
    question (proposal rule):
-   product & goal · domain terms and business rules · architecture style & module boundaries ·
+   product & goal · domain terms and business rules · sensitive areas (docs/domain.md) ·
+   architecture style & module boundaries ·
    forbidden dependencies · conventions (data rules, error handling, naming) · testing
    expectations (UI work: the e2e tool, and who owns the app-under-test lifecycle) · security
    posture · git rules · trivial-change policy ("what do label/typo-level changes require?" —

@@ -12,6 +12,8 @@ specs/plans/TEMPLATE.md:
   it runs in (fast or full). A new test must be caught by its step's selector in
   scripts/check.conf (docs/testing.md, Two speeds, rule 4).
 
+SIZE: a plan over ~150 lines means the spec is too big — recommend a split (prompts/spec.md,
+SIZE) before asking for approval.
 Write in the docs language (AGENTS.md, Language); field labels stay English.
 WRITE NO CODE. Present the plan and stop for my approval. If the spec has a gap or conflicts
 with docs/, say so now (recovery R-10) — not during build.

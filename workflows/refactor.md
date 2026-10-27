@@ -20,5 +20,6 @@ BASELINE → SPEC & PLAN → [APPROVAL] → REFACTOR → PROVE UNCHANGED → REV
    means behavior changed — stop, that's a feature). Performance-sensitive paths: measure
    before/after (R-12).
 6. **REVIEW** — fresh session. Extra lens: did semantics sneak in? Are names/layers now *more*
-   aligned with `docs/architecture.md`? **[GATE: human]** triage (real / noise / investigate).
+   aligned with `docs/architecture.md`? **[GATE: human]** triage (real / noise / defer /
+   investigate).
 7. **SHIP.** PR → merge → the mini-spec moves to `specs/done/` (`Status: Shipped`).
