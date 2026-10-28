@@ -38,7 +38,8 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 4. **VERIFY.** Run `./scripts/doctor` (structure + configuration) and `./scripts/check`
    (must pass; in an empty greenfield it may be a no-op with a note), then the residue test
    (`./scripts/residue`, both profiles; `docs/testing.md`, Resource hygiene)
-   — reported at the gate; failing it means not done.
+   — reported at the gate; failing it means not done. Greenfield: `RESIDUE NOT MEASURED`; the
+   work that adds the first steps runs it then.
    Context quiz: open a *fresh* session and ask a project question (e.g. "what type do money
    fields use?") — the agent must answer from files. If it can't, the docs aren't teaching; fix them.
 

@@ -6,7 +6,8 @@
 #   build [fast]: ./gradlew assemble --no-daemon
 #   test: ./gradlew test --no-daemon
 #   lint [fast]: npm run lint
-# Blank lines and lines starting with # are ignored. Steps run in order, fail fast.
+# Blank or whitespace-only lines and lines whose first non-blank character is # are ignored.
+# Steps run in order, fail fast.
 # Two speeds, one contract (docs/testing.md): ./scripts/check runs every step (full — the only
 # evidence); ./scripts/check --fast runs only steps whose name carries [fast] (inner loop).
 # A conf without [fast] tags runs every step in both profiles.
@@ -48,8 +49,12 @@ took() { [ -n "$1" ] && [ -n "$2" ] && echo " ($(($2 - $1)) s)"; }   # " (12 s)"
 start=$(now)
 
 steps=0
+ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only: the same set in every shell and locale
 while IFS= read -r line || [ -n "$line" ]; do
-  case "$line" in ''|\#*) continue ;; esac
+  # Whitespace-only lines (a stray CR included) and indented comments are not steps either:
+  # each would run as an empty command and count as a green step.
+  case "$line" in *[!$ws]*) ;; *) continue ;; esac
+  case "${line#"${line%%[!$ws]*}"}" in \#*) continue ;; esac
   name=${line%%:*}
   cmd=${line#*:}
   case "$name" in

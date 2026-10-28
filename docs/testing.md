@@ -11,7 +11,23 @@
 <!-- Test framework(s), where tests live, naming pattern. -->
 
 ## What must be tested
-<!-- e.g. every business rule (BR-n), every boundary/forbidden dependency, critical flows E2E/smoke. -->
+<!-- e.g. every business rule (BR-n), every boundary/forbidden dependency; the e2e journeys and
+     budget, if the project has e2e at all (Test layers). -->
+
+## Test layers
+1. **The cheapest test that proves the criterion.** Unit first, then component or integration
+   (UI states render in component tests), and a browser end-to-end test only for what no lower
+   layer can prove. A test sits at the lowest layer that fails for the right reason.
+2. **e2e is optional, and budgeted.** ANEW does not require end-to-end tests. A project that
+   has them names at bootstrap the few critical journeys they cover and a budget (journeys and
+   minutes, under "What must be tested"). Over budget, no e2e test is added: the next test goes a
+   layer down, or an existing one moves down.
+3. **What exists runs in check.** Every test, e2e included, is a check step — slow suites
+   full-only (Two speeds). A suite outside check costs its upkeep and proves nothing: it is never
+   evidence, and nobody sees it break.
+4. A UI criterion also needs a screenshot against the spec's User experience (Evidence for UI
+   criteria). The screenshot is no reason for an e2e test: the states are tested at the lowest
+   layer that can (rule 1).
 
 ## Protected-tests rule
 Weakening asserts, deleting, or skipping tests to reach green is forbidden. A red test triggers
@@ -56,9 +72,9 @@ A screenshot proves a criterion only against the spec's "User experience": every
    count. Rerun it whenever `scripts/check.conf` changes.
 3. Warm-process caches trade memory for speed for humans who build rarely; with an agent, trade the
    seconds back for a flat memory profile.
-4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e runs single-worker
-   and headless by default; one component owns the app-under-test lifecycle — started for the run,
-   stopped at the end, including on failure and timeout.
+4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e, where a project
+   has it, runs single-worker and headless by default; one component owns the app-under-test
+   lifecycle — started for the run, stopped at the end, including on failure and timeout.
 5. **Data counts too.** Every run starts from a known state: what a run writes — database rows,
    files, queues, uploaded objects — never reaches the next run, also after a run killed halfway.
    Use a fresh database (or schema) per run, or seed and clean up inside the same step, keeping its
@@ -72,7 +88,7 @@ A screenshot proves a criterion only against the spec's "User experience": every
    iteration → `--fast`. Segment exits, PROVE steps, recovery-ramp exits, the verify table and CI
    → `CHECK GREEN (full, …)`. `scripts/doctor` warns when a shipped spec, or in CI the pull
    request description, shows `CHECK GREEN (fast, …)` and no `(full, …)`.
-3. Fast: compile and the quick tests (unit, lint). Full only: e2e, long integration suites, and
+3. Fast: compile and the quick tests (unit, lint). Full only: long integration suites, e2e, and
    any single step over ~a minute — the minute is a per-step threshold, not a total for the fast
    profile; fast has no fixed total. Bootstrap decides per stack and tags the steps `[fast]` in
    check.conf. When fast grows too long to iterate with, take steps out in this order: lint
@@ -94,11 +110,12 @@ A screenshot proves a criterion only against the spec's "User experience": every
    evidence; `scripts/check` stays the way to ask "is this good?". Repeat runs are for the
    flaky-test hunt only (R-03).
 8. **Before a push, run the touched area.** `--fast`, plus the full-only tests that cover what
-   changed (the touched feature's e2e tests, the touched module's integration tests), selected
-   with the test tool's own filter. Failures that only show in a real browser or against real
-   infrastructure then surface in minutes, not after a CI round, a review and a triage. Like
-   rule 7 this is authoring, never evidence. When CI runs the full profile on the pushed commit,
-   that run is the full green (rule 6): do not also run full locally before pushing.
+   changed (the touched module's integration tests; the touched journey's e2e test, if there is
+   one), selected with the test tool's own filter. Failures that only show against real
+   infrastructure or in a real browser then surface in minutes, not after a CI round, a review
+   and a triage. Like rule 7 this is authoring, never evidence. When CI runs the full profile on
+   the pushed commit, that run is the full green (rule 6): do not also run full locally before
+   pushing.
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.

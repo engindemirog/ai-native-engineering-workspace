@@ -19,6 +19,42 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.20 — e2e is optional
+
+ANEW read as if every project had browser end-to-end tests: bootstrap asked "which e2e tool?",
+and the examples led with e2e. In the field, e2e volume was the main cost of a feature, and a new
+project answered by moving e2e out of check. Neither is the default now.
+
+- **Test layers** (`docs/testing.md`): the cheapest test that proves the criterion — unit, then
+  component or integration, a browser e2e test only for what no lower layer can prove. e2e is
+  optional; a project that has it names its critical journeys and a budget at bootstrap, and over
+  budget the next test goes a layer down. **What exists runs in check** (slow suites full-only):
+  a suite outside check is never evidence. Bootstrap recommends component tests and no e2e
+  unless a critical journey needs one.
+- **No steps, no claim:** `scripts/doctor` warns when `scripts/check.conf` has no steps;
+  `scripts/residue` says `RESIDUE NOT MEASURED` instead of `RESIDUE CLEAN` on such a conf.
+  `scripts/check` no longer counts a whitespace-only line (a stray CR included) or an indented
+  comment as a step — each ran as an empty command and printed a green step.
+
+### Upgrading
+
+- `scripts/check` — behavior: lines that are blank after ASCII whitespace (space, tab, CR, VT,
+  FF), and lines whose first non-blank character is `#`, are skipped (before: only empty lines
+  and lines starting with `#`); an indented `#name: cmd` line no longer runs. The set is ASCII on
+  purpose, so every shell and locale agrees; doctor and residue use the same set.
+- `scripts/doctor` — behavior: a `check.conf` with no step by that rule → WARN
+  "scripts/check.conf has no steps" (instead of ok).
+- `scripts/residue` — behavior: the same conf → prints `RESIDUE NOT MEASURED (<profile>)`, exits
+  0, measures nothing and runs no check.
+- `scripts/selftest` — scenarios for the behaviors above.
+- `docs/testing.md`: intent: new "Test layers" section (journeys and budget under "What must be
+  tested"; a UI screenshot never replaces the test); e2e examples become conditional.
+  `prompts/bootstrap.md`, `workflows/bootstrap.md`: intent: asks which layer proves UI criteria,
+  e2e only with journeys and a budget; a greenfield residue is NOT MEASURED and is run by the
+  work that adds the steps. `docs/commands.md`: the NOT MEASURED result; only gate WARNs become
+  FAIL under `--strict`.
+- Full diff: `/compare/v1.19...v1.20`.
+
 ## v1.19 — Delivery speed, from the field
 
 From a field project where a four-line style fix took hours: two failures showed only in a real

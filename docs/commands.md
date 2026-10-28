@@ -73,7 +73,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Stops at:** exit 0 = healthy (warnings allowed), exit 1 = broken; `FAIL` / `WARN` lines say why.
 - **Lite / Strict:** no difference. The `--strict` flag is not strict mode; the two are independent.
 - **Refusal:** none — it reports.
-- **Common mistake:** reading a local `WARN` as harmless — under `--strict`, in CI, it is a `FAIL`.
+- **Common mistake:** reading a local gate `WARN` (spec/plan consistency) as harmless — under
+  `--strict`, in CI, it is a `FAIL`.
 
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in
@@ -99,6 +100,7 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **When to use it:** at bootstrap (both profiles), and whenever `scripts/check.conf` changes.
 - **Reads / writes:** runs `scripts/check`; writes only a temp dir, deleted on exit.
 - **Stops at:** `RESIDUE CLEAN (<profile>, 2 runs)` (exit 0) or `RESIDUE FOUND (<profile>)` (exit 1).
+  A `check.conf` without steps: `RESIDUE NOT MEASURED (<profile>)` (exit 0) — never evidence of clean.
 - **Lite / Strict:** no difference.
 - **Refusal:** a red check stops it: `RESIDUE TEST ABORTED (<profile>): check failed in run <n> — the residue test needs a green check`.
 - **Common mistake:** running it on a busy machine — whatever starts meanwhile is listed too.
@@ -290,7 +292,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 | `scripts/init` | Install an adapter | Prints next step | Same | Same |
 | `scripts/doctor` | Workspace health; `--strict` in CI | Exit 0 / 1 | Same | Same |
 | `scripts/check` | The verification contract; `--fast` to iterate | `CHECK GREEN` / `CHECK FAILED` | Same | Same |
-| `scripts/residue` | Check leaves nothing running | `RESIDUE CLEAN` / `RESIDUE FOUND` | Same | Same |
+| `scripts/residue` | Check leaves nothing running | `RESIDUE CLEAN` / `RESIDUE FOUND` / `RESIDUE NOT MEASURED` | Same | Same |
 | `scripts/selftest` | ANEW's scripts behave as documented | Pass / fail count | Same | Same |
 | `/bootstrap` | Adapt ANEW to the project | Language · interview · report | Sets the mode | Sets the mode |
 | `/new-feature` | Chain the segments | Each of the four gates | Chains | Refuses |

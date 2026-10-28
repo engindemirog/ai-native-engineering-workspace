@@ -31,6 +31,13 @@ exits 1 "no check.conf → refuses";                has "no scripts/check.conf y
 conf '# only a comment'
 check
 exits 0 "conf without steps → greenfield no-op";  has "greenfield no-op" "no-op is named"
+printf '   \n\t\n\r\n  # indented comment\n' > "$C/scripts/check.conf"
+check
+has "greenfield no-op" "whitespace-only lines, a CR line and an indented comment are not steps"
+hasnt "CHECK GREEN" "… and never count as a green step"
+printf '\302\240\n' > "$C/scripts/check.conf"   # a no-break space: not ASCII whitespace
+check
+hasnt "greenfield no-op" "a non-ASCII space line is a step in every shell (as for doctor and residue)"
 conf 'compile [fast]: echo compile ran' 'unit [fast]: echo unit ran' 'e2e: echo e2e ran'
 check --fast
 exits 0 "--fast, tagged conf";                    has "CHECK GREEN (fast, 2 steps" "--fast runs only [fast] steps"
@@ -77,6 +84,10 @@ LEAK=anew-residue-leak-$$
 echo "== scripts/residue =="
 residue --fsat
 exits 2 "residue: unknown argument";             has "usage:" "residue: prints usage"
+printf '# only a comment\n\n  # indented\n \r\n' > "$C/scripts/check.conf"
+residue
+exits 0 "residue: conf without steps";           has "RESIDUE NOT MEASURED (full)" "no steps → not measured, never clean"
+hasnt "baseline: " "no steps → nothing is measured"
 conf 'unit [fast]: exit 3'
 residue
 exits 1 "residue: red check";                    has "RESIDUE TEST ABORTED (full): check failed in run 1" "red check aborts the residue test"
@@ -138,6 +149,12 @@ echo "== scripts/doctor =="
 doctor
 exits 0 "clean workspace";                        has "== result: 0 fail" "clean workspace has no failures"
 hasnt "repository clone" "clean workspace: no clone warning"; hasnt "evidence directory" "clean workspace: no evidence warning"
+
+reset; put scripts/check.conf '# step: commented out until code exists' '  # indented' '   '
+doctor;            has "WARN  scripts/check.conf has no steps" "a conf without steps is reported"
+put scripts/check.conf 'unit [fast]: echo unit ran'
+doctor;            hasnt "check.conf has no steps" "a conf with a step is fine"
+has "ok    verification contract configured" "… and reported as configured"
 
 reset; put specs/plans/0001-plan.md '# Plan 0001' '- Approved by / on: —'
 doctor;            has "WARN  plan exists for unapproved spec 0001" "plan without a spec → WARN locally"

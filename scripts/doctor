@@ -70,7 +70,11 @@ if [ "$lines" -gt 60 ]; then
   warn "AGENTS.md is $lines lines — it should be a signpost (<= ~40 lines), not a handbook"
 fi
 
-if [ -f "$ROOT/scripts/check.conf" ]; then
+# Same rule as check: blank or whitespace-only lines and (indented) comments are not steps.
+ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only, as in check
+if [ -f "$ROOT/scripts/check.conf" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" "$ROOT/scripts/check.conf"; then
+  warn "scripts/check.conf has no steps — check and residue prove nothing until the first steps exist"
+elif [ -f "$ROOT/scripts/check.conf" ]; then
   ok "verification contract configured (scripts/check.conf)"
 else
   warn "scripts/check.conf missing — bootstrap generates it; until then './scripts/check' has nothing to run"

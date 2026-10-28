@@ -18,10 +18,11 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    product & goal · domain terms and business rules · sensitive areas (docs/domain.md) ·
    architecture style & module boundaries ·
    forbidden dependencies · conventions (data rules, error handling, naming) · testing
-   expectations (UI work: the e2e tool, who owns the app-under-test lifecycle, and how the app
-   runs deterministic under test — motion off, fixed clock/locale/seed; docs/testing.md,
-   Determinism) · known traps of this stack (docs/conventions.md "Known traps"; empty is
-   fine) · security posture · git rules ·
+   expectations (docs/testing.md, Test layers — UI work: which layer proves UI criteria; recommend
+   component tests and no e2e unless a critical journey needs one. With e2e: which journeys, the
+   budget, the tool, who owns the app-under-test lifecycle, and how the app runs deterministic
+   under test — motion off, fixed clock/locale/seed, Determinism) · known traps of this stack
+   (docs/conventions.md "Known traps"; empty is fine) · security posture · git rules ·
    trivial-change policy ("what do label/typo-level changes require?" —
    (1) PR + one reviewer, no spec [recommend this: cheap safety net]; (2) direct commit allowed on a trivial branch; (3) everything goes through a mini-spec
    [strictest]; write the answer to docs/git.md "Trivial changes") · operating mode (lite or
@@ -42,9 +43,11 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
       (Worked examples only, not a supported list: Gradle --no-daemon · Playwright --workers=1.)
    c. Prove — in VERIFY, run the residue test (./scripts/residue, then ./scripts/residue --fast)
       and report it at the gate. A bootstrap whose check fails the residue test is not done.
+      Greenfield (no steps yet): residue says RESIDUE NOT MEASURED; the work that adds the
+      first steps runs it then, on an idle machine, both profiles.
       Also confirm every test step still runs the same number of tests as before the switches:
       some runners forward unknown flags to the test process and silently run zero tests.
-   d. Split — tag the quick steps [fast] in their name, leave e2e and long suites full-only
+   d. Split — tag the quick steps [fast] in their name, leave slow suites full-only
       (docs/testing.md, Two speeds, one contract); split a test step by a selector, never by a
       list (rule 4). Report each profile's duration at the gate — the median of at least 3 runs,
       from check's own timings (rule 5). The residue test and the test-count check in (c) apply

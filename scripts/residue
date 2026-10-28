@@ -4,7 +4,8 @@
 # each run compares against the baseline taken before the first.
 #   ./scripts/residue          full profile (the one bootstrap reports at its gate)
 #   ./scripts/residue --fast   the fast profile (bootstrap runs both)
-# Exit 0 = clean, 1 = residue found or check red, 2 = usage. A new process counts as a survivor
+# Exit 0 = clean, or not measured (check.conf has no steps); 1 = residue found or check red;
+# 2 = usage. A new process counts as a survivor
 # only if it is still alive at a second look one settle period later, so short-lived background
 # activity drops out; anything else started meanwhile is listed — the list names it, you judge.
 # Tunables: ANEW_RESIDUE_SETTLE (seconds to wait after each run, default 5),
@@ -27,6 +28,15 @@ settle=${ANEW_RESIDUE_SETTLE:-5}
 tolerance=${ANEW_RESIDUE_MB:-512}
 case "$settle" in ''|*[!0-9]*) usage ;; esac
 case "$tolerance" in ''|*[!0-9]*) usage ;; esac
+
+# A conf without steps runs nothing, so there is nothing to measure — say so instead of "clean".
+# Same rule as check: blank or whitespace-only lines and (indented) comments are not steps.
+CONF="$ROOT/scripts/check.conf"
+ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only, as in check
+if [ -f "$CONF" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" "$CONF"; then
+  echo "RESIDUE NOT MEASURED ($profile): scripts/check.conf has no steps — rerun when steps exist"
+  exit 0
+fi
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/anew-residue.XXXXXX") || { echo "residue: mktemp failed" >&2; exit 1; }
 trap 'rm -rf "$TMP"' EXIT INT TERM
