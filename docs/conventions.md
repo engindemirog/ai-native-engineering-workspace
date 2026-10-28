@@ -26,6 +26,14 @@
 ## Data rules
 <!-- e.g. money/percentages use decimal types; timestamps are UTC; IDs are ... -->
 
+## Known traps
+<!-- Starts empty. One line per trap of this stack that a builder can know up front:
+     "<trap> — <what to do instead> — from <spec/finding>". A line is added when triage marks a
+     finding real and the reviewer says a build-time rule would have caught it; the human
+     approves it at triage as Amendment A-n and the Developer writes it in the fix round.
+     Builders read this section before the first plan step.
+     A trap that tooling can catch moves to "Enforced by tooling" instead. -->
+
 ## Enforced by tooling
 <!-- List what the compiler/linter/analyzers already enforce, so review doesn't re-litigate it.
 Wire new rules into `scripts/check` whenever possible — prose is advice, tooling is law. -->

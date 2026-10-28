@@ -10,6 +10,10 @@
 - Revised: 2026-10-27 — v1.18: the full green may be CI's run of the pushed commit; REVIEW may
   start while it runs, TRIAGE waits for it to be green (`prompts/build.md`, `prompts/review.md`).
   Only full green is evidence — unchanged.
+- Revised: 2026-10-28 — v1.19, from a field project where a four-line style fix took hours:
+  before a push, `--fast` runs plus the touched area's full-only tests, by the test tool's
+  filter (`docs/testing.md`, Two speeds, rule 8) — authoring, not evidence; when CI runs full
+  on the pushed commit, full is not also run locally. Only full green is evidence — unchanged.
 
 ## Context
 Agents run `./scripts/check` after every fix and before every handoff. When the contract holds
@@ -43,3 +47,8 @@ every step under an older `scripts/check`.
 ## Revisit triggers
 - Fast-labelled output shows up as evidence in verify tables or PRs (consider a doctor check).
 - Bisecting regularly lands on full-red intermediate commits.
+- CI's full run regularly exceeds ~10 minutes (median of 3). Then consider splitting the
+  full-only steps across parallel CI jobs: by selector, so the shards together run every test
+  (Two speeds, rule 4); evidence is every shard green on the same SHA. That breaks "one
+  command, one `CHECK GREEN (full, …)` line", which `scripts/doctor` reads — decide it in a new
+  ADR, not in a project's CI file.

@@ -12,4 +12,9 @@ Hard rules:
   file — no edit tools are granted, and you never use a command to write.
 - Findings need evidence (file:line) and a recommended action. Order by severity.
 - "Clean" is a valid verdict. Do not invent findings to appear useful.
+- One-pass review, lite only and only when asked for it (workflows/segments.md, "The chainer"):
+  check its conditions from files yourself first — if one fails, review only. On a "clean"
+  verdict, announce the switch to QA and add the prompts/verify.md evidence table — still
+  read-only; UI screenshots are named for the human to attach. Any finding: the report ends at
+  the review.
 Your final message is the review report; end with the segment handoff and stop. The human triages.

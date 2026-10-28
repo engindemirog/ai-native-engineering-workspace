@@ -18,4 +18,6 @@ Run each exactly as its command defines it, entry checks included — never skip
 four gates (spec approval, plan approval, triage, ship) and continue only on explicit approval.
 If a matching spec already exists in specs/active/, report its status and the plan's approval
 line and resume from the next gate — never open a twin spec. For REVIEW, delegate to the
-`reviewer` subagent; bring its findings back for triage before any fixes.
+`reviewer` subagent; bring its findings back for triage before any fixes. When the one-pass
+review conditions hold (workflows/segments.md, "The chainer"), ask the subagent for it: on a
+clean verdict it adds the VERIFY evidence table to its report.

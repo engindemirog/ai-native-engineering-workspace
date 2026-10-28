@@ -80,8 +80,10 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   order, fail fast. `--fast` runs only the steps tagged `[fast]`.
   **Fast green is a working state; only full green is evidence.** (`docs/testing.md`, Two speeds,
   one contract)
-- **When to use it:** `--fast` while iterating; plain `./scripts/check` at every handoff, PROVE
-  step, ramp exit and in CI.
+- **When to use it:** `--fast` while iterating, and before a push together with the touched
+  area's full-only tests (`docs/testing.md`, Two speeds, rule 8); plain `./scripts/check` at every
+  handoff, PROVE step, ramp exit and in CI. When CI runs full on the pushed commit, that run is
+  the handoff's full green (rule 6) — not a second local full run.
 - **Reads / writes:** reads `scripts/check.conf` (format: `scripts/check.conf.example`); writes
   only what its steps write.
 - **Stops at:** `CHECK GREEN (full, n steps, t s)` (exit 0) or `CHECK FAILED (full) at step: <name>` (exit 1).
@@ -136,6 +138,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Reads / writes:** `AGENTS.md`, `workflows/segments.md`; then whatever each segment reads and writes.
 - **Stops at:** spec approval · plan approval · triage · ship, continuing only on explicit approval.
   A matching spec in `specs/active/` is resumed from its next gate, never twinned.
+  One-pass review: outside a sensitive area and with no criterion that needs the code broken on
+  purpose, a clean `/review` carries `/verify` in the same independent session; the gates stay
+  (`workflows/segments.md`, "The chainer").
 - **Lite / Strict:** lite chains `/analyze` → `/plan` → `/build` → `/review` → `/verify`;
   strict refuses before any stage; unset stops (bootstrap has not run).
 - **Refusal (strict, in the chat language, command names verbatim):** "Mode is strict: stages are
@@ -191,6 +196,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Reads / writes:** reads the diff, the spec in `specs/active/`, its plan in `specs/plans/`
   (file list, criterion ↔ test map), `prompts/review.md`; writes nothing.
 - **Stops at:** the findings report, verbatim · `Next: TRIAGE — human (real / noise / defer / investigate); then Developer fix rounds, then VERIFY`.
+  A clean one-pass review (lite, `workflows/segments.md`) also carries the evidence table ·
+  `Next: TRIAGE — human (confirm the clean verdict and the evidence table); then SHIP`.
 - **Lite / Strict:** no difference — independent review is never optional, in any mode: a
   read-only reviewer (the `reviewer` subagent in Claude Code) or a fresh session.
 - **Refusal:** none — a soft check: without a branch/diff and a spec `In progress`, it says so and asks.
@@ -199,7 +206,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ### `/verify`
 - **What it does:** QA — maps every acceptance criterion to evidence (`docs/testing.md`,
   Evidence policy).
-- **When to use it:** after triage is complete.
+- **When to use it:** after triage is complete. Not needed after a clean one-pass review, whose
+  report already holds the table (lite, `workflows/segments.md`).
 - **Reads / writes:** reads the spec, `prompts/verify.md`, test output; writes no production code.
 - **Stops at:** the criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)`.
 - **Lite / Strict:** no difference; in strict, QA in a fresh session.
@@ -220,7 +228,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
   `specs/active/` (CHANGE) or one commit (TRIVIAL).
 - **Stops at:** the triage verdict, which you confirm; then the lane's gates.
 - **Lite / Strict:** strict runs only ANALYZE (mini) and stops at `Next: PLAN — Developer runs /plan <NNNN>`;
-  lite chains the lane, asking at every gate — the plan gate is never skipped.
+  lite chains the lane, asking at every gate — the plan gate is never skipped; a one-pass review
+  may join `/review` and `/verify` (`workflows/segments.md`, "The chainer").
 - **Refusal:** none — an open spec with the same `Source:` key is offered for resuming.
 - **Common mistake:** triaging by how small the request sounds instead of by the behavior test.
 

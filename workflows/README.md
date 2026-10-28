@@ -30,7 +30,8 @@ Set at bootstrap, recorded in `AGENTS.md`:
 - **lite** — Spec → **[GATE: light]** → Plan → **[GATE: human]** → Build → Independent Review →
   Verify (`/new-feature` also asks at triage and ship).
   For solo developers and low-risk work. Independent review is still non-negotiable — it's cheap
-  (a subagent or second window) and catches what the producer can't.
+  (a subagent or second window) and catches what the producer can't. A clean review may carry
+  VERIFY in the same independent session (one-pass review, `segments.md` "The chainer").
 - **strict** — Intent → Clarify → Spec → **[GATE]** → Plan → **[GATE]** → Build → Independent
   Review → **[GATE: triage]** → Verify → **[GATE: ship]**. For teams and critical systems.
 

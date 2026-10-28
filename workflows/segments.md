@@ -32,7 +32,7 @@ the review report. The next role starts a **new session** and reads them.
 | **PLAN** | Developer | 3–4 | *Hard:* spec has `Status: Approved` (or `In progress` when revising mid-work). Else refuse: **"Spec not approved — run ANALYZE or get approval first."** If a plan file exists, offer to revise it. | `prompts/plan.md` | Plan approval; never start building | plan `Status: Approved` + `Approved by / on: <name>, <YYYY-MM-DD>` (ask for the name; propose `git config user.name`) | `Next: BUILD — Developer` |
 | **BUILD** | Developer | 5 | *Hard:* plan's `Approved by / on` holds a name and date (empty, `—`, or comment only = not approved). Else refuse: **"Plan not approved — run PLAN and get the approval recorded first."** | `prompts/build.md` | — (deviation → R-07) | spec `Status: In progress` before the first change; if already `In progress`, resume from the plan's next unfinished step | changed files vs. plan list + real `./scripts/check` output · `Next: INDEPENDENT REVIEW — fresh session / read-only reviewer` |
 | **REVIEW** | Reviewer | 6 | *Soft:* pushed commits on the branch and a spec `In progress` exist. It does not wait for CI's full run — TRIAGE does. | `prompts/review.md` | — | nothing (read-only) | findings verbatim, no softening · `Next: TRIAGE — human (real / noise / defer / investigate); then Developer fix rounds, then VERIFY` |
-| **VERIFY** | QA | 9 | *Soft:* triage is complete — every finding real (fixed), noise (rationale written), defer (entry in `specs/backlog.md`), or investigate. | `prompts/verify.md` | — | nothing (no production code) | criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)` |
+| **VERIFY** | QA | 9 | *Soft:* triage is complete — every finding real (fixed), noise (rationale written), defer (entry in `specs/backlog.md`), or investigate. A one-pass review ("The chainer") writes its table before triage instead; triage confirms it. | `prompts/verify.md` | — | nothing (no production code) | criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)` |
 
 The CHANGE lane of `change-request.md` runs these same segments with `specs/TEMPLATE-mini.md`
 as the spec (Source mandatory, changed + preserved criteria); entry checks and gates are identical.
@@ -54,6 +54,19 @@ holds a Medium or higher finding; a Low/Info-only round goes on to VERIFY
   spec approval · plan approval · triage · ship. Before opening a spec, look for an existing one
   that matches the request; if found, report its status and the plan's approval line and resume
   from the next gate — never a twin spec.
+- **lite, one-pass review** — the chainer may ask **one** independent session or read-only
+  subagent for REVIEW and VERIFY together. That session, not the builder, checks the two
+  conditions from files and runs a plain review if either fails: the work is outside a sensitive
+  area (`docs/domain.md`), and no criterion needs the code broken on purpose (`prompts/verify.md`:
+  concurrency, money, authorization, boundary values). It reviews first. On a "clean" verdict it
+  announces the hat switch to QA and adds the criterion ↔ evidence table to the same report,
+  citing the full green of HEAD as usual (still running → the table waits for it). UI
+  screenshots: the table names each one it needs; the human takes them and attaches them to the
+  PR before SHIP and adds their links to the table. Any review finding ends the pass at the review —
+  triage, fix rounds and a separate VERIFY follow as usual; gaps in the table go to triage the
+  same way. Handoff: `Next: TRIAGE — human (confirm the clean verdict and the evidence table);
+  then SHIP`. The triage and ship gates stay. It saves a session and a handoff, never a gate;
+  the producer still never verifies its own work. Segment commands still stop (ANEW-0002).
 - **unset** — stop; bootstrap has not run.
 
 ## Enforcement outside the agent

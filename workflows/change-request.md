@@ -41,8 +41,8 @@ Same segments as `feature-development.md` (see `segments.md`), same gates, small
 | **MINI-SPEC** — `specs/active/NNNN-<name>.md` from `specs/TEMPLATE-mini.md` | Analyst | `prompts/spec.md` (mini template) | `Source:` work item is mandatory. **Changed behavior** criteria and **Preserved behavior** (regression) criteria are written together; out of scope listed. If the old behavior has a spec in `specs/done/`, add `Supersedes: <NNNN>/AC-x` — the shipped spec is never edited. **[GATE: human]** spec approval → `Status: Approved`. |
 | **PLAN** — `specs/plans/NNNN-plan.md` | Developer | `prompts/plan.md` | Short: files + steps + criterion↔test map covering *both* changed and preserved criteria. **[GATE: human]** plan approval — **never skipped in this lane**; `Approved by / on` must be filled before build. |
 | **BUILD** | Developer | `prompts/build.md` | Spec → `In progress`; `scripts/check` green; changed files match the plan. |
-| **REVIEW** — narrow: the change diff | Reviewer (fresh session / read-only subagent) | `prompts/review.md` | Findings or "clean". |
-| **TRIAGE** | Human | — | **[GATE: human]** real / noise / defer / investigate. |
+| **REVIEW** — narrow: the change diff | Reviewer (fresh session / read-only subagent) | `prompts/review.md` | Findings or "clean". Lite: a clean review may carry VERIFY in the same session (one-pass review, `segments.md`). |
+| **TRIAGE** | Human | — | **[GATE: human]** real / noise / defer / investigate. A Known traps line is recorded as in `feature-development.md`, step 7. |
 | **VERIFY** | QA | `prompts/verify.md` | Criterion ↔ evidence table for changed **and** preserved criteria. **UI change: before/after screenshots are the evidence.** |
 | **SHIP** | Human | — | **[GATE: human]** DoD → PR → merge → mini-spec moves to `specs/done/`, `Status: Shipped`. |
 

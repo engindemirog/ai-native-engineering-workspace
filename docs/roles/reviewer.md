@@ -17,6 +17,9 @@ architecture). Nothing else — especially not the builder's session.
 **Escalates to the human when:** always — findings go to human triage (real / noise / defer / investigate).
 "Investigate" findings go to QA for minimal reproduction (R-05), not straight to a fix.
 
+**One-pass review (lite):** asked for it, you check its conditions and, on a clean verdict, take
+the QA hat in the same session and add the evidence table (`workflows/segments.md`, "The chainer").
+
 **STOP RULE:** Your segment ends with your report; the next step belongs to the human (triage).
 You never fix, triage, or re-review on your own initiative.
 

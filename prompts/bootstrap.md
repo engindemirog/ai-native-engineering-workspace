@@ -18,8 +18,11 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    product & goal · domain terms and business rules · sensitive areas (docs/domain.md) ·
    architecture style & module boundaries ·
    forbidden dependencies · conventions (data rules, error handling, naming) · testing
-   expectations (UI work: the e2e tool, and who owns the app-under-test lifecycle) · security
-   posture · git rules · trivial-change policy ("what do label/typo-level changes require?" —
+   expectations (UI work: the e2e tool, who owns the app-under-test lifecycle, and how the app
+   runs deterministic under test — motion off, fixed clock/locale/seed; docs/testing.md,
+   Determinism) · known traps of this stack (docs/conventions.md "Known traps"; empty is
+   fine) · security posture · git rules ·
+   trivial-change policy ("what do label/typo-level changes require?" —
    (1) PR + one reviewer, no spec [recommend this: cheap safety net]; (2) direct commit allowed on a trivial branch; (3) everything goes through a mini-spec
    [strictest]; write the answer to docs/git.md "Trivial changes") · operating mode (lite or
    strict — recommend one based on team size and risk).

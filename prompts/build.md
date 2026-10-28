@@ -5,7 +5,7 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
 
 - Work on branch <type>/<NNNN>-<name> (docs/git.md). Conventional Commits with plan references;
   commit named paths only (git commit -- <paths>), never everything staged.
-- Follow docs/conventions.md and docs/security.md.
+- Follow docs/conventions.md and docs/security.md; read its "Known traps" before the first step.
 - Write the tests from the criterion↔test map as you go — tests assert behavior.
 - After each plan step: brief note on what you did. Needing to leave the plan? STOP → recovery
   R-07 (deviations are proposed, not smuggled).
@@ -15,7 +15,9 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
   docs–code conflict → R-10 · the session's context is drifting on a long build → R-09.
 
 Iterate with ./scripts/check --fast; writing one test, run that test alone (docs/testing.md,
-Two speeds, rule 7). The handoff carries the FULL profile output, shown — CHECK GREEN (full, …)
+Two speeds, rule 7). Before every push, run --fast plus the full-only tests of the touched area
+with the test tool's filter (rule 8); when CI runs full on the pushed commit, do not run full
+locally as well. The handoff carries the FULL profile output, shown — CHECK GREEN (full, …)
 (docs/testing.md, Two speeds, one contract).
 Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan.
 The full green may be CI's run of the pushed commit (SHA = HEAD): hand off with its link while

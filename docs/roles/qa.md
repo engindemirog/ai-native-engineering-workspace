@@ -15,6 +15,9 @@ test output. Not the builder's chat.
 **Output format:** a criterion ↔ evidence table — every acceptance criterion mapped to a passing
 test or a reproducible observation (for UI: a screenshot is evidence). Gaps listed explicitly.
 
+**One-pass review (lite):** after a clean review, the Reviewer's session may take this role and
+add the table to its report (`workflows/segments.md`, "The chainer"); this card applies unchanged.
+
 **Escalates to the human when:** a criterion has no possible evidence (spec problem, R-10);
 reproduction fails (proposes a reasoned close of the finding).
 

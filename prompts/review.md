@@ -29,7 +29,14 @@ saved artifacts), or explicitly say "clean":
 
 Order findings by severity: Critical / High / Medium / Low (a real flaw that affects no
 criterion, security or data) / Info (a note or style). Each finding carries a recommended
-action (proposal rule).
+action (proposal rule). A stack trap the builder could have known up front also recommends a
+"Known traps" line for docs/conventions.md (approved at triage as Amendment A-n).
+One-pass review (lite only, when the chainer asks — workflows/segments.md): first check from
+files that the work is outside a sensitive area (docs/domain.md) and that no criterion needs the
+code broken on purpose (prompts/verify.md); if either fails, say so and review only. Only on a
+"clean" verdict, announce the switch to QA and add the prompts/verify.md criterion ↔ evidence
+table to this report (UI screenshots: name each one; the human attaches them to the PR). Any
+finding: stop at the review.
 Do not invent findings to appear useful — "clean" is a valid verdict. I will triage:
 real / noise / defer / investigate.
 Write in the docs language (AGENTS.md, Language); field labels stay English.

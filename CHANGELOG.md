@@ -19,6 +19,51 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.19 — Delivery speed, from the field
+
+From a field project where a four-line style fix took hours: two failures showed only in a real
+browser, surfaced after CI, review and triage, and motion made e2e flaky. Text only, no script
+changes.
+
+- **Deterministic mode under test** (`docs/testing.md`, Determinism): animations and transitions
+  off, clock, time zone, locale and seeds fixed, third-party services stubbed. Bootstrap asks how
+  the stack does it. R-03 names a running animation as a source of nondeterminism.
+- **Run the touched area before a push** (Two speeds, rule 8): `--fast` plus the full-only tests
+  that cover the change, by the test tool's filter. Authoring, not evidence. When CI runs full on
+  the pushed commit, full is not also run locally (ANEW-0009 revised). `docs/commands.md` no
+  longer reads as "a local full run at every handoff".
+- **Known traps** (`docs/conventions.md`): a section that starts empty. A real finding that a
+  build-time rule would have caught adds one line, recommended by the reviewer, recorded at
+  triage as Amendment A-n and written by the Developer in the fix round, so it is in-plan.
+  Build reads it before the first step.
+- **One-pass review** (lite, `workflows/segments.md` "The chainer", ANEW-0002 revised): one
+  independent session reviews and, on a clean verdict, adds the VERIFY evidence table. The
+  session checks the conditions itself, not the builder: outside a sensitive area, no criterion
+  that needs the code broken on purpose. UI screenshots are named in the table and attached by
+  the human. Any finding, or a gap in the table → the usual flow. The triage gate confirms the
+  verdict and the table; the ship gate stays.
+- **Not adopted:** retrying flaky tests in CI (R-03 stands; the field project kept it too).
+  Sharding CI's full run is a revisit trigger of ANEW-0009, not a rule: it splits the one
+  `CHECK GREEN (full, …)` line that doctor reads.
+
+### Upgrading
+
+- `docs/testing.md`: intent: Two speeds rule 8 (touched area before a push); deterministic mode
+  under Determinism. `prompts/recovery/flaky-test.md`: animation as a source.
+- `docs/conventions.md`: intent: an empty "Known traps" section. `prompts/build.md`: read Known
+  traps; touched area before a push; no local full when CI runs it. `prompts/review.md`: recommend
+  Known traps lines; the one-pass review and its condition check. `workflows/feature-development.md`,
+  `workflows/change-request.md`: Known traps at triage, as Amendment A-n.
+- `workflows/segments.md`: intent: the one-pass review; VERIFY's entry check accepts its table.
+  `workflows/README.md`, `workflows/change-request.md`, `docs/roles/README.md`,
+  `docs/roles/reviewer.md`, `docs/roles/qa.md`, `docs/commands.md` (`/new-feature`, `/review`,
+  `/verify`, `/change`), `adapters/generic/README.md`, the Claude Code `verify` command, every
+  adapter's `new-feature` and `change` command, both `reviewer` agents: intent: the one-pass
+  review. `docs/decisions/anew/ANEW-0002-segments-always-stop.md`: revised.
+- `prompts/bootstrap.md`: intent: asks for the deterministic mode and known traps.
+- `docs/decisions/anew/ANEW-0009-two-speeds-one-contract.md`: revised; sharding revisit trigger.
+- Full diff: `/compare/v1.18...v1.19`.
+
 ## v1.18 — Field rules, generalized
 
 From a field project that changed the process on its own and kept shipping. Its generic rules

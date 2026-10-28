@@ -13,4 +13,6 @@ Rule: Segments always stop; $new-feature flows only as far as the mode allows.
   the skill name, entry checks included. Stop at the four gates (spec approval, plan approval,
   triage, ship). If a matching spec exists in specs/active/, resume from its next gate — never a
   twin spec. REVIEW cannot be independent inside this session: at that gate, tell the human to open
-  a fresh Codex session and run $review there, then paste the findings back here for triage.
+  a fresh Codex session and run $review there, then paste the findings back here for triage. When
+  the one-pass review conditions hold (workflows/segments.md, "The chainer"), say so: that
+  session may run $verify too on a clean verdict.

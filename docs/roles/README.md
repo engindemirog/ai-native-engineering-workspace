@@ -30,7 +30,9 @@ Start only after my confirmation.
    new session and reads the files: the spec's `Status`, the plan's `Approved by / on` line, the
    diff, the review report. Segment commands end with a handoff summary and stop.
 6. In **strict** mode, role separation is mandatory. In **lite** mode, the independent review
-   session/subagent is still required; the rest may collapse into one session.
+   session/subagent is still required; the rest may collapse into one session. Reviewer and QA
+   may share that independent session after a clean review (one-pass review,
+   `workflows/segments.md`) — both audit, neither produces.
 
 ## The human's gates
 

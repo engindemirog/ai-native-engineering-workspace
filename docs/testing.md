@@ -93,8 +93,22 @@ A screenshot proves a criterion only against the spec's "User experience": every
    the test tool's own filter, without the suites that depend on it. That is authoring, never
    evidence; `scripts/check` stays the way to ask "is this good?". Repeat runs are for the
    flaky-test hunt only (R-03).
+8. **Before a push, run the touched area.** `--fast`, plus the full-only tests that cover what
+   changed (the touched feature's e2e tests, the touched module's integration tests), selected
+   with the test tool's own filter. Failures that only show in a real browser or against real
+   infrastructure then surface in minutes, not after a CI round, a review and a triage. Like
+   rule 7 this is authoring, never evidence. When CI runs the full profile on the pushed commit,
+   that run is the full green (rule 6): do not also run full locally before pushing.
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.
 An infrastructure failure outside the tests (mirror timeout, lost runner) is not a flake: rerun
 only the failed jobs and write the cause down (R-03 tells the two apart).
+
+**The app under test runs in a deterministic mode.** Animations and transitions are off; the
+clock, time zone, locale and random seeds are fixed; third-party services are replaced by stubs.
+A test that measures or asserts while an animation runs is waiting on time, not on state — its
+result depends on the machine's speed. Turn motion off in both places the stack offers: the test
+tool's setting (e.g. a reduced-motion preference) and the app's own switch for test builds.
+Bootstrap records how this stack does it under "Frameworks & layout"; a decision that is not
+obvious gets an ADR.

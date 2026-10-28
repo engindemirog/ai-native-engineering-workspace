@@ -7,7 +7,9 @@ jobs and write the cause in the PR thread; that is not this ramp. A test that fa
 passed on the same commit is flaky — a rerun is never the fix and never evidence. Then:
 
 This test is nondeterministic: <test name>. Find the source of nondeterminism (time, ordering,
-shared state, async races, external I/O) and make the test deterministic.
+shared state, async races, external I/O, an animation or transition still running) and make the
+test deterministic. Motion in a UI test is fixed by the deterministic mode (docs/testing.md,
+Determinism), not by waiting longer.
 PROTECTION: skip, retry-loops, or timing band-aids (arbitrary sleeps) are forbidden.
 EVIDENCE: run the test itself 5 times consecutively, all green — show the runs. (QA verifies this
 evidence.) EXIT: then ./scripts/check (full) green once, output shown.

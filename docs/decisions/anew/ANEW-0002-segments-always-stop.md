@@ -3,6 +3,12 @@
 - Status: Accepted
 - Date: 2026-09-25
 - Revised: 2026-10-19 — moved to docs/decisions/anew/ as ANEW-0002 (template namespace, ANEW-0010); decision unchanged
+- Revised: 2026-10-28 — v1.19, one-pass review: in lite, the chainer may ask one independent
+  session for REVIEW and VERIFY together. That session checks the conditions itself (outside a
+  sensitive area; no criterion needs the code broken on purpose); on a clean verdict it adds the
+  evidence table, which triage confirms. Any finding: the usual flow. Segment commands still
+  always stop; no gate is removed; the producer still never verifies its own work
+  (`workflows/segments.md`, "The chainer").
 
 ## Context
 A single "do the whole feature" command is convenient for a solo developer, but in a team it
