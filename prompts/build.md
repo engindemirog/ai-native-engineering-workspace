@@ -5,6 +5,7 @@ Role: Developer. Execute the APPROVED plan specs/plans/<NNNN>-plan.md, step by s
 
 - Before the first change: run ./scripts/doctor and show its per-profile verdict. If it differs
   from the plan's Risks (another machine, a changed environment): STOP → R-13, no code.
+  "check fails on the check.conf errors above" is a conf error, not R-13: fix check.conf first.
 - Work on branch <type>/<NNNN>-<name> (docs/git.md). Conventional Commits with plan references;
   commit named paths only (git commit -- <paths>), never everything staged.
 - Follow docs/conventions.md and docs/security.md; read its "Known traps" before the first step.

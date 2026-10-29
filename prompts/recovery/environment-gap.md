@@ -17,5 +17,5 @@ runs in CI only on this team"), an ADR for a harder choice. Then continue from w
 PROTECTION: never weaken, skip or disable the rule, the step or its prerequisite to get past it;
 never report its evidence as present while the gap is open.
 EXIT: the decision recorded (amendment, report or doc), and doctor's verdict or the check output
-shown matching it.
+shown, consistent with it (e.g. still "not runnable here" when that profile runs in CI only).
 ```

@@ -70,7 +70,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   Step prerequisites (`requires` lines in `check.conf`): runs each distinct command once and
   prints, per profile, `runnable on this machine` or `not runnable on this machine (steps: …)`
   — a WARN in every mode, also under `--strict`: it describes the machine (R-13). A malformed
-  `requires` line is a WARN and no profile is called runnable (check fails on it).
+  `requires` line (or one naming no step) is a WARN, and each profile then reads `check fails on
+  the check.conf errors above` — a conf error to fix, not an environment gap.
 - **When to use it:** after bootstrap, before a PR, whenever the workspace feels off.
 - **Reads / writes:** reads the working tree (and git, for `specs/done/` against a base ref);
   writes nothing itself; runs the project's prerequisite commands (side-effect free by contract).

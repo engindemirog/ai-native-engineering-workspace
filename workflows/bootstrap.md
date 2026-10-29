@@ -45,6 +45,7 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
    ANEW assumes none. The gate shows doctor's per-profile verdict; a profile that is not runnable
    on this machine is called out with a recommendation (fix the environment / that profile in CI
    only / change the step) and the human decides (R-13) — before the first feature, not at its BUILD.
+   `check fails on the check.conf errors above` is not an environment gap: fix the conf.
    Context quiz: open a *fresh* session and ask a project question (e.g. "what type do money
    fields use?") — the agent must answer from files. If it can't, the docs aren't teaching; fix them.
 

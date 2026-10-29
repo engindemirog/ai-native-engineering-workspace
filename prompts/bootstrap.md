@@ -59,7 +59,8 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    measurements. Steps that need something of this machine carry `requires <step>: <command>`
    lines naming the tool this project uses (ANEW assumes none). Show doctor's per-profile
    verdict; a profile not runnable here comes with your recommendation (fix the environment /
-   that profile in CI only / change the step) for me to decide (R-13).
+   that profile in CI only / change the step) for me to decide (R-13). "check fails on the
+   check.conf errors above" is not an environment gap: fix the conf.
 5. REPORT: what you generated, what you assumed, and every open question that still needs my
    decision — with your recommendations. End with the first command for the mode you set:
    lite → Next: /new-feature "<feature>" (it chains the segments and asks at each gate);

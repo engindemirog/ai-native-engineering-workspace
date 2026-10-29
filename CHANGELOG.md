@@ -41,7 +41,9 @@ the project declares what a step needs, ANEW runs it and reports.
 Update the scripts **before** adding `requires` lines: a v1.20 check runs `requires x: cmd` as a
 step named "requires x" (it fails if unmet — never a false green, but the output misleads).
 The other way round: a step whose name starts with `requires` and a space or tab is now read as
-a prerequisite — rename it before updating (v1.21 check fails on it: `requires names no step`).
+a prerequisite — rename it before updating. If the rest of its name matches no step, v1.21 check
+fails on it (`requires names no step`); if it does match one, the old step silently stops being a
+step and runs as that step's prerequisite.
 
 - `scripts/check` — behavior: lines `requires <step>: <command>` (first non-blank word
   `requires`, then a space or tab — the same rule in doctor and residue) are prerequisites, not
@@ -52,7 +54,8 @@ a prerequisite — rename it before updating (v1.21 check fails on it: `requires
   gap, see prompts/recovery/environment-gap.md (R-13)`; all are reported, then exit 1 with no
   step run. `--fast` skips prerequisites of full-only steps. Malformed `requires` lines fail
   check the same way, before any step: naming no step (`requires names no step: <name>`), an
-  empty command (`requires has no command: <step>`), no `:` (`requires line has no ':': <line>`).
+  empty or comment-only command (`requires has no command: <step>`), no `:` (`requires line has
+  no ':': <line>`); an empty step name prints as `(empty)`.
   A step is listed once per command. No `requires` line → output unchanged.
 - `scripts/doctor` — behavior: messages print through `printf` (backslashes kept). A conf with
   only `requires` lines has no steps (WARN as before). With `requires` lines: each distinct
