@@ -37,7 +37,7 @@ done
 
 # --- recovery ramps ---
 ramps=$(ls "$ROOT/prompts/recovery" 2>/dev/null | grep -c '^[a-z].*\.md$')
-if [ "$ramps" -ge 12 ]; then ok "recovery catalog present ($ramps ramps)"; else warn "recovery catalog incomplete (found $ramps ramps, expected 12)"; fi
+if [ "$ramps" -ge 13 ]; then ok "recovery catalog present ($ramps ramps)"; else warn "recovery catalog incomplete (found $ramps ramps, expected 13)"; fi
 
 # --- configuration state ---
 if grep -q "STATUS: NOT CONFIGURED" "$ROOT/AGENTS.md" 2>/dev/null; then

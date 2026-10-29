@@ -282,7 +282,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ## Recovery ramps
 
 Ramps are safe returns to the loop, not alternatives to it — each carries its own protection
-rules. The agent names the ramp's code and asks the human to run it; the catalog, R-01…R-12,
+rules. The agent names the ramp's code and asks the human to run it; the catalog, R-01…R-13,
 lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 
 ## Quick reference

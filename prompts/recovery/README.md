@@ -1,4 +1,4 @@
-# Recovery Ramps (R-01 … R-12)
+# Recovery Ramps (R-01 … R-13)
 
 Things go wrong: builds break, tests go red, plans drift, requirements change mid-flight, context
 gets foggy. Ramps are not an alternative to the loop — they are **safe returns to it**. Every ramp
@@ -18,5 +18,6 @@ carries its own protection rules (no test silencing, minimal file scope, evidenc
 | R-10 | Ambiguity / docs–code conflict | `ambiguity.md` | NEVER assume; options with costs → human decides → decision written to source of truth |
 | R-11 | Safe rollback | `rollback.md` | `git revert`; no history rewriting/force push; migration risk report |
 | R-12 | Performance target missed | `perf-miss.md` | Measure first, ONE optimization, re-measure same way |
+| R-13 | Environment gap | `environment-gap.md` | NEVER work around the rule; options with costs → human decides → plan amendment |
 
 Agents: if you believe a ramp is triggered, say its code and ask the human to run the prompt.

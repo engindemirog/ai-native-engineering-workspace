@@ -25,6 +25,6 @@ Almost every prompt follows the same anatomy — knowing it lets you re-derive a
 | `review.md` | REVIEW segment (feature step 6); every workflow's review | Reviewer |
 | `verify.md` | VERIFY segment (feature step 9) | QA |
 | `adr.md` | `docs/decisions/` | any |
-| `recovery/*.md` | when a ramp is triggered (R-01…R-12) | see each ramp |
+| `recovery/*.md` | when a ramp is triggered (R-01…R-13) | see each ramp |
 
-`recovery/` holds the safe ramps (R-01…R-12) for when things go wrong.
+`recovery/` holds the safe ramps (R-01…R-13) for when things go wrong.
