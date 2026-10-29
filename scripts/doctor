@@ -8,9 +8,10 @@ warns=0
 strict=0
 [ "${1:-}" = "--strict" ] && strict=1
 
-fail() { echo "FAIL  $1"; fails=$((fails + 1)); }
-warn() { echo "WARN  $1"; warns=$((warns + 1)); }
-ok()   { echo "ok    $1"; }
+# printf, not echo: a message can carry a project's command text, backslashes included.
+fail() { printf 'FAIL  %s\n' "$1"; fails=$((fails + 1)); }
+warn() { printf 'WARN  %s\n' "$1"; warns=$((warns + 1)); }
+ok()   { printf 'ok    %s\n' "$1"; }
 gate() { if [ "$strict" -eq 1 ]; then fail "$1"; else warn "$1"; fi; }
 
 echo "== ANEW doctor =="
@@ -72,12 +73,84 @@ fi
 
 # Same rule as check: blank or whitespace-only lines and (indented) comments are not steps.
 ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only, as in check
-if [ -f "$ROOT/scripts/check.conf" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" "$ROOT/scripts/check.conf"; then
+# A requires line is a prerequisite, not a step.
+if [ -f "$ROOT/scripts/check.conf" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" -e "^[$ws]*requires[$ws]" "$ROOT/scripts/check.conf"; then
   warn "scripts/check.conf has no steps — check and residue prove nothing until the first steps exist"
 elif [ -f "$ROOT/scripts/check.conf" ]; then
   ok "verification contract configured (scripts/check.conf)"
 else
   warn "scripts/check.conf missing — bootstrap generates it; until then './scripts/check' has nothing to run"
+fi
+
+# --- step prerequisites (requires <step>: <command>): can this machine run each profile? ---
+# Parsed as check parses them. Every prerequisite runs once per distinct command, both profiles.
+# Unmet = WARN in every mode: it describes this machine, not a gate (environment gap, R-13).
+# Nothing is printed when check.conf has no requires line.
+if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[$ws]" "$ROOT/scripts/check.conf"; then
+  tab=$(printf '\t')
+  trim() { t=${1#"${1%%[!$ws]*}"}; printf '%s' "${t%"${t##*[!$ws]}"}"; }
+  # "S<TAB>fast?<TAB>step", "R<TAB>step<TAB>command" → "U<TAB>step" (names no step),
+  # "P<TAB>steps<TAB>command" (one per distinct command), "F<TAB>step" (in the fast profile).
+  reqs=$(
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in *[!$ws]*) ;; *) continue ;; esac
+      rest=${line#"${line%%[!$ws]*}"}
+      case "$rest" in
+        \#*) continue ;;
+        requires[" $tab"]*)
+          name=${rest%%:*}
+          printf 'R\t%s\t%s\n' "$(trim "${name#requires}")" "$(trim "${rest#*:}")"
+          continue ;;
+      esac
+      name=${line%%:*}
+      case "$name" in *"[fast]"*) f=1 ;; *) f=0 ;; esac
+      printf 'S\t%s\t%s\n' "$f" "$(trim "$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//')")"
+    done < "$ROOT/scripts/check.conf" | awk '
+      $1 == "S" { s = substr($0, 3); n = substr(s, 3); all[++a] = n; known[n] = 1; if (substr(s, 1, 1) == "1") { fast[n] = 1; tagged = 1 }; next }
+      $1 == "R" { r = substr($0, 3); i = index(r, "\t"); st[++k] = substr(r, 1, i - 1); cm[k] = substr(r, i + 1) }
+      END {
+        for (j = 1; j <= a; j++) if (!tagged || (all[j] in fast)) printf "F\t%s\n", all[j]
+        for (j = 1; j <= k; j++) {
+          if (!(st[j] in known)) { printf "U\t%s\n", st[j]; continue }
+          c = cm[j]
+          if (!(c in on)) { order[++m] = c; on[c] = st[j] } else on[c] = on[c] ", " st[j]
+        }
+        for (j = 1; j <= m; j++) printf "P\t%s\t%s\n", on[order[j]], order[j]
+      }'
+  )
+  unmet_on=
+  while IFS= read -r entry; do
+    kind=${entry%%"$tab"*}; entry=${entry#*"$tab"}
+    case "$kind" in
+      U) warn "check.conf: requires names no step: $entry — check fails on it" ;;
+      P)
+        on=${entry%%"$tab"*}; cmd=${entry#*"$tab"}
+        if pout=$(cd "$ROOT" && sh -c "$cmd" </dev/null 2>&1); then
+          ok "prerequisite met: $cmd (steps: $on)"
+        else
+          warn "prerequisite not met: $cmd (steps: $on)"
+          [ -n "$pout" ] && printf '%s\n' "$pout" | sed 's/^/      | /'
+          unmet_on="$unmet_on$on$tab"
+        fi ;;
+    esac
+  done <<EOF
+$reqs
+EOF
+  # Per profile: the unmet steps it contains. full = every step; fast = the F lines.
+  verdict=$(printf '%s\n' "$reqs" | awk -F'\t' -v unmet="$unmet_on" '
+    BEGIN { n = split(unmet, groups, "\t"); for (g = 1; g <= n; g++) { c = split(groups[g], s, ", "); for (j = 1; j <= c; j++) bad[s[j]] = 1 } }
+    $1 == "F" { fast[$2] = 1 }
+    $1 == "P" { c = split($2, s, ", "); for (j = 1; j <= c; j++) if (s[j] in bad && !(s[j] in seen)) { seen[s[j]] = 1; order[++m] = s[j] } }
+    END {
+      for (j = 1; j <= m; j++) { fl = fl (fl ? ", " : "") order[j]; if (order[j] in fast) ff = ff (ff ? ", " : "") order[j] }
+      printf "fast\t%s\nfull\t%s\n", ff, fl
+    }')
+  while IFS="$tab" read -r p list; do
+    if [ -z "$list" ]; then ok "profile $p: runnable on this machine"
+    else warn "profile $p: not runnable on this machine (steps: $list) — environment gap, R-13 (prompts/recovery/environment-gap.md)"; fi
+  done <<EOF
+$verdict
+EOF
 fi
 
 # --- template version: the base an upgrade diffs against (CHANGELOG, "How to upgrade") ---

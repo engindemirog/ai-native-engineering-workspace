@@ -186,6 +186,34 @@ doctor;            has "WARN  scripts/check.conf has no steps" "a conf without s
 put scripts/check.conf 'unit [fast]: echo unit ran'
 doctor;            hasnt "check.conf has no steps" "a conf with a step is fine"
 has "ok    verification contract configured" "… and reported as configured"
+hasnt "prerequisite" "no requires line → no prerequisite output";  hasnt "profile fast" "… and no profile verdict"
+put scripts/check.conf 'requires unit: true'
+doctor;            has "WARN  scripts/check.conf has no steps" "a requires line is not a step"
+
+# Prerequisites: reported per command and as a per-profile verdict; WARN in every mode.
+reset; put scripts/check.conf 'compile [fast]: true' 'e2e: true' 'requires compile: true' \
+  'requires e2e: echo runtime-missing-text; exit 4'
+doctor;            exits 0 "unmet prerequisite only warns"
+has "ok    prerequisite met: true (steps: compile)" "a met prerequisite is an ok line naming its step"
+has "WARN  prerequisite not met: echo runtime-missing-text; exit 4 (steps: e2e)" "an unmet one is a WARN naming step and command"
+has "runtime-missing-text" "… with the command's output"
+has "ok    profile fast: runnable on this machine" "unmet on a full-only step: fast stays runnable"
+has "WARN  profile full: not runnable on this machine (steps: e2e)" "… full is not runnable, naming the step"
+doctor --strict;   exits 0 "unmet prerequisite under --strict still only warns"
+has "WARN  prerequisite not met" "… as a WARN, not a FAIL"
+put scripts/check.conf 'compile [fast]: true' 'e2e: true' 'requires compile: exit 1'
+doctor;            has "WARN  profile fast: not runnable on this machine (steps: compile)" "unmet on a fast step: fast not runnable"
+has "WARN  profile full: not runnable on this machine (steps: compile)" "… and full neither"
+put scripts/check.conf 'a: true' 'requires a: no-such-cmd-anew'
+doctor;            exits 0 "missing prerequisite command does not abort doctor"
+has "WARN  prerequisite not met: no-such-cmd-anew" "… it is reported as not met";  has "not found" "… with the shell's error text"
+put scripts/check.conf 'a: true' 'requires b: true'
+doctor;            has "WARN  check.conf: requires names no step: b" "a requires line naming no step is reported"
+: > "$TMP/doc-count"
+put scripts/check.conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x >> '$TMP/doc-count'" \
+  "requires b: echo x >> '$TMP/doc-count'" "requires c: echo x >> '$TMP/doc-count'"
+doctor;            has "(steps: a, b, c)" "a shared prerequisite is listed once for all its steps"
+[ "$(wc -l < "$TMP/doc-count" | tr -d ' ')" -eq 1 ]; report $? "a prerequisite on three steps runs once per doctor run"
 
 reset; put specs/plans/0001-plan.md '# Plan 0001' '- Approved by / on: —'
 doctor;            has "WARN  plan exists for unapproved spec 0001" "plan without a spec → WARN locally"
