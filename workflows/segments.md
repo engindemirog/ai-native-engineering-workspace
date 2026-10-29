@@ -17,6 +17,10 @@ specific gate. In **strict**, each role runs its own segment command in its own 
    refuse with the exact message; soft checks warn and ask whether to proceed.
 2. **Work** — run the workflow steps with the referenced prompt as written.
 3. **Gate** — stop and wait for the human where marked. Nothing is applied without approval.
+   **One decision per gate message.** Ask exactly one decision. Several open items are asked one
+   per message, or offered as the single decision "accept every recommendation listed above",
+   each item and its recommendation written out. An answer that does not say which decision it
+   answers is asked back, never interpreted.
 4. **Handoff** — finish with a summary that names the artifact, its status, and the line
    `Next: <segment> — <who runs it>`. Then **stop**. Never start the next segment.
 
