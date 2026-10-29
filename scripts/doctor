@@ -284,7 +284,7 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     base=HEAD
   fi
   if [ -n "$base" ] && git -C "$ROOT" rev-parse --verify --quiet "$base^{commit}" >/dev/null 2>&1; then
-    changes=$(git -C "$ROOT" diff --name-status -M "$base" -- specs/done/ 2>/dev/null)
+    changes=$(git -C "$ROOT" -c core.quotePath=false diff --relative --name-status -M "$base" -- specs/done/ 2>/dev/null)
     shipped_viol=0
     oldifs=$IFS; IFS='
 '
@@ -301,36 +301,38 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     [ "$shipped_viol" -eq 0 ] && ok "shipped specs unchanged vs $base (specs/done/ immutable)"
 
     # --- new ships (added to specs/done/ vs the same base; already-shipped specs are never judged
-    # again): every criterion line is ticked, or moved out at the ship gate (R-08) with its target
-    # after the criterion text on that line — `→ moved to B-<n>` (in specs/backlog.md) or
-    # `→ moved to spec <NNNN>` (open work: specs/active/, not itself); ASCII `->` too; a marker in
-    # backticks is quoted text, not a move. A sensitive-area spec moves nothing. Untracked files
-    # count when the base is HEAD (a ship not committed yet). Paths unquoted (non-ASCII names) and
-    # relative to the workspace (a workspace in a subdirectory of its repo); grep -a: a spec saved
-    # in another encoding is still read. ---
+    # again): every criterion is ticked, or moved out at the ship gate (R-08) with its target on
+    # that line — `→ moved to B-<n>` (in specs/backlog.md) or `→ moved to spec <NNNN>` (open work:
+    # specs/active/, not itself); ASCII `->` too; a marker in backticks is quoted text. A sensitive
+    # spec moves nothing. Fail closed: a line with a checkbox before an AC-/CB-/PB- id is a
+    # criterion whatever its bullet or emphasis, and only [x]/[X] is ticked; a line that starts with
+    # "sensitive area(s)" makes the spec sensitive unless its value starts with none or n/a.
+    # Bytes, not characters (LC_ALL=C): a spec in another encoding is read as it is. Untracked files
+    # count when the base is HEAD (a ship not committed yet). Paths unquoted, workspace-relative. ---
+    lc_set=${LC_ALL+set}; lc_old=${LC_ALL-}; LC_ALL=C; export LC_ALL
     new_ships=$(git -C "$ROOT" -c core.quotePath=false diff --relative --no-renames --name-status "$base" -- specs/done/ 2>/dev/null \
       | awk -F'\t' '$1 == "A" { print $2 }')
     [ "$base" = HEAD ] && new_ships="$new_ships
 $(git -C "$ROOT" -c core.quotePath=false ls-files --others --exclude-standard -- specs/done/ 2>/dev/null)"
-    crit='^[[:space:]]*([-*+]|[0-9]+\.)[[:space:]]+\[[ xX]\][[:space:]]*(\*\*|~~|[[:space:]])*(AC|CB|PB)-[0-9]+'
+    crit='\[[ xX]?\][^A-Za-z0-9]*(AC|CB|PB)-[0-9]+'
     oldifs=$IFS; IFS='
 '
     for f in $new_ships; do
       case "$f" in specs/done/[0-9]*.md) ;; *) continue ;; esac
       [ -f "$ROOT/$f" ] || continue
       self=$(basename "$f" | sed 's/-.*//')
-      # Sensitive: a `Sensitive area(s): <name>` declaration line whose value is not empty or none.
       sensitive=0
-      grep -aiE '^[[:space:]]*(-[[:space:]]*)?sensitive areas?:' "$ROOT/$f" \
-        | sed -E 's/^[^:]*:[[:space:]]*//; s/<!--.*-->//g; s/[[:space:]]*$//' \
-        | grep -qviE '^(none|-|—)?$' && sensitive=1
-      grep -aqE "$crit" "$ROOT/$f" || warn "new ship has no criterion line: $f — a spec ships its criteria ([x] AC-n, or moved out)"
+      grep -iE '^[[:space:]]*([-*+]|[0-9]+[.)])?[[:space:]]*[*_]*sensitive areas?' "$ROOT/$f" \
+        | sed -E 's/<!--.*-->//g; s/^[^Ss]*[Ss][Ee][Nn][Ss][Ii][Tt][Ii][Vv][Ee] [Aa][Rr][Ee][Aa][Ss]?//; s/^[*_:[:space:]]*//; s/[[:space:]]*$//' \
+        | grep -qviE '^(none|n/a)([^a-z]|$)' && sensitive=1
+      grep -qE "$crit" "$ROOT/$f" || warn "new ship has no criterion line: $f — a spec ships its criteria ([x] AC-n, or moved out)"
       while IFS= read -r c; do   # a here-doc, not a pipe: gate() must count in this shell
         [ -n "$c" ] || continue
-        id=$(printf '%s\n' "$c" | sed -E 's/^[^A-Z]*((AC|CB|PB)-[0-9]+).*/\1/')
-        # The marker counts only after the criterion id (and after a closing ~~), outside backticks.
+        id=$(printf '%s\n' "$c" | sed -E 's/.*\[[ xX]?\][^A-Za-z0-9]*((AC|CB|PB)-[0-9]+).*/\1/')
+        # The marker counts after the id — after the closing ~~ when the id itself is struck —
+        # outside backticks.
         rest=${c#*"$id"}
-        case "$rest" in *"~~"*) rest=${rest#*"~~"} ;; esac
+        case "$c" in *"~~$id"*|*"~~ $id"*) case "$rest" in *"~~"*) rest=${rest#*"~~"} ;; esac ;; esac
         target=$(printf '%s\n' "$rest" | sed 's/`[^`]*`//g' \
           | sed -n -e 's/.*→ moved to \(.*\)/\1/p' -e 's/.*-> moved to \(.*\)/\1/p' | head -n 1)
         if [ -z "$target" ]; then
@@ -344,7 +346,7 @@ $(git -C "$ROOT" -c core.quotePath=false ls-files --others --exclude-standard --
         case "$target" in
           B-[0-9]*)
             b=$(printf '%s' "$target" | sed -E 's/^(B-[0-9]+).*/\1/')
-            grep -aqF "**$b**" "$ROOT/specs/backlog.md" 2>/dev/null \
+            grep -qF "**$b**" "$ROOT/specs/backlog.md" 2>/dev/null \
               || gate "moved criterion has no backlog entry: $f $id → $b (specs/backlog.md)" ;;
           spec\ [0-9]*)
             n=$(printf '%s' "$target" | sed -E 's/^spec ([0-9]+).*/\1/')
@@ -358,9 +360,10 @@ $(git -C "$ROOT" -c core.quotePath=false ls-files --others --exclude-standard --
           *) gate "moved criterion has no target: $f $id — write → moved to B-<n> or → moved to spec <NNNN>" ;;
         esac
       done <<EOF
-$(grep -aE "$crit" "$ROOT/$f" | grep -avE '^[[:space:]]*([-*+]|[0-9]+\.)[[:space:]]+\[[xX]\]')
+$(grep -E "$crit" "$ROOT/$f" | grep -vE '\[[xX]\][^A-Za-z0-9]*(AC|CB|PB)-[0-9]+')
 EOF
     done
+    if [ -n "$lc_set" ]; then LC_ALL=$lc_old; else unset LC_ALL; fi
     IFS=$oldifs
   else
     warn "immutability check skipped — base ref '${base:-?}' cannot be resolved (CI needs fetch-depth: 0)"

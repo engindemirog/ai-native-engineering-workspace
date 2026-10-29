@@ -308,7 +308,7 @@ hasnt "0020-new.md AC-1" "… a checked criterion is fine"
 commit "ship 0020"
 doctor_base "$BASE" --strict
 exits 1 "new ship with an unproven criterion under --strict"; has "FAIL  unchecked criterion in a new ship: specs/done/0020-new.md AC-2" "… FAIL, naming spec and criterion"
-doctor;            hasnt "unproven criterion" "a spec already shipped at the base is not judged again"
+doctor;            hasnt "criterion in a new ship" "a spec already shipped at the base is not judged again"
 reset; put specs/done/0021-mini.md '# Spec 0021 (mini)' '- Status: Shipped' '- [x] CB-1 — done' '- [ ] PB-1 — not proven'
 doctor;            has "unchecked criterion in a new ship: specs/done/0021-mini.md PB-1" "mini-spec CB-/PB- lines are judged too"
 reset; put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~ → moved to B-3 — Ada, 2026-10-29, needs a newer runtime'
@@ -344,8 +344,28 @@ put specs/backlog.md '# Backlog' '- B-4 — bare id, not an entry'
 put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~ → moved to B-4'
 doctor;            has "moved criterion has no backlog entry: specs/done/0022-move.md AC-1 → B-4" "a backlog entry is **B-<n>**, not a bare mention"
 reset; put specs/done/0023-md.md '# Spec 0023' '- Status: Shipped' '* [ ] AC-1 — star bullet' '1. [ ] **AC-2** — numbered, bold' '- [X] AC-3 — capital X is ticked'
-doctor;            has "unchecked criterion in a new ship: specs/done/0023-md.md AC-1" "a '*' bullet criterion is judged"
+doctor;            has "unchecked criterion in a new ship: specs/done/0023-md.md AC-1 —" "a '*' bullet criterion is judged (exact id)"
 has "unchecked criterion in a new ship: specs/done/0023-md.md AC-2" "a numbered, bold criterion is judged";  hasnt "0023-md.md AC-3" "[X] counts as ticked"
+reset; put specs/done/0032-fc.md '# Spec 0032' '- Status: Shipped' '1) [ ] AC-1 — paren list' '- []AC-2 — empty box' '| AC-3 | evidence row, no box |' '- [x] **AC-4** — ticked'
+doctor;            has "unchecked criterion in a new ship: specs/done/0032-fc.md AC-1 —" "fail closed: a '1)' list criterion is judged"
+has "unchecked criterion in a new ship: specs/done/0032-fc.md AC-2 —" "… an empty box is unchecked"
+hasnt "0032-fc.md AC-3" "… a line without a checkbox (evidence table) is not a criterion";  hasnt "0032-fc.md AC-4" "… a ticked one is fine"
+put specs/backlog.md '# Backlog' '- **B-3** — x'
+put specs/done/0032-fc.md '# Spec 0032' '- Status: Shipped' '- [ ] AC-1 — c → moved to B-3 — Ada, 2026-10-29, was ~~B-2~~'
+doctor;            hasnt "0032-fc.md" "a ~~ after the marker does not hide the move"
+put specs/active/0007-later.md '# Spec 0007' '- Status: Draft'
+for decl in '- **Sensitive area:** payments' '* Sensitive area: payments' '__Sensitive areas__: payments'; do
+  put specs/done/0032-fc.md '# Spec 0032' '- Status: Shipped' "$decl" '- [ ] AC-1 — c → moved to spec 0007'
+  doctor;          has "a sensitive-area criterion cannot be moved out: specs/done/0032-fc.md AC-1" "sensitive declared as '$decl' blocks a move"
+done
+for decl in '- Sensitive area: None — docs only' '- Sensitive area: n/a'; do
+  put specs/done/0032-fc.md '# Spec 0032' '- Status: Shipped' "$decl" '- [ ] AC-1 — c → moved to spec 0007'
+  doctor;          hasnt "0032-fc.md" "'$decl' is not sensitive"
+done
+reset; put specs/done/0033-old.md '# Spec 0033' '- Status: Shipped' '- [ ] AC-1 — old, unchecked'; commit "ship 0033"
+put specs/done/0033-old.md '# Spec 0033' '- Status: Shipped' '- [ ] AC-1 — old, unchecked' 'edited'
+doctor;            has "shipped spec changed: specs/done/0033-old.md" "an edited shipped spec is an immutability gate"
+hasnt "criterion in a new ship" "… and never judged as a new ship"
 reset; put specs/done/0024-none.md '# Spec 0024' '- Status: Shipped' 'criteria lost in an edit'
 doctor;            has "WARN  new ship has no criterion line: specs/done/0024-none.md" "a new ship with no criterion line warns"
 reset; put "specs/done/0025-ödeme.md" '# Spec 0025' '- Status: Shipped' '- [ ] AC-1 — x'
@@ -353,7 +373,12 @@ doctor;            has "unchecked criterion in a new ship: specs/done/0025-ödem
 git -C "$W" add -A
 doctor;            has "unchecked criterion in a new ship: specs/done/0025-ödeme.md AC-1" "… and staged"
 reset; printf '# Spec 0026\n- Status: Shipped\n- [ ] AC-1 \377 latin-1 byte\n' > "$W/specs/done/0026-enc.md"
-doctor;            has "unchecked criterion in a new ship: specs/done/0026-enc.md AC-1" "a spec with a non-UTF-8 byte is still read"
+run env LC_ALL=C.UTF-8 sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF GITHUB_EVENT_PATH; exec sh "$0"' "$W/scripts/doctor"
+has "unchecked criterion in a new ship: specs/done/0026-enc.md AC-1 —" "a spec with a non-UTF-8 byte is read, its id exact (UTF-8 locale)"
+put specs/backlog.md '# Backlog' '- **B-3** — x'
+printf '# Spec 0026\n- Status: Shipped\n- [ ] ~~AC-1 caf\351~~ \342\206\222 moved to B-3 \342\200\224 Ada\n' > "$W/specs/done/0026-enc.md"
+run env LC_ALL=C.UTF-8 sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF GITHUB_EVENT_PATH; exec sh "$0"' "$W/scripts/doctor"
+hasnt "0026-enc.md" "a valid move in a Latin-1 spec is accepted under a UTF-8 locale"
 reset; put specs/done/0027-mini.md '# Spec 0027 (mini)' '- Status: Shipped' '- [x] CB-1 — ok' '- [ ] CB-2 — not proven'
 doctor;            has "unchecked criterion in a new ship: specs/done/0027-mini.md CB-2" "an unchecked CB- line is judged"
 # Base refs: an old ship next to a new one; the active → done move; the PR merge-base path.
