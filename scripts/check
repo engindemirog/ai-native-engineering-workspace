@@ -77,7 +77,8 @@ if grep -q "^[$ws]*requires[ $tab]" "$CONF"; then
           esac
           name=$(trim "${rest%%:*}"); name=$(trim "${name#requires}")
           cmd=$(trim "${rest#*:}")
-          if [ -z "$cmd" ]; then printf 'E\trequires has no command: %s\n' "$name"; continue; fi
+          # Empty, or only a comment (a placeholder): sh -c would exit 0 and pass it silently.
+          case "$cmd" in ''|\#*) printf 'E\trequires has no command: %s\n' "${name:-(empty)}"; continue ;; esac
           printf 'R\t%s\t%s\n' "$name" "$cmd"
           continue ;;
       esac
@@ -110,7 +111,7 @@ while IFS= read -r entry; do
   kind=${entry%%"$tab"*}; entry=${entry#*"$tab"}
   case "$kind" in
     E) printf 'CHECK FAILED (%s) %s\n' "$label" "$entry" >&2; unmet=$((unmet + 1)); continue ;;
-    U) printf 'CHECK FAILED (%s) requires names no step: %s\n' "$label" "$entry" >&2; unmet=$((unmet + 1)); continue ;;
+    U) printf 'CHECK FAILED (%s) requires names no step: %s\n' "$label" "${entry:-(empty)}" >&2; unmet=$((unmet + 1)); continue ;;
   esac
   on=${entry%%"$tab"*}; cmd=${entry#*"$tab"}
   if pout=$(cd "$ROOT" && sh -c "$cmd" </dev/null 2>&1); then

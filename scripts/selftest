@@ -111,6 +111,11 @@ conf 'a: echo a ran' 'requires a:'
 check
 exits 1 "requires with an empty command fails check"; has "CHECK FAILED (full) requires has no command: a" "… and says so"
 hasnt "a ran" "… before any step"
+conf 'a: echo a ran' 'requires a: # docker or podman, to be decided'
+check
+exits 1 "a comment-only prerequisite command fails check"; has "requires has no command: a" "… as no command"
+conf 'a: echo a ran' 'requires : true'
+check;             has "requires names no step: (empty)" "an empty step name is shown as (empty)"
 conf 'a: echo a ran' 'requires a'
 check
 exits 1 "requires line without ':' fails check";  has "requires line has no ':': requires a" "… as a conf error"
@@ -137,6 +142,9 @@ hasnt "baseline: " "no steps → nothing is measured"
 conf '# a prerequisite alone' 'requires unit: true'
 residue
 has "RESIDUE NOT MEASURED (full)" "residue: a requires line is not a step"
+printf 'requires\fx: true\n' > "$C/scripts/check.conf"
+residue
+hasnt "RESIDUE NOT MEASURED" "residue: only a space or tab after 'requires' makes a requires line (as in check)"
 conf 'unit [fast]: exit 3'
 residue
 exits 1 "residue: red check";                    has "RESIDUE TEST ABORTED (full): check failed in run 1" "red check aborts the residue test"
@@ -227,6 +235,11 @@ doctor;            exits 0 "missing prerequisite command does not abort doctor"
 has "WARN  prerequisite not met: no-such-cmd-anew" "… it is reported as not met";  has "not found" "… with the shell's error text"
 put scripts/check.conf 'a: true' 'requires b: true'
 doctor;            has "WARN  check.conf: requires names no step: b" "a requires line naming no step is reported"
+has "WARN  profile full: check fails on the check.conf errors above" "… and no profile is called runnable"
+put scripts/check.conf 'a: true' 'requires a: # docker or podman, to be decided'
+doctor;            has "WARN  check.conf: requires has no command: a" "a comment-only prerequisite command is a conf error"
+put scripts/check.conf 'a: true' 'requires : true'
+doctor;            has "requires names no step: (empty)" "an empty step name is shown as (empty)"
 : > "$TMP/doc-count"
 put scripts/check.conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x >> '$TMP/doc-count'" \
   "requires b: echo x >> '$TMP/doc-count'" "requires c: echo x >> '$TMP/doc-count'"
@@ -248,6 +261,7 @@ put scripts/check.conf 'a: true' 'requires a: true' 'requires a: true'
 doctor;            has "ok    prerequisite met: true (steps: a)" "the same requires line twice lists its step once"
 printf 'requires\fx: true\n' > "$W/scripts/check.conf"
 doctor;            hasnt "check.conf has no steps" "only a space or tab after 'requires' makes a requires line (as in check)"
+hasnt "profile fast" "… and no prerequisite verdict is printed for it"
 
 reset; put specs/plans/0001-plan.md '# Plan 0001' '- Approved by / on: —'
 doctor;            has "WARN  plan exists for unapproved spec 0001" "plan without a spec → WARN locally"

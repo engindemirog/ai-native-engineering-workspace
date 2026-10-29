@@ -106,7 +106,8 @@ if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[ $tab]" "$ROOT/
           esac
           name=$(trim "${rest%%:*}"); name=$(trim "${name#requires}")
           cmd=$(trim "${rest#*:}")
-          if [ -z "$cmd" ]; then printf 'E\trequires has no command: %s\n' "$name"; continue; fi
+          # Empty, or only a comment (a placeholder): sh -c would exit 0 and pass it silently.
+          case "$cmd" in ''|\#*) printf 'E\trequires has no command: %s\n' "${name:-(empty)}"; continue ;; esac
           printf 'R\t%s\t%s\n' "$name" "$cmd"
           continue ;;
       esac
@@ -136,7 +137,7 @@ if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[ $tab]" "$ROOT/
     kind=${entry%%"$tab"*}; entry=${entry#*"$tab"}
     case "$kind" in
       E) warn "check.conf: $entry — check fails on it"; conf_errs=$((conf_errs + 1)) ;;
-      U) warn "check.conf: requires names no step: $entry — check fails on it"; conf_errs=$((conf_errs + 1)) ;;
+      U) warn "check.conf: requires names no step: ${entry:-(empty)} — check fails on it"; conf_errs=$((conf_errs + 1)) ;;
       P)
         i=${entry%%"$tab"*}; entry=${entry#*"$tab"}
         on=${entry%%"$tab"*}; cmd=${entry#*"$tab"}
