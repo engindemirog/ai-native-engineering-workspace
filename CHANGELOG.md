@@ -19,6 +19,44 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.22 — Process records
+
+From the same field pilot, and from ANEW's own first run of v1.21: five places where the process
+had no written record, so agents improvised. Each now has one place and one rule; no invariant
+rule is weakened.
+
+- **Moved out, never waived** (ANEW-0012): a criterion that cannot be proven is moved out at the
+  ship gate (R-08) — its line stays, struck through, `→ moved to B-<n> | spec <NNNN> — <name>,
+  <date>, <why>`. A sensitive-area criterion cannot move. `scripts/doctor` checks every new ship.
+- **Triage lives in the plan** (`## Triage`): lite has no PR at triage time; the PR links it.
+- **The ship commit inherits the full green** (`docs/testing.md`, Two speeds rule 6) when
+  everything after the cited green touches only `specs/`.
+- **Self-critique has a status** (`- Self-critique: done | pending (<condition>)`).
+- **One decision per gate message** (`workflows/segments.md`, Contract, Gate).
+
+### Upgrading
+
+- `scripts/doctor` — behavior: (1) new ships — specs added to `specs/done/` vs the base ref
+  (`$ANEW_BASE_REF`, else the PR's merge-base, else HEAD plus untracked files there): every
+  `- [ ] AC-|CB-|PB-<n>` line (struck through or not) without `→ moved to` / `-> moved to` on
+  the same line → gate `unproven criterion in a new ship: <file> <id>`; a `B-<n>` target needs
+  `**B-<n>**` in `specs/backlog.md`, a `spec <NNNN>` target a file in `specs/active/` or
+  `specs/done/`, else gate; any move in a spec with `Sensitive area:` → gate. Specs already in
+  `specs/done/` at the base are not checked. (2) `- Self-critique: pending …` in `specs/active/`:
+  Draft → WARN with the condition; Approved / In progress → gate. No field → nothing.
+- `scripts/selftest` — scenarios for the behaviors above.
+- `specs/TEMPLATE.md`, `specs/TEMPLATE-mini.md`: intent: the Self-critique field and the
+  moved-out line format. `prompts/spec.md`: intent: sets the field. `specs/plans/TEMPLATE.md`:
+  intent: `## Triage`. `prompts/recovery/spec-change.md`: intent: R-08 covers the ship-gate move.
+- `workflows/feature-development.md` (steps 7, 10), `workflows/segments.md` (Contract, Gate;
+  VERIFY; SHIP handoff), `prompts/verify.md`, `prompts/recovery/flaky-test.md`,
+  `.github/pull_request_template.md`, `docs/commands.md`: intent: the triage record is the plan;
+  descoping at ship; one decision per gate. `docs/testing.md`: intent: rule 6's specs-only
+  inheritance with its proving command. The four `new-feature` adapters: intent: one decision
+  per gate message.
+- Decisions: `docs/decisions/anew/ANEW-0012-descope-not-waive.md` (new).
+- Full diff: `/compare/v1.21...v1.22`.
+
 ## v1.21 — The environment is asked, not assumed
 
 From a field project (.NET, Windows + Git Bash) whose container runtime was too old for its
