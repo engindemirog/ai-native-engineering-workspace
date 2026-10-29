@@ -8,6 +8,9 @@ specs/plans/TEMPLATE.md:
 - Files to change/add, path by path (this is the blast radius — be honest).
 - Ordered, commit-sized steps.
 - Risks and points you are NOT sure about — each with your recommendation and rationale.
+  Run ./scripts/doctor first: every unmet step prerequisite and its per-profile verdict on this
+  machine is a risk entry with a recommendation (environment gap, R-13) — decided at plan
+  approval, not discovered at the end of BUILD. All met: say so in one line, with the verdict.
 - Criterion ↔ test map: every acceptance criterion, the test that will prove it, and the profile
   it runs in (fast or full). A new test must be caught by its step's selector in
   scripts/check.conf (docs/testing.md, Two speeds, rule 4).

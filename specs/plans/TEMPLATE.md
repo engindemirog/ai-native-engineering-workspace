@@ -14,7 +14,9 @@
      spec is too big (prompts/plan.md, SIZE). -->
 
 ## Risks & open questions
-<!-- Each with YOUR recommendation and rationale (proposal rule). Unresolved questions block build. -->
+<!-- Each with YOUR recommendation and rationale (proposal rule). Unresolved questions block build.
+     Environment: doctor's per-profile verdict on the planner's machine and every unmet step
+     prerequisite, each with a recommendation (R-13). /build compares its own verdict to this line. -->
 
 ## Criterion ↔ test map
 <!-- Profile: fast or full — the check.conf step whose selector runs the test
