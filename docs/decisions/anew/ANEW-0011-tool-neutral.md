@@ -23,7 +23,9 @@ that touch one show alternatives side by side.
   language- and tool-agnostic (same reasoning as ANEW-0007).
 - Costs: the project writes and maintains its prerequisite commands; ANEW cannot judge whether a
   command really tests what the step needs. doctor now runs project commands (side-effect free
-  by contract, not by enforcement; no timeout — POSIX sh has no portable one).
+  by contract, not by enforcement; no timeout — POSIX sh has no portable one). doctor was
+  read-only; it now executes code from the branch's check.conf, as check always did — treat
+  running doctor on an untrusted branch or fork like running check there.
 
 ## Alternatives considered
 - Version requirements parsed by ANEW (`requires: <tool> >= <version>`): needs per-tool version

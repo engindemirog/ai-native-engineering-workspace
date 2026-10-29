@@ -40,21 +40,27 @@ the project declares what a step needs, ANEW runs it and reports.
 
 Update the scripts **before** adding `requires` lines: a v1.20 check runs `requires x: cmd` as a
 step named "requires x" (it fails if unmet — never a false green, but the output misleads).
+The other way round: a step whose name starts with `requires` and a space or tab is now read as
+a prerequisite — rename it before updating (v1.21 check fails on it: `requires names no step`).
 
 - `scripts/check` — behavior: lines `requires <step>: <command>` (first non-blank word
-  `requires`, then whitespace) are prerequisites, not steps. Before the first step, every
+  `requires`, then a space or tab — the same rule in doctor and residue) are prerequisites, not
+  steps; only a conf with such a line runs the prerequisite pass. Before the first step, every
   prerequisite of the profile's steps runs once per distinct command text (from the repo root,
   stdin from /dev/null). Met → `ok    prerequisite: <cmd> (steps: …)`, output hidden; unmet →
   its output, then `CHECK FAILED (<profile>) prerequisite not met: <cmd> (steps: …) — environment
   gap, see prompts/recovery/environment-gap.md (R-13)`; all are reported, then exit 1 with no
-  step run. `--fast` skips prerequisites of full-only steps. A `requires` line naming no step →
-  `CHECK FAILED (<profile>) requires names no step: <name>`, exit 1. No `requires` line → output
-  unchanged.
+  step run. `--fast` skips prerequisites of full-only steps. Malformed `requires` lines fail
+  check the same way, before any step: naming no step (`requires names no step: <name>`), an
+  empty command (`requires has no command: <step>`), no `:` (`requires line has no ':': <line>`).
+  A step is listed once per command. No `requires` line → output unchanged.
 - `scripts/doctor` — behavior: messages print through `printf` (backslashes kept). A conf with
   only `requires` lines has no steps (WARN as before). With `requires` lines: each distinct
-  command runs once; met → ok, unmet → WARN plus its output; a line naming no step → WARN; then
-  `profile fast|full: runnable on this machine` (ok) or `not runnable on this machine (steps: …)`
-  (WARN). WARN in every mode, also `--strict`. Recovery catalog expects 13 ramps.
+  command runs once; met → ok, unmet → WARN plus its output; a malformed line (as in check) →
+  WARN; then `profile fast|full: runnable on this machine` (ok), `not runnable on this machine
+  (steps: …)` (WARN, computed from exact step↔command pairs), or, with a malformed line, `check
+  fails on the check.conf errors above` (WARN). WARN in every mode, also `--strict`. Recovery
+  catalog expects 13 ramps.
 - `scripts/residue` — behavior: `requires` lines are not steps (a conf of only those →
   `RESIDUE NOT MEASURED`).
 - `scripts/selftest` — scenarios for the behaviors above.

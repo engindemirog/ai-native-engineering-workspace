@@ -69,7 +69,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   evidence hygiene, fast-only evidence. `--strict` turns gate warnings into failures; CI runs it that way.
   Step prerequisites (`requires` lines in `check.conf`): runs each distinct command once and
   prints, per profile, `runnable on this machine` or `not runnable on this machine (steps: …)`
-  — a WARN in every mode, also under `--strict`: it describes the machine (R-13).
+  — a WARN in every mode, also under `--strict`: it describes the machine (R-13). A malformed
+  `requires` line is a WARN and no profile is called runnable (check fails on it).
 - **When to use it:** after bootstrap, before a PR, whenever the workspace feels off.
 - **Reads / writes:** reads the working tree (and git, for `specs/done/` against a base ref);
   writes nothing itself; runs the project's prerequisite commands (side-effect free by contract).
@@ -95,8 +96,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Lite / Strict:** no difference.
 - **Refusal:** `check: no scripts/check.conf yet.` (exit 1); an unknown argument prints the
   usage (exit 2); an unmet prerequisite: `CHECK FAILED (<profile>) prerequisite not met: <command>
-  (steps: …) — environment gap, …(R-13)` before any step (exit 1); a `requires` line naming no
-  step: `CHECK FAILED (<profile>) requires names no step: <name>` (exit 1).
+  (steps: …) — environment gap, …(R-13)` before any step (exit 1); a malformed `requires` line:
+  `CHECK FAILED (<profile>) requires names no step: <name>`, `… requires has no command: <step>`
+  or `… requires line has no ':': <line>` (exit 1).
 - **Common mistake:** citing `CHECK GREEN (fast, …)` as evidence.
 
 ### `scripts/residue`

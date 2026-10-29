@@ -11,8 +11,11 @@ STOP. DO NOT WORK AROUND THE RULE. Bring me:
   in CI only (every proof of it then costs a push); change the step or its prerequisite; I do
   the refused action myself (you give me the exact command and path).
 - Your recommendation and why.
-After I decide: record the decision as a plan amendment (A-n), then continue from where you
-stopped.
+After I decide: record the decision as a plan amendment (A-n); with no plan yet (bootstrap),
+in the bootstrap report and where it lasts — docs/testing.md for a profile rule (e.g. "full
+runs in CI only on this team"), an ADR for a harder choice. Then continue from where you stopped.
 PROTECTION: never weaken, skip or disable the rule, the step or its prerequisite to get past it;
 never report its evidence as present while the gap is open.
+EXIT: the decision recorded (amendment, report or doc), and doctor's verdict or the check output
+shown matching it.
 ```
