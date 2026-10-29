@@ -1,6 +1,6 @@
 # Spec 0001 — Environment prerequisites, surfaced before BUILD
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite (assumed — this repository's AGENTS.md is unconfigured; ANEW's own development)
 - Plan: `.anew-dev/plans/0001-plan.md`
 
@@ -86,48 +86,70 @@ none — no graphical interface. The terminal output is the interface:
   platform & template notes. Source for all: OYP pilot field report, 2026-10-29.
 
 ## Acceptance criteria
-- [ ] AC-1 — With no prerequisites declared, `check`, `doctor`, `residue` and `selftest` produce
+- [x] AC-1 — With no prerequisites declared, `check`, `doctor`, `residue` and `selftest` produce
   the same results and exit codes as v1.20 on the same `check.conf`.
-- [ ] AC-2 — A step with one met and one unmet prerequisite: doctor prints one `ok` and one `WARN`
+- [x] AC-2 — A step with one met and one unmet prerequisite: doctor prints one `ok` and one `WARN`
   line, each naming the step and the command; exit code 0 in normal and in `--strict` mode.
-- [ ] AC-3 — doctor prints a per-profile verdict: an unmet prerequisite on a full-only step makes
+- [x] AC-3 — doctor prints a per-profile verdict: an unmet prerequisite on a full-only step makes
   `full` "not runnable here (steps: <name>)" while `fast` stays "runnable"; on a `[fast]` step,
   both are not runnable.
-- [ ] AC-4 — `./scripts/check` with an unmet prerequisite on the last step: no step's command is
+- [x] AC-4 — `./scripts/check` with an unmet prerequisite on the last step: no step's command is
   executed (not even the first), the output carries the distinct prerequisite-failure line (step,
   command, R-13) and the command's output, exit 1, and no `CHECK GREEN` line appears. A met
   prerequisite prints one `ok` line and none of its output.
-- [ ] AC-5 — `./scripts/check --fast` does not evaluate prerequisites of full-only steps (an
+- [x] AC-5 — `./scripts/check --fast` does not evaluate prerequisites of full-only steps (an
   unmet one there leaves the fast run green).
-- [ ] AC-6 — A prerequisite whose command does not exist is reported as not met with the shell's
+- [x] AC-6 — A prerequisite whose command does not exist is reported as not met with the shell's
   error text; doctor and check do not abort on it.
-- [ ] AC-7 — `workflows/bootstrap.md` (VERIFY) and `prompts/plan.md` + `specs/plans/TEMPLATE.md`
+- [x] AC-7 — `workflows/bootstrap.md` (VERIFY) and `prompts/plan.md` + `specs/plans/TEMPLATE.md`
   (Risks) require the per-profile verdict / unmet prerequisites with a recommendation.
-- [ ] AC-8 — `prompts/recovery/environment-gap.md` exists as R-13 with the core rule above, is
+- [x] AC-8 — `prompts/recovery/environment-gap.md` exists as R-13 with the core rule above, is
   listed in `prompts/recovery/README.md`, and doctor's recovery-catalog count expects 13.
-- [ ] AC-9 — Tool neutrality: `grep -ri 'docker\|podman\|testcontainers' scripts/ --exclude=check.conf.example` finds nothing;
+- [x] AC-9 — Tool neutrality: `grep -ri 'docker\|podman\|testcontainers' scripts/ --exclude=check.conf.example` finds nothing;
   `scripts/check.conf.example` shows the prerequisite format with a tool-neutral example or two
   alternatives side by side.
-- [ ] AC-10 — A prerequisite command declared on three steps is executed exactly once per check
+- [x] AC-10 — A prerequisite command declared on three steps is executed exactly once per check
   run and once per doctor run (observable via a counter file written by the test's command).
-- [ ] AC-11 — `prompts/build.md` (and the `/build` entry check in `workflows/segments.md`)
+- [x] AC-11 — `prompts/build.md` (and the `/build` entry check in `workflows/segments.md`)
   require printing doctor's per-profile verdict and stopping with R-13 when it differs from the
   plan's Risks entry.
-- [ ] AC-12 — `scripts/selftest` covers AC-1 … AC-6 and AC-10, and fails when any of them is broken on
+- [x] AC-12 — `scripts/selftest` covers AC-1 … AC-6 and AC-10, and fails when any of them is broken on
   purpose (one deliberate break per criterion, reported by VERIFY).
 
+## Evidence
+Full green for the verified commit (plan Q5: doctor --strict + selftest; this template has no
+check.conf): CI run [#53](https://github.com/engindemirog/ai-native-engineering-workspace/actions/runs/40890635772)
+on `295c277` — `doctor --strict` 0 fail, `selftest` 164 passed, 0 failed. The ship commit
+touches `.anew-dev/` only; the PR head's own CI run is cited in the PR.
+VERIFY ran in independent read-only sessions (round 1 on `e8e4bf7`, round 2 on `295c277`).
+
+| Criterion | Proof | Result |
+|---|---|---|
+| AC-1 | v1.20 selftest vs new scripts 96/96; v1.20 vs HEAD side by side on 9 confs without `requires`, identical output and exit codes; selftest "no requires line → …" | PASS |
+| AC-2 | selftest "one step, one met prerequisite: ok", "… and one unmet: WARN", "… under --strict still only warns (exit 0)" | PASS |
+| AC-3 | selftest "unmet on a full-only step: fast stays runnable", "… full is not runnable", "unmet on a fast step: fast not runnable", "… and full neither" | PASS |
+| AC-4 | selftest "unmet prerequisite fails check", "…not even the first step runs", "… no step marker", "… no green line", "an unmet prerequisite shows its output", "a met prerequisite's output is not printed" | PASS |
+| AC-5 | selftest "--fast ignores prerequisites of full-only steps"; counter-file observation | PASS |
+| AC-6 | selftest "missing prerequisite command → not met", "… with the shell's error text", "… does not abort doctor"; non-executable script observed | PASS |
+| AC-7 | `workflows/bootstrap.md` VERIFY, `prompts/bootstrap.md` step 4, `prompts/plan.md` Risks, `specs/plans/TEMPLATE.md` Risks | PASS |
+| AC-8 | `prompts/recovery/environment-gap.md`; README row R-13; doctor "recovery catalog present (13 ramps)" | PASS |
+| AC-9 | `grep -ri 'docker\|podman\|testcontainers' scripts/ --exclude=check.conf.example` → no output (VERIFY round 2); example conf neutral + two runtimes side by side | PASS |
+| AC-10 | selftest "a prerequisite on three steps runs once per check run" / "… per doctor run" | PASS |
+| AC-11 | `prompts/build.md` and `workflows/segments.md` BUILD row | PASS |
+| AC-12 | VERIFY round 1: 24 deliberate breaks, each red; round 2: 8 breaks re-run, each red | PASS |
+
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `specs/backlog.md`
-- [ ] Docs / ADRs updated if behavior or architecture changed (CHANGELOG entry with behavior list; ADR `docs/decisions/anew/ANEW-0011-tool-neutral.md`: ANEW knows no tool, runtime or version — it runs only what the project declares)
-- [ ] Spec moved to `specs/done/` (it becomes immutable there)
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `specs/backlog.md`
+- [x] Docs / ADRs updated if behavior or architecture changed (CHANGELOG entry with behavior list; ADR `docs/decisions/anew/ANEW-0011-tool-neutral.md`: ANEW knows no tool, runtime or version — it runs only what the project declares)
+- [x] Spec moved to `specs/done/` (it becomes immutable there)
 
 ## Scorecard (fill at ship — honest numbers make the process improvable)
 | Metric | Value |
 |---|---|
 | Spec revisions | 1 (self-critique: 6 gaps folded in, approved 2026-10-29) |
-| Fix rounds | |
-| Review findings: real / noise / deferred | |
-| Regressions introduced | |
-| Bugs escaped to production | |
+| Fix rounds | 3 (review round 1 → fix-1; review round 2 → fix-2; VERIFY round 1 → fix-3) |
+| Review findings: real / noise / deferred | 22 / 0 / 2 (B-1, B-2 in `.anew-dev/backlog.md`) |
+| Regressions introduced | 1 — fix-2 put tool names in selftest fixtures (AC-9); caught by independent VERIFY, fixed in fix-3 |
+| Bugs escaped to production | 0 at ship |
