@@ -1,6 +1,6 @@
 ## Spec
 <!-- specs/active/NNNN-<name>.md — a PR without a spec should not exist (AGENTS.md rule 1). -->
-- Spec: `specs/active/NNNN-<name>.md` — Status: <!-- In progress (Shipped once merged & moved) -->
+- Spec: `specs/active/NNNN-<name>.md` — Status: <!-- In progress; Shipped once moved to specs/done/ in this PR (before merge) -->
 - Plan: `specs/plans/NNNN-plan.md`
 - Or, for lanes without a spec file (AGENTS.md rule 1 still holds — this is the spec's equivalent):
   bug fix → report + reproduction test: <!-- report id + test name --> · trivial change → work item

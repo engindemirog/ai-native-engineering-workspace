@@ -43,14 +43,17 @@ boxes empty, tick the proven ones (`- [x]`) at ship from now on — doctor tells
 
 - `scripts/doctor` — behavior: (1) new ships — specs added to `specs/done/` vs the base ref
   (`$ANEW_BASE_REF`, else the PR's merge-base, else HEAD plus untracked files there): every
-  unchecked criterion line — fail closed: any line with a checkbox (`[ ]`, `[]`) before an
-  `AC-|CB-|PB-<n>` id, whatever its bullet or emphasis; `[x]`/`[X]` is ticked — without
+  unchecked criterion line — fail closed: a line with a checkbox (`[ ]`, `[]`, `[x]`, `[X]`)
+  followed by an `AC-|CB-|PB-<n>` id with only punctuation or emphasis between, whatever its
+  bullet; the line's first box and id decide, `[x]`/`[X]` is ticked; a box in backticks or a
+  table cell still counts — without
   `→ moved to` / `-> moved to` after the id (after the closing `~~` when the id is struck;
   outside backticks) → gate `unchecked criterion in a new ship: <file> <id> — tick it ([x]) if VERIFY
   proved it, else move it out`; a `B-<n>` target needs `**B-<n>**` in `specs/backlog.md`, a
   `spec <NNNN>` target a file in `specs/active/` that is not the spec itself, else gate; any move
-  in a sensitive spec → gate: a line starting (after bullet / emphasis) with "sensitive area(s)",
-  any case, unless its value starts with none or n/a; a new ship with no criterion line → WARN.
+  in a sensitive spec → gate: a line starting (after bullet / emphasis) with "sensitive area" or
+  "sensitive area(s)" and a separator (`:`, `—`, `-`), any case, unless its value (past emphasis,
+  quotes or brackets) starts with none or n/a — an empty value is sensitive; a new ship with no criterion line → WARN.
   Paths are read unquoted and workspace-relative (non-ASCII names, a workspace in a
   subdirectory), also in the immutability check's messages; the check runs under `LC_ALL=C`, so
   specs in other encodings are read byte for byte. Specs already

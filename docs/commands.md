@@ -72,8 +72,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   — a WARN in every mode, also under `--strict`: it describes the machine (R-13). A malformed
   `requires` line (or one naming no step) is a WARN, and each profile then reads `check fails on
   the check.conf errors above` — a conf error to fix, not an environment gap.
-  New ships (specs added to `specs/done/` vs the base ref; fail closed — any line with a
-  checkbox before an `AC-`/`CB-`/`PB-` id is a criterion): an unchecked criterion without
+  New ships (specs added to `specs/done/` vs the base ref; fail closed — a line with a checkbox
+  followed by an `AC-`/`CB-`/`PB-` id, only punctuation or emphasis between, is a criterion; its
+  first box decides; a box in backticks still counts): an unchecked criterion without
   `→ moved to B-<n> | spec <NNNN>` (target existing), or any move in a sensitive-area spec, is a
   gate (tick a proven criterion `[x]`); a spec target must be open (`specs/active/`). A
   `Self-critique: pending` warns on a Draft — expected until the self-critique is approved — and

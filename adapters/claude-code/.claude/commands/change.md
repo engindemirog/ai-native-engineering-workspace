@@ -19,7 +19,7 @@ request: $ARGUMENTS
      set "Status: Approved", write the handoff "Next: PLAN — Developer runs /plan <NNNN>", STOP.
    - **lite** → chain ANALYZE (mini) → /plan → /build → /review (narrow) → /verify (before/after
      screenshots for UI) → ship, asking at every gate. One decision per gate message
-(workflows/segments.md, Contract, Gate). Entry checks stay: /plan needs the
+     (workflows/segments.md, Contract, Gate). Entry checks stay: /plan needs the
      Approved spec, /build needs the filled "Approved by / on" line — the plan gate is never
      skipped in this lane. One-pass review (workflows/segments.md, "The chainer") may join
      /review and /verify in the `reviewer` subagent when its conditions hold.
