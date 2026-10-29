@@ -285,6 +285,32 @@ doctor;            has "duplicate spec number 0005" "twin spec numbers are caugh
 reset; put specs/done/0006-c.md '# Spec 0006' '- Status: Approved'
 doctor;            has "specs/done/0006-c.md is not marked 'Status: Shipped'" "unmarked shipped spec is caught"
 
+# New ships (vs the base ref): every criterion checked, or moved out at the ship gate with a target.
+doctor_base() { run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=$1; export ANEW_BASE_REF; shift; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
+reset; put specs/done/0020-new.md '# Spec 0020' '- Status: Shipped' '- [x] AC-1 — proven' '- [ ] AC-2 — unproven'
+doctor;            has "WARN  unproven criterion in a new ship: specs/done/0020-new.md AC-2" "an uncommitted new ship with an unproven criterion → WARN"
+hasnt "0020-new.md AC-1" "… a checked criterion is fine"
+commit "ship 0020"
+doctor_base "$BASE" --strict
+exits 1 "new ship with an unproven criterion under --strict"; has "FAIL  unproven criterion in a new ship: specs/done/0020-new.md AC-2" "… FAIL, naming spec and criterion"
+doctor;            hasnt "unproven criterion" "a spec already shipped at the base is not judged again"
+reset; put specs/done/0021-mini.md '# Spec 0021 (mini)' '- Status: Shipped' '- [x] CB-1 — done' '- [ ] PB-1 — not proven'
+doctor;            has "unproven criterion in a new ship: specs/done/0021-mini.md PB-1" "mini-spec CB-/PB- lines are judged too"
+reset; put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~ → moved to B-3 — Ada, 2026-10-29, needs a newer runtime'
+doctor;            has "moved criterion has no backlog entry: specs/done/0022-move.md AC-1 → B-3" "a move to a backlog entry that does not exist → gate"
+put specs/backlog.md '# Backlog' '- **B-3** — needs a newer runtime'
+doctor;            hasnt "0022-move.md" "a move to an existing backlog entry is accepted"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c -> moved to B-3 — Ada, 2026-10-29'
+doctor;            hasnt "0022-move.md" "the ASCII arrow is accepted too"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~'
+doctor;            has "unproven criterion in a new ship: specs/done/0022-move.md AC-1" "striking a criterion through without a target does not move it"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c → moved to spec 0007'
+doctor;            has "moved criterion has no target spec: specs/done/0022-move.md AC-1 → spec 0007" "a move to a spec that does not exist → gate"
+put specs/active/0007-later.md '# Spec 0007' '- Status: Draft'
+doctor;            hasnt "0022-move.md" "a move to an existing spec is accepted"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' 'Sensitive area: payments' '- [ ] AC-1 — c → moved to spec 0007'
+doctor;            has "a sensitive-area criterion cannot be moved out: specs/done/0022-move.md AC-1" "a sensitive-area criterion is never moved out"
+
 reset; put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast, 2 steps, 4 s) |'
 doctor;            exits 0 "fast evidence only warns"; has "WARN  fast output cited as evidence: specs/done/0010-fast.md" "a shipped spec citing only fast output is reported"
 put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast, 2 steps, 4 s) · CHECK GREEN (full, 5 steps, 90 s) |'

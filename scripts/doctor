@@ -285,6 +285,51 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     done
     IFS=$oldifs
     [ "$shipped_viol" -eq 0 ] && ok "shipped specs unchanged vs $base (specs/done/ immutable)"
+
+    # --- new ships (added to specs/done/ vs the same base; already-shipped specs are never judged
+    # again): every criterion line is checked, or moved out at the ship gate (R-08) with its target
+    # on the same line — `→ moved to B-<n>` (in specs/backlog.md) or `→ moved to spec <NNNN>` (in
+    # active/ or done/); ASCII `->` too. A sensitive-area criterion is never moved out. Untracked
+    # files count when the base is HEAD (a ship not committed yet). ---
+    new_ships=$(printf '%s\n' "$changes" | awk -F'\t' '$1 == "A" { print $2 }')
+    [ "$base" = HEAD ] && new_ships="$new_ships
+$(git -C "$ROOT" ls-files --others --exclude-standard -- specs/done/ 2>/dev/null)"
+    oldifs=$IFS; IFS='
+'
+    for f in $new_ships; do
+      case "$f" in specs/done/[0-9]*.md) ;; *) continue ;; esac
+      [ -f "$ROOT/$f" ] || continue
+      sensitive=0; grep -q 'Sensitive area:' "$ROOT/$f" && sensitive=1
+      while IFS= read -r c; do   # a here-doc, not a pipe: gate() must count in this shell
+        [ -n "$c" ] || continue
+        id=$(printf '%s\n' "$c" | sed -E 's/^[^A-Z]*((AC|CB|PB)-[0-9]+).*/\1/')
+        target=$(printf '%s\n' "$c" | sed -n -e 's/.*→ moved to \(.*\)/\1/p' -e 's/.*-> moved to \(.*\)/\1/p' | head -n 1)
+        if [ -z "$target" ]; then
+          gate "unproven criterion in a new ship: $f $id — prove it, or move it out at the ship gate (→ moved to …, R-08)"
+          continue
+        fi
+        if [ "$sensitive" -eq 1 ]; then
+          gate "a sensitive-area criterion cannot be moved out: $f $id"
+          continue
+        fi
+        case "$target" in
+          B-[0-9]*)
+            b=$(printf '%s' "$target" | sed -E 's/^(B-[0-9]+).*/\1/')
+            grep -qF "**$b**" "$ROOT/specs/backlog.md" 2>/dev/null \
+              || gate "moved criterion has no backlog entry: $f $id → $b (specs/backlog.md)" ;;
+          spec\ [0-9]*)
+            n=$(printf '%s' "$target" | sed -E 's/^spec ([0-9]+).*/\1/')
+            found=0
+            for t in "$ROOT/specs/active/$n-"*.md "$ROOT/specs/done/$n-"*.md; do [ -f "$t" ] && found=1; done
+            [ "$found" -eq 1 ] \
+              || gate "moved criterion has no target spec: $f $id → spec $n (specs/active/ or specs/done/)" ;;
+          *) gate "moved criterion has no target: $f $id — write → moved to B-<n> or → moved to spec <NNNN>" ;;
+        esac
+      done <<EOF
+$(grep -E '^[[:space:]]*- \[ \] (~~)?(AC|CB|PB)-[0-9]+' "$ROOT/$f")
+EOF
+    done
+    IFS=$oldifs
   else
     warn "immutability check skipped — base ref '${base:-?}' cannot be resolved (CI needs fetch-depth: 0)"
   fi
