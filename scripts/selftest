@@ -285,6 +285,19 @@ doctor;            has "duplicate spec number 0005" "twin spec numbers are caugh
 reset; put specs/done/0006-c.md '# Spec 0006' '- Status: Approved'
 doctor;            has "specs/done/0006-c.md is not marked 'Status: Shipped'" "unmarked shipped spec is caught"
 
+# Self-critique status: pending on a Draft warns; past approval it is a gate.
+reset; put specs/active/0030-sc.md '# Spec 0030' '- Status: Draft' '- Self-critique: pending (after 0029 ships)'
+doctor;            has "WARN  self-critique pending (after 0029 ships): specs/active/0030-sc.md" "pending self-critique on a Draft → WARN with its condition"
+put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved' '- Self-critique: pending (after 0029 ships)'
+doctor --strict;   exits 1 "pending self-critique on an Approved spec under --strict"
+has "FAIL  self-critique still pending (after 0029 ships) on a spec past approval" "… is a gate"
+put specs/active/0030-sc.md '# Spec 0030' '- Status: In progress' '- Self-critique: pending (x)'
+doctor;            has "WARN  self-critique still pending (x) on a spec past approval" "… In progress too (WARN locally)"
+put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved' '- Self-critique: done'
+doctor;            hasnt "self-critique" "self-critique done → no line"
+put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved'
+doctor;            hasnt "self-critique" "no Self-critique field (older spec) → no line"
+
 # New ships (vs the base ref): every criterion checked, or moved out at the ship gate with a target.
 doctor_base() { run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=$1; export ANEW_BASE_REF; shift; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
 reset; put specs/done/0020-new.md '# Spec 0020' '- Status: Shipped' '- [x] AC-1 — proven' '- [ ] AC-2 — unproven'

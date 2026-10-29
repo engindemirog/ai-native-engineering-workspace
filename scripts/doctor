@@ -238,6 +238,20 @@ for s in "$ROOT/specs/active/"[0-9]*.md; do
   [ -n "$source" ] || warn "mini-spec $n has no Source work item (specs/TEMPLATE-mini.md requires one)"
 done
 [ "$minis" -gt 0 ] && ok "mini-specs checked ($minis)"
+
+# --- self-critique status (prompts/spec.md): `- Self-critique: done | pending (<condition>)`.
+# pending on a Draft → WARN with its condition; on an Approved / In progress spec → gate (the
+# critique was skipped past approval). done, or no field (older specs) → nothing. ---
+for s in "$ROOT/specs/active/"[0-9]*.md; do
+  [ -f "$s" ] || continue
+  sc=$(grep -m1 '^- Self-critique:' "$s" | sed 's/<!--.*-->//g; s/^- Self-critique:[[:space:]]*//; s/[[:space:]]*$//')
+  case "$sc" in pending*) ;; *) continue ;; esac
+  st=$(grep -m1 '^- Status:' "$s" | sed 's/<!--.*-->//g; s/^- Status:[[:space:]]*//; s/[[:space:]]*$//')
+  case "$st" in
+    Approved|"In progress") gate "self-critique still $sc on a spec past approval: specs/active/$(basename "$s") (status: $st)" ;;
+    *) warn "self-critique $sc: specs/active/$(basename "$s")" ;;
+  esac
+done
 dupsrc=$(for s in "$ROOT/specs/active/"[0-9]*.md; do
   [ -f "$s" ] && grep -m1 '^- Source:' "$s" | sed 's/<!--.*-->//g; s/^- Source:[[:space:]]*//; s/[[:space:]]*$//'
 done | grep -v '^$' | sort | uniq -d)
