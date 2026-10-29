@@ -362,6 +362,27 @@ for decl in '- Sensitive area: None — docs only' '- Sensitive area: n/a'; do
   put specs/done/0032-fc.md '# Spec 0032' '- Status: Shipped' "$decl" '- [ ] AC-1 — c → moved to spec 0007'
   doctor;          hasnt "0032-fc.md" "'$decl' is not sensitive"
 done
+reset; put specs/done/0034-first.md '# Spec 0034' '- Status: Shipped' '- [ ] AC-2 — unproven, depends on [x] AC-1' '- [ ] AC-3 — a ship shows `- [x] AC-1` lines' '- [x] AC-4 — proven; see [ ] AC-9'
+doctor;            has "unchecked criterion in a new ship: specs/done/0034-first.md AC-2 —" "a [x] AC-n inside the text does not tick the criterion"
+has "unchecked criterion in a new ship: specs/done/0034-first.md AC-3 —" "… nor in backticks";  hasnt "0034-first.md AC-9" "the first box and id decide (a ticked line is not judged by a later box)"
+hasnt "0034-first.md AC-1" "… and the id is the first one on the line"
+put specs/active/0007-later.md '# Spec 0007' '- Status: Draft'
+for decl in '- Sensitive area(s): none' '- Sensitive area — none' '- Sensitive area: `none`' '- Sensitive area: (none)' 'Sensitive areas are not touched by this change.'; do
+  put specs/done/0034-first.md '# Spec 0034' '- Status: Shipped' "$decl" '- [ ] AC-1 — c → moved to spec 0007'
+  doctor;          hasnt "0034-first.md" "'$decl' does not make the spec sensitive"
+done
+for decl in '- Sensitive area:' '1) Sensitive area: payments' '- Sensitive area: nonexistent-flag'; do
+  put specs/done/0034-first.md '# Spec 0034' '- Status: Shipped' "$decl" '- [ ] AC-1 — c → moved to spec 0007'
+  doctor;          has "a sensitive-area criterion cannot be moved out: specs/done/0034-first.md AC-1" "'$decl' makes the spec sensitive (fail closed)"
+done
+put specs/backlog.md '# Backlog' '- **B-3** — x'
+put specs/done/0034-first.md '# Spec 0034' '- Status: Shipped' '- [ ] ~~AC-1 — c~~ → moved to B-3'
+doctor;            hasnt "0034-first.md" "a struck id is cut at its closing ~~, the marker after it counts"
+put specs/done/0034-first.md '# Spec 0034' '- Status: Shipped' '- [ ] ~~AC-1 — → moved to B-3 inside the strike~~ no marker after'
+doctor;            has "unchecked criterion in a new ship: specs/done/0034-first.md AC-1 —" "… a marker inside the struck text does not count"
+reset; put "specs/done/0035-ödeme.md" '# Spec 0035' '- Status: Shipped' '- [x] AC-1 — ok'; commit "ship 0035"
+put "specs/done/0035-ödeme.md" '# Spec 0035' '- Status: Shipped' '- [x] AC-1 — ok' 'edited'
+doctor;            has "shipped spec changed: specs/done/0035-ödeme.md" "immutability names a non-ASCII spec unquoted"
 reset; put specs/done/0033-old.md '# Spec 0033' '- Status: Shipped' '- [ ] AC-1 — old, unchecked'; commit "ship 0033"
 put specs/done/0033-old.md '# Spec 0033' '- Status: Shipped' '- [ ] AC-1 — old, unchecked' 'edited'
 doctor;            has "shipped spec changed: specs/done/0033-old.md" "an edited shipped spec is an immutability gate"
@@ -403,6 +424,9 @@ mkdir -p "$S/ws/specs/done"; printf '%s\n' '# Spec 0031' '- Status: Shipped' '- 
 git -C "$S" add -A; git -C "$S" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm ship
 run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=HEAD~1; export ANEW_BASE_REF; exec sh "$0"' "$S/ws/scripts/doctor"
 has "unchecked criterion in a new ship: specs/done/0031-sub.md AC-1" "a workspace in a subdirectory of its repo sees a committed new ship"
+printf '%s\n' '# Spec 0031' '- Status: Shipped' '- [ ] AC-1 — x' 'edited' > "$S/ws/specs/done/0031-sub.md"
+run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH ANEW_BASE_REF; exec sh "$0"' "$S/ws/scripts/doctor"
+has "shipped spec changed: specs/done/0031-sub.md" "immutability names the spec workspace-relative in a subdirectory"
 
 reset; put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast, 2 steps, 4 s) |'
 doctor;            exits 0 "fast evidence only warns"; has "WARN  fast output cited as evidence: specs/done/0010-fast.md" "a shipped spec citing only fast output is reported"
