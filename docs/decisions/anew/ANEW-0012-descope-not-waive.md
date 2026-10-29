@@ -12,7 +12,7 @@ second meaning of "done"; no path at all makes people invent one.
 ## Decision
 At the ship gate the human may move a criterion out of the spec. It is a spec change (R-08), not
 an exception: the criterion line stays, struck through, and on that line says where it went —
-`→ moved to B-<n>` (backlog) or `→ moved to spec <NNNN>` — who decided, when and why. The spec
+`→ moved to B-<n>` (backlog) or `→ moved to spec <NNNN>` (an open spec) — who decided, when and why. The spec
 then ships with every remaining criterion proven, so rule 4 holds word for word. A criterion of a
 sensitive area cannot be moved out. doctor checks every new ship (relative to the base ref):
 unchecked criteria need a move line with an existing target. Shipped specs are not judged again.
@@ -21,7 +21,7 @@ unchecked criteria need a move line with an existing target. Shipped specs are n
 - Benefits: no invented exceptions; the unproven part stays visible as open work with an owner;
   rule 4 and the immutability of shipped specs are untouched.
 - Costs: a ship may deliver less than the spec promised; the move line is the record of that.
-  Locally doctor sees only an uncommitted ship (base = HEAD); CI sees every one.
+  Locally doctor sees only an uncommitted ship (base = HEAD); CI on a pull request sees every one.
 
 ## Alternatives considered
 - A waiver (`Waived: AC-n`) with the criterion kept: makes "done" mean two things and weakens

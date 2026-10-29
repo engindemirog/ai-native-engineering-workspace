@@ -10,4 +10,7 @@ AGENTS.md invariant rules) but live here so the template's `specs/` stays empty 
 - `docs/testing.md` rule 6 (a ship commit touching only `specs/` inherits the full green) applies
   here to `.anew-dev/`: `git diff --name-only <green-sha> HEAD -- . ':!.anew-dev/'` prints nothing.
 
+- doctor scans `specs/`, not `.anew-dev/`: ANEW's own ships are checked by the reviewer and
+  VERIFY against the same rules (ticked or moved-out criteria, open targets), not by doctor.
+
 Template users: this folder is not part of your workspace — delete it after you create your repo.

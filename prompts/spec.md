@@ -19,7 +19,8 @@ Then run a SELF-CRITIQUE pass as a hostile reader: which questions would a devel
 (ambiguous criteria, missing boundary values, undefined error behavior). List each gap with your
 recommendation; I will approve which ones get folded in. Then set `- Self-critique: done`; if
 the critique waits on something (e.g. a split spec that waits for another to ship), set
-`pending (<condition>)` — doctor keeps it visible and blocks approval while it stays pending.
+`pending (<condition>)` — doctor keeps it visible on a Draft and flags it as a gate once the
+spec is Approved.
 SIZE: more than one user capability, or more than ~8–10 acceptance criteria → recommend a split:
 name the specs and their order. If I keep it as one, write that into Constraints & out of scope
 (Split: proposed <specs>; kept as one — <who>, <reason>). Do not write a plan or code.

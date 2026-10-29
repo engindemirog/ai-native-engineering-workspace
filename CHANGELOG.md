@@ -25,25 +25,35 @@ From the same field pilot, and from ANEW's own first run of v1.21: five places w
 had no written record, so agents improvised. Each now has one place and one rule; no invariant
 rule is weakened.
 
-- **Moved out, never waived** (ANEW-0012): a criterion that cannot be proven is moved out at the
-  ship gate (R-08) — its line stays, struck through, `→ moved to B-<n> | spec <NNNN> — <name>,
-  <date>, <why>`. A sensitive-area criterion cannot move. `scripts/doctor` checks every new ship.
+- **Moved out, never waived** (ANEW-0012): proven criteria are ticked at ship; one that cannot be
+  proven is moved out at the ship gate (R-08) — its line stays, struck through, `→ moved to
+  B-<n> | spec <NNNN> — <name>, <date>, <why>`, to open work. A sensitive-area criterion cannot
+  move. `scripts/doctor` checks every new ship (on a pull request in CI).
 - **Triage lives in the plan** (`## Triage`): lite has no PR at triage time; the PR links it.
 - **The ship commit inherits the full green** (`docs/testing.md`, Two speeds rule 6) when
-  everything after the cited green touches only `specs/`.
+  everything after the cited green touches only `specs/` and `doctor --strict` judged the ship.
 - **Self-critique has a status** (`- Self-critique: done | pending (<condition>)`).
 - **One decision per gate message** (`workflows/segments.md`, Contract, Gate).
 
 ### Upgrading
 
+**Tick proven criteria before your next ship.** doctor now judges each new ship: a criterion
+left `- [ ]` is a gate unless it is moved out. If your team kept the evidence table and left the
+boxes empty, tick the proven ones (`- [x]`) at ship from now on — doctor tells you which.
+
 - `scripts/doctor` — behavior: (1) new ships — specs added to `specs/done/` vs the base ref
   (`$ANEW_BASE_REF`, else the PR's merge-base, else HEAD plus untracked files there): every
-  `- [ ] AC-|CB-|PB-<n>` line (struck through or not) without `→ moved to` / `-> moved to` on
-  the same line → gate `unproven criterion in a new ship: <file> <id>`; a `B-<n>` target needs
-  `**B-<n>**` in `specs/backlog.md`, a `spec <NNNN>` target a file in `specs/active/` or
-  `specs/done/`, else gate; any move in a spec with `Sensitive area:` → gate. Specs already in
-  `specs/done/` at the base are not checked. (2) `- Self-critique: pending …` in `specs/active/`:
-  Draft → WARN with the condition; Approved / In progress → gate. No field → nothing.
+  unchecked criterion line (`-`, `*`, `+` or `1.` bullet; `**`/`~~` around the `AC-|CB-|PB-<n>`
+  id; `[x]`/`[X]` is ticked) without `→ moved to` / `-> moved to` after the id (outside
+  backticks) → gate `unchecked criterion in a new ship: <file> <id> — tick it ([x]) if VERIFY
+  proved it, else move it out`; a `B-<n>` target needs `**B-<n>**` in `specs/backlog.md`, a
+  `spec <NNNN>` target a file in `specs/active/` that is not the spec itself, else gate; any move
+  in a spec with a `Sensitive area(s): <name>` line (any case; `none` is not one) → gate; a new
+  ship with no criterion line → WARN. Paths are read unquoted and workspace-relative (non-ASCII
+  names, a workspace in a subdirectory); `grep -a` reads specs in other encodings. Specs already
+  in `specs/done/` at the base are not checked. (2) `- Self-critique: pending …` (any case) in
+  `specs/active/`: Draft → WARN with the condition (expected until approval); Approved / In
+  progress → gate. No field → nothing.
 - `scripts/selftest` — scenarios for the behaviors above.
 - `specs/TEMPLATE.md`, `specs/TEMPLATE-mini.md`: intent: the Self-critique field and the
   moved-out line format. `prompts/spec.md`: intent: sets the field. `specs/plans/TEMPLATE.md`:
@@ -53,7 +63,8 @@ rule is weakened.
   `.github/pull_request_template.md`, `docs/commands.md`: intent: the triage record is the plan;
   descoping at ship; one decision per gate. `docs/testing.md`: intent: rule 6's specs-only
   inheritance with its proving command. The four `new-feature` adapters: intent: one decision
-  per gate message.
+  per gate message; so do the `fix-bug`, `refactor` and `bootstrap` adapters. `specs/backlog.md`:
+  intent: ship-gate moves land there too.
 - Decisions: `docs/decisions/anew/ANEW-0012-descope-not-waive.md` (new).
 - Full diff: `/compare/v1.21...v1.22`.
 

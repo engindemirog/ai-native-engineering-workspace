@@ -74,8 +74,10 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   the check.conf errors above` — a conf error to fix, not an environment gap.
   New ships (specs added to `specs/done/` vs the base ref): an unchecked criterion without
   `→ moved to B-<n> | spec <NNNN>` (target existing), or any move in a sensitive-area spec, is a
-  gate. A `Self-critique: pending` warns on a Draft and is a gate past approval. Locally the
-  base is HEAD, so only an uncommitted ship is seen; CI sees every new ship.
+  gate (tick a proven criterion `[x]`); a spec target must be open (`specs/active/`). A
+  `Self-critique: pending` warns on a Draft — expected until the self-critique is approved — and
+  is a gate past approval. Locally the base is HEAD, so only an uncommitted ship is seen; CI on a
+  pull request sees every new ship.
 - **When to use it:** after bootstrap, before a PR, whenever the workspace feels off.
 - **Reads / writes:** reads the working tree (and git, for `specs/done/` against a base ref);
   writes nothing itself; runs the project's prerequisite commands (side-effect free by contract).
@@ -226,7 +228,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Reads / writes:** reads the spec, the plan (criterion ↔ test map, `## Triage`), `prompts/verify.md`, test output; writes no production code.
 - **Stops at:** the criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)`.
 - **Lite / Strict:** no difference; in strict, QA in a fresh session.
-- **Refusal:** none — a soft check: with no review/triage record, it says so and asks.
+- **Refusal:** none — a soft check: with no triage record in the plan's `## Triage`, it says so and asks.
 - **Common mistake:** a claim without evidence in the table — that is a gap, and gaps are findings.
 
 ## D — Request lanes: `/change`, `/fix-bug`, `/refactor`
