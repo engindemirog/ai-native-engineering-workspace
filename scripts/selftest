@@ -119,6 +119,9 @@ printf '# only a comment\n\n  # indented\n \r\n' > "$C/scripts/check.conf"
 residue
 exits 0 "residue: conf without steps";           has "RESIDUE NOT MEASURED (full)" "no steps → not measured, never clean"
 hasnt "baseline: " "no steps → nothing is measured"
+conf '# a prerequisite alone' 'requires unit: true'
+residue
+has "RESIDUE NOT MEASURED (full)" "residue: a requires line is not a step"
 conf 'unit [fast]: exit 3'
 residue
 exits 1 "residue: red check";                    has "RESIDUE TEST ABORTED (full): check failed in run 1" "red check aborts the residue test"

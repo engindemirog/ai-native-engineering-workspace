@@ -30,10 +30,11 @@ case "$settle" in ''|*[!0-9]*) usage ;; esac
 case "$tolerance" in ''|*[!0-9]*) usage ;; esac
 
 # A conf without steps runs nothing, so there is nothing to measure — say so instead of "clean".
-# Same rule as check: blank or whitespace-only lines and (indented) comments are not steps.
+# Same rule as check: blank or whitespace-only lines, (indented) comments and requires lines
+# (prerequisites) are not steps.
 CONF="$ROOT/scripts/check.conf"
 ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only, as in check
-if [ -f "$CONF" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" "$CONF"; then
+if [ -f "$CONF" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" -e "^[$ws]*requires[$ws]" "$CONF"; then
   echo "RESIDUE NOT MEASURED ($profile): scripts/check.conf has no steps — rerun when steps exist"
   exit 0
 fi

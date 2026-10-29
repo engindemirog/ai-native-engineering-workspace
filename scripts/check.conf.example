@@ -5,6 +5,15 @@
 # Tag quick steps with [fast] in the NAME (never in the command): ./scripts/check --fast runs only
 # those; ./scripts/check runs all (docs/testing.md, Two speeds, one contract).
 #
+# Prerequisites:  requires <step name>: <command>   — the step name as shown, without [fast].
+# A command you write that exits 0 when this machine can run the step; side-effect free, quick,
+# starts nothing. check runs them before the first step (unmet → red, environment gap R-13);
+# doctor reports which profile this machine can run. ANEW knows no tool: you name what you use.
+# requires test: node -e "process.exit(+process.versions.node.split('.')[0] >= 20 ? 0 : 1)"
+# A step that needs a container runtime names the one the project uses, e.g. one of:
+# requires integration: docker info
+# requires integration: podman info
+#
 # JVM (Gradle, Java) example:
 # resource hygiene: no Gradle daemon
 # build [fast]: ./gradlew assemble --no-daemon
