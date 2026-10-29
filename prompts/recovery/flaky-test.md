@@ -3,7 +3,7 @@
 ```
 First: infrastructure or test? A job that failed outside the tests (package mirror timeout,
 lost runner, download error — the cause is in its log) is infrastructure: rerun only the failed
-jobs and write the cause in the PR thread; that is not this ramp. A test that failed and then
+jobs and write the cause in the PR (or, before a PR exists, the plan's Triage); that is not this ramp. A test that failed and then
 passed on the same commit is flaky — a rerun is never the fix and never evidence. Then:
 
 This test is nondeterministic: <test name>. Find the source of nondeterminism (time, ordering,

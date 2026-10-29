@@ -13,8 +13,9 @@
 ## Gate records (copied from files, not from memory — workflows/segments.md)
 - Plan approval line, verbatim from the plan: `Approved by / on: `
 - Review report: <!-- link or paste; produced by a fresh session / read-only reviewer -->
-- Triage: <!-- each finding: real (fixed in <commit>) / noise (rationale) /
-  defer (specs/backlog.md) / investigate (R-05) -->
+- Triage: <!-- link the plan's ## Triage section (the record); each finding: real (fixed in
+  <commit>) / noise (rationale) / defer (specs/backlog.md) / investigate (R-05) -->
+- Criteria moved out at ship (R-08, never waived): <!-- none, or AC-n → B-<n> | spec <NNNN> -->
 - Verify table: <!-- link or paste the criterion ↔ evidence table -->
 
 ## Gates
