@@ -400,6 +400,9 @@ put specs/backlog.md '# Backlog' '- **B-3** — x'
 printf '# Spec 0026\n- Status: Shipped\n- [ ] ~~AC-1 caf\351~~ \342\206\222 moved to B-3 \342\200\224 Ada\n' > "$W/specs/done/0026-enc.md"
 run env LC_ALL=C.UTF-8 sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF GITHUB_EVENT_PATH; exec sh "$0"' "$W/scripts/doctor"
 hasnt "0026-enc.md" "a valid move in a Latin-1 spec is accepted under a UTF-8 locale"
+printf '# Spec 0026\n- Status: Shipped\n- [ ] AC-1 caf\351 \342\206\222 moved to B-3 \342\200\224 Ada\n' > "$W/specs/done/0026-enc.md"
+run env LC_ALL=C.UTF-8 sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF GITHUB_EVENT_PATH; exec sh "$0"' "$W/scripts/doctor"
+hasnt "0026-enc.md" "… also with the Latin-1 byte outside a strike (bytes, not characters)"
 reset; put specs/done/0027-mini.md '# Spec 0027 (mini)' '- Status: Shipped' '- [x] CB-1 — ok' '- [ ] CB-2 — not proven'
 doctor;            has "unchecked criterion in a new ship: specs/done/0027-mini.md CB-2" "an unchecked CB- line is judged"
 # Base refs: an old ship next to a new one; the active → done move; the PR merge-base path.

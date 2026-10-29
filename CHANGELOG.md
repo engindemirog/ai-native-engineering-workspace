@@ -71,7 +71,10 @@ boxes empty, tick the proven ones (`- [x]`) at ship from now on — doctor tells
   inheritance with its proving command. The four `new-feature` adapters: intent: one decision
   per gate message; so do the `change`, `fix-bug`, `refactor` and `bootstrap` adapters.
   `workflows/refactor.md`, `workflows/change-request.md`: intent: tick or move out at ship; the
-  move to done/ is part of the PR (also in step 10 and the segments SHIP handoff). `specs/backlog.md`:
+  move to done/ is part of the PR (also in step 10 and the segments SHIP handoff).
+  `workflows/refactor.md` (step 2), `workflows/incident.md` (step 3) and the `/refactor`
+  adapters: intent: lanes without ANALYZE run the self-critique pass and set the field, so their
+  mini-specs pass the new gate. `specs/backlog.md`:
   intent: ship-gate moves land there too.
 - Decisions: `docs/decisions/anew/ANEW-0012-descope-not-waive.md` (new).
 - Full diff: `/compare/v1.21...v1.22`.
