@@ -72,7 +72,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   — a WARN in every mode, also under `--strict`: it describes the machine (R-13). A malformed
   `requires` line (or one naming no step) is a WARN, and each profile then reads `check fails on
   the check.conf errors above` — a conf error to fix, not an environment gap.
-  New ships (specs added to `specs/done/` vs the base ref): an unchecked criterion without
+  New ships (specs added to `specs/done/` vs the base ref; fail closed — any line with a
+  checkbox before an `AC-`/`CB-`/`PB-` id is a criterion): an unchecked criterion without
   `→ moved to B-<n> | spec <NNNN>` (target existing), or any move in a sensitive-area spec, is a
   gate (tick a proven criterion `[x]`); a spec target must be open (`specs/active/`). A
   `Self-critique: pending` warns on a Draft — expected until the self-critique is approved — and
@@ -226,7 +227,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **When to use it:** after triage is complete. Not needed after a clean one-pass review, whose
   report already holds the table (lite, `workflows/segments.md`).
 - **Reads / writes:** reads the spec, the plan (criterion ↔ test map, `## Triage`), `prompts/verify.md`, test output; writes no production code.
-- **Stops at:** the criterion ↔ evidence table · `Next: SHIP — human (DoD, PR, merge, move spec to specs/done/, Status: Shipped)`.
+- **Stops at:** the criterion ↔ evidence table · `Next: SHIP — human (DoD, tick the proven criteria, move spec to specs/done/ with Status: Shipped in the PR, merge)`.
 - **Lite / Strict:** no difference; in strict, QA in a fresh session.
 - **Refusal:** none — a soft check: with no triage record in the plan's `## Triage`, it says so and asks.
 - **Common mistake:** a claim without evidence in the table — that is a gap, and gaps are findings.

@@ -22,4 +22,6 @@ BASELINE → SPEC & PLAN → [APPROVAL] → REFACTOR → PROVE UNCHANGED → REV
 6. **REVIEW** — fresh session. Extra lens: did semantics sneak in? Are names/layers now *more*
    aligned with `docs/architecture.md`? **[GATE: human]** triage (real / noise / defer /
    investigate).
-7. **SHIP.** PR → merge → the mini-spec moves to `specs/done/` (`Status: Shipped`).
+7. **SHIP.** Tick each criterion the proof covers (`[x]`); one that cannot be proven is moved out,
+   never waived (R-08, `feature-development.md` step 10) → the mini-spec moves to `specs/done/`
+   (`Status: Shipped`) in the PR → merge.

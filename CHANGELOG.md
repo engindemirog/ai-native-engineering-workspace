@@ -43,14 +43,17 @@ boxes empty, tick the proven ones (`- [x]`) at ship from now on — doctor tells
 
 - `scripts/doctor` — behavior: (1) new ships — specs added to `specs/done/` vs the base ref
   (`$ANEW_BASE_REF`, else the PR's merge-base, else HEAD plus untracked files there): every
-  unchecked criterion line (`-`, `*`, `+` or `1.` bullet; `**`/`~~` around the `AC-|CB-|PB-<n>`
-  id; `[x]`/`[X]` is ticked) without `→ moved to` / `-> moved to` after the id (outside
-  backticks) → gate `unchecked criterion in a new ship: <file> <id> — tick it ([x]) if VERIFY
+  unchecked criterion line — fail closed: any line with a checkbox (`[ ]`, `[]`) before an
+  `AC-|CB-|PB-<n>` id, whatever its bullet or emphasis; `[x]`/`[X]` is ticked — without
+  `→ moved to` / `-> moved to` after the id (after the closing `~~` when the id is struck;
+  outside backticks) → gate `unchecked criterion in a new ship: <file> <id> — tick it ([x]) if VERIFY
   proved it, else move it out`; a `B-<n>` target needs `**B-<n>**` in `specs/backlog.md`, a
   `spec <NNNN>` target a file in `specs/active/` that is not the spec itself, else gate; any move
-  in a spec with a `Sensitive area(s): <name>` line (any case; `none` is not one) → gate; a new
-  ship with no criterion line → WARN. Paths are read unquoted and workspace-relative (non-ASCII
-  names, a workspace in a subdirectory); `grep -a` reads specs in other encodings. Specs already
+  in a sensitive spec → gate: a line starting (after bullet / emphasis) with "sensitive area(s)",
+  any case, unless its value starts with none or n/a; a new ship with no criterion line → WARN.
+  Paths are read unquoted and workspace-relative (non-ASCII names, a workspace in a
+  subdirectory), also in the immutability check's messages; the check runs under `LC_ALL=C`, so
+  specs in other encodings are read byte for byte. Specs already
   in `specs/done/` at the base are not checked. (2) `- Self-critique: pending …` (any case) in
   `specs/active/`: Draft → WARN with the condition (expected until approval); Approved / In
   progress → gate. No field → nothing.
@@ -63,7 +66,9 @@ boxes empty, tick the proven ones (`- [x]`) at ship from now on — doctor tells
   `.github/pull_request_template.md`, `docs/commands.md`: intent: the triage record is the plan;
   descoping at ship; one decision per gate. `docs/testing.md`: intent: rule 6's specs-only
   inheritance with its proving command. The four `new-feature` adapters: intent: one decision
-  per gate message; so do the `fix-bug`, `refactor` and `bootstrap` adapters. `specs/backlog.md`:
+  per gate message; so do the `change`, `fix-bug`, `refactor` and `bootstrap` adapters.
+  `workflows/refactor.md`, `workflows/change-request.md`: intent: tick or move out at ship; the
+  move to done/ is part of the PR (also in step 10 and the segments SHIP handoff). `specs/backlog.md`:
   intent: ship-gate moves land there too.
 - Decisions: `docs/decisions/anew/ANEW-0012-descope-not-waive.md` (new).
 - Full diff: `/compare/v1.21...v1.22`.
