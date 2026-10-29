@@ -73,8 +73,9 @@ fi
 
 # Same rule as check: blank or whitespace-only lines and (indented) comments are not steps.
 ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only, as in check
-# A requires line is a prerequisite, not a step.
-if [ -f "$ROOT/scripts/check.conf" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" -e "^[$ws]*requires[$ws]" "$ROOT/scripts/check.conf"; then
+tab=$(printf '\t')
+# A requires line (first word `requires`, then a space or tab, as in check) is not a step.
+if [ -f "$ROOT/scripts/check.conf" ] && ! grep -q -v -e "^[$ws]*\$" -e "^[$ws]*#" -e "^[$ws]*requires[ $tab]" "$ROOT/scripts/check.conf"; then
   warn "scripts/check.conf has no steps — check and residue prove nothing until the first steps exist"
 elif [ -f "$ROOT/scripts/check.conf" ]; then
   ok "verification contract configured (scripts/check.conf)"
@@ -86,11 +87,12 @@ fi
 # Parsed as check parses them. Every prerequisite runs once per distinct command, both profiles.
 # Unmet = WARN in every mode: it describes this machine, not a gate (environment gap, R-13).
 # Nothing is printed when check.conf has no requires line.
-if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[$ws]" "$ROOT/scripts/check.conf"; then
-  tab=$(printf '\t')
+if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[ $tab]" "$ROOT/scripts/check.conf"; then
   trim() { t=${1#"${1%%[!$ws]*}"}; printf '%s' "${t%"${t##*[!$ws]}"}"; }
-  # "S<TAB>fast?<TAB>step", "R<TAB>step<TAB>command" → "U<TAB>step" (names no step),
-  # "P<TAB>steps<TAB>command" (one per distinct command), "F<TAB>step" (in the fast profile).
+  # In: "S<TAB>fast?<TAB>step", "R<TAB>step<TAB>command", "E<TAB>message".
+  # Out: "E<TAB>message", "U<TAB>step" (names no step), "F<TAB>step" (in the fast profile),
+  # "P<TAB>i<TAB>steps<TAB>command" (distinct command i, for display) and "Q<TAB>i<TAB>step"
+  # (one exact pair per step on command i — the verdict reads these, never the display list).
   reqs=$(
     while IFS= read -r line || [ -n "$line" ]; do
       case "$line" in *[!$ws]*) ;; *) continue ;; esac
@@ -98,14 +100,21 @@ if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[$ws]" "$ROOT/sc
       case "$rest" in
         \#*) continue ;;
         requires[" $tab"]*)
-          name=${rest%%:*}
-          printf 'R\t%s\t%s\n' "$(trim "${name#requires}")" "$(trim "${rest#*:}")"
+          case "$rest" in
+            *:*) ;;
+            *) printf "E\trequires line has no ':': %s\n" "$(trim "$rest")"; continue ;;
+          esac
+          name=$(trim "${rest%%:*}"); name=$(trim "${name#requires}")
+          cmd=$(trim "${rest#*:}")
+          if [ -z "$cmd" ]; then printf 'E\trequires has no command: %s\n' "$name"; continue; fi
+          printf 'R\t%s\t%s\n' "$name" "$cmd"
           continue ;;
       esac
       name=${line%%:*}
       case "$name" in *"[fast]"*) f=1 ;; *) f=0 ;; esac
       printf 'S\t%s\t%s\n' "$f" "$(trim "$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//')")"
     done < "$ROOT/scripts/check.conf" | awk '
+      $1 == "E" { print; next }
       $1 == "S" { s = substr($0, 3); n = substr(s, 3); all[++a] = n; known[n] = 1; if (substr(s, 1, 1) == "1") { fast[n] = 1; tagged = 1 }; next }
       $1 == "R" { r = substr($0, 3); i = index(r, "\t"); st[++k] = substr(r, 1, i - 1); cm[k] = substr(r, i + 1) }
       END {
@@ -113,40 +122,56 @@ if [ -f "$ROOT/scripts/check.conf" ] && grep -q "^[$ws]*requires[$ws]" "$ROOT/sc
         for (j = 1; j <= k; j++) {
           if (!(st[j] in known)) { printf "U\t%s\n", st[j]; continue }
           c = cm[j]
-          if (!(c in on)) { order[++m] = c; on[c] = st[j] } else on[c] = on[c] ", " st[j]
+          if ((c SUBSEP st[j]) in pair) continue
+          pair[c SUBSEP st[j]] = 1
+          if (!(c in idx)) { idx[c] = ++m; cmd[m] = c; on[m] = st[j] } else on[idx[c]] = on[idx[c]] ", " st[j]
+          printf "Q\t%d\t%s\n", idx[c], st[j]
         }
-        for (j = 1; j <= m; j++) printf "P\t%s\t%s\n", on[order[j]], order[j]
+        for (j = 1; j <= m; j++) printf "P\t%d\t%s\t%s\n", j, on[j], cmd[j]
       }'
   )
-  unmet_on=
+  unmet=
+  conf_errs=0
   while IFS= read -r entry; do
     kind=${entry%%"$tab"*}; entry=${entry#*"$tab"}
     case "$kind" in
-      U) warn "check.conf: requires names no step: $entry — check fails on it" ;;
+      E) warn "check.conf: $entry — check fails on it"; conf_errs=$((conf_errs + 1)) ;;
+      U) warn "check.conf: requires names no step: $entry — check fails on it"; conf_errs=$((conf_errs + 1)) ;;
       P)
+        i=${entry%%"$tab"*}; entry=${entry#*"$tab"}
         on=${entry%%"$tab"*}; cmd=${entry#*"$tab"}
         if pout=$(cd "$ROOT" && sh -c "$cmd" </dev/null 2>&1); then
           ok "prerequisite met: $cmd (steps: $on)"
         else
           warn "prerequisite not met: $cmd (steps: $on)"
           [ -n "$pout" ] && printf '%s\n' "$pout" | sed 's/^/      | /'
-          unmet_on="$unmet_on$on$tab"
+          unmet="${unmet}X$tab$i
+"
         fi ;;
     esac
   done <<EOF
 $reqs
 EOF
-  # Per profile: the unmet steps it contains. full = every step; fast = the F lines.
-  verdict=$(printf '%s\n' "$reqs" | awk -F'\t' -v unmet="$unmet_on" '
-    BEGIN { n = split(unmet, groups, "\t"); for (g = 1; g <= n; g++) { c = split(groups[g], s, ", "); for (j = 1; j <= c; j++) bad[s[j]] = 1 } }
-    $1 == "F" { fast[$2] = 1 }
-    $1 == "P" { c = split($2, s, ", "); for (j = 1; j <= c; j++) if (s[j] in bad && !(s[j] in seen)) { seen[s[j]] = 1; order[++m] = s[j] } }
+  # Per profile, the steps whose prerequisite is unmet, from the exact Q pairs: full = all of
+  # them, fast = those in the fast profile. Data goes in on stdin (awk -v would rewrite backslashes).
+  verdict=$(printf '%s%s\n' "$unmet" "$reqs" | awk -F'\t' '
+    $1 == "X" { bad[$2] = 1; next }
+    $1 == "F" { fast[substr($0, 3)] = 1; next }
+    $1 == "Q" { r = substr($0, 3); i = index(r, "\t"); q[++k] = substr(r, 1, i - 1); qs[k] = substr(r, i + 1) }
     END {
-      for (j = 1; j <= m; j++) { fl = fl (fl ? ", " : "") order[j]; if (order[j] in fast) ff = ff (ff ? ", " : "") order[j] }
+      for (j = 1; j <= k; j++) {
+        if (!(q[j] in bad) || (qs[j] in seen)) continue
+        seen[qs[j]] = 1
+        fl = fl (fl == "" ? "" : ", ") qs[j]
+        if (qs[j] in fast) ff = ff (ff == "" ? "" : ", ") qs[j]
+      }
       printf "fast\t%s\nfull\t%s\n", ff, fl
     }')
-  while IFS="$tab" read -r p list; do
-    if [ -z "$list" ]; then ok "profile $p: runnable on this machine"
+  while IFS= read -r line; do
+    p=${line%%"$tab"*}; list=${line#*"$tab"}
+    # A malformed requires line fails check in every profile, whatever this machine has.
+    if [ "$conf_errs" -gt 0 ]; then warn "profile $p: check fails on the check.conf errors above"
+    elif [ -z "$list" ]; then ok "profile $p: runnable on this machine"
     else warn "profile $p: not runnable on this machine (steps: $list) — environment gap, R-13 (prompts/recovery/environment-gap.md)"; fi
   done <<EOF
 $verdict

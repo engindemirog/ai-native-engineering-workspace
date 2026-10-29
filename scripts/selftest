@@ -105,6 +105,21 @@ conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x >> '$TMP/req-count
 check
 exits 0 "shared prerequisite, met";                has "(steps: a, b, c)" "… listed once for all its steps"
 [ "$(wc -l < "$TMP/req-count" | tr -d ' ')" -eq 1 ]; report $? "a prerequisite on three steps runs once per check run"
+conf 'a: true' 'requires a: true' 'requires a: true'
+check;             has "ok    prerequisite: true (steps: a)" "the same requires line twice lists its step once"
+conf 'a: echo a ran' 'requires a:'
+check
+exits 1 "requires with an empty command fails check"; has "CHECK FAILED (full) requires has no command: a" "… and says so"
+hasnt "a ran" "… before any step"
+conf 'a: echo a ran' 'requires a'
+check
+exits 1 "requires line without ':' fails check";  has "requires line has no ':': requires a" "… as a conf error"
+hasnt "environment gap" "… not as an environment gap"
+printf 'requires\fx: echo ff ran\n' > "$C/scripts/check.conf"
+check;             has "ff ran" "only a space or tab after 'requires' makes a requires line (as in doctor and residue)"
+printf 'a: echo a ran\r\nrequires a: true\r\n' > "$C/scripts/check.conf"
+check
+exits 0 "CRLF conf with a requires line";         has "ok    prerequisite: true (steps: a)" "… pairs step and prerequisite"
 
 # --- scripts/residue: same bare copy. Assertions never require an idle machine: they look for
 # this run's own marker, so another process starting meanwhile cannot make them flaky.
@@ -217,6 +232,22 @@ put scripts/check.conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x 
   "requires b: echo x >> '$TMP/doc-count'" "requires c: echo x >> '$TMP/doc-count'"
 doctor;            has "(steps: a, b, c)" "a shared prerequisite is listed once for all its steps"
 [ "$(wc -l < "$TMP/doc-count" | tr -d ' ')" -eq 1 ]; report $? "a prerequisite on three steps runs once per doctor run"
+put scripts/check.conf 'e2e: true' 'requires e2e: true' 'requires e2e: exit 1'
+doctor;            has "ok    prerequisite met: true (steps: e2e)" "one step, one met prerequisite: ok"
+has "WARN  prerequisite not met: exit 1 (steps: e2e)" "… and one unmet: WARN";  has "WARN  profile full: not runnable on this machine (steps: e2e)" "… the step is not runnable"
+put scripts/check.conf 'lint, format [fast]: true' 'e2e: true' 'requires lint, format: false'
+doctor;            has "WARN  profile fast: not runnable on this machine (steps: lint, format)" "a step name with ', ' keeps the verdict exact"
+put scripts/check.conf 'a\tb [fast]: true' 'requires a\tb: false'
+doctor;            has "WARN  profile fast: not runnable on this machine (steps: a\tb)" "a backslash in a step name keeps the verdict exact"
+put scripts/check.conf 'a: true' 'requires a:'
+doctor;            has "WARN  check.conf: requires has no command: a" "an empty prerequisite command is a conf error"
+has "WARN  profile full: check fails on the check.conf errors above" "… and no profile is called runnable"
+put scripts/check.conf 'a: true' 'requires a'
+doctor;            has "WARN  check.conf: requires line has no ':': requires a" "a requires line without ':' is a conf error"
+put scripts/check.conf 'a: true' 'requires a: true' 'requires a: true'
+doctor;            has "ok    prerequisite met: true (steps: a)" "the same requires line twice lists its step once"
+printf 'requires\fx: true\n' > "$W/scripts/check.conf"
+doctor;            hasnt "check.conf has no steps" "only a space or tab after 'requires' makes a requires line (as in check)"
 
 reset; put specs/plans/0001-plan.md '# Plan 0001' '- Approved by / on: —'
 doctor;            has "WARN  plan exists for unapproved spec 0001" "plan without a spec → WARN locally"

@@ -56,47 +56,62 @@ ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only: the same set in every shel
 tab=$(printf '\t')
 trim() { t=${1#"${1%%[!$ws]*}"}; printf '%s' "${t%"${t##*[!$ws]}"}"; }
 
-# --- prerequisites, before any step. Pass 1 lists every step ("S<TAB>selected<TAB>name") and
-# every requires line ("R<TAB>step<TAB>command"); awk pairs them, reports requires lines that
-# name no step ("U"), and dedupes by command text ("P<TAB>steps<TAB>command"). ---
-plan=$(
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in *[!$ws]*) ;; *) continue ;; esac
-    rest=${line#"${line%%[!$ws]*}"}
-    case "$rest" in
-      \#*) continue ;;
-      requires[" $tab"]*)
-        name=${rest%%:*}
-        printf 'R\t%s\t%s\n' "$(trim "${name#requires}")" "$(trim "${rest#*:}")"
-        continue ;;
-    esac
-    name=${line%%:*}
-    case "$name" in
-      *"[fast]"*) sel=1 ;;
-      *) if [ "$profile" = fast ]; then sel=0; else sel=1; fi ;;
-    esac
-    printf 'S\t%s\t%s\n' "$sel" "$(trim "$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//')")"
-  done < "$CONF" | awk '
-    $1 == "S" { s = substr($0, 3); n = substr(s, 3); known[n] = 1; if (substr(s, 1, 1) == "1") want[n] = 1; next }
-    $1 == "R" { r = substr($0, 3); i = index(r, "\t"); st[++k] = substr(r, 1, i - 1); cm[k] = substr(r, i + 1) }
-    END {
-      for (j = 1; j <= k; j++) if (!(st[j] in known)) printf "U\t%s\n", st[j]
-      for (j = 1; j <= k; j++) {
-        if (!(st[j] in want)) continue
-        c = cm[j]
-        if (!(c in on)) { order[++m] = c; on[c] = st[j] } else on[c] = on[c] ", " st[j]
-      }
-      for (j = 1; j <= m; j++) printf "P\t%s\t%s\n", on[order[j]], order[j]
-    }'
-)
+# --- prerequisites, before any step; only when a requires line exists (otherwise nothing runs
+# and nothing prints). A requires line: first word `requires`, then a space or tab — the same
+# rule in check, doctor and residue. Pass 1 lists every step ("S<TAB>selected<TAB>name"), every
+# requires line ("R<TAB>step<TAB>command") and malformed ones ("E<TAB>message"); awk pairs them,
+# reports requires lines that name no step ("U"), and dedupes by command text
+# ("P<TAB>steps<TAB>command", each step listed once). ---
+plan=
+if grep -q "^[$ws]*requires[ $tab]" "$CONF"; then
+  plan=$(
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in *[!$ws]*) ;; *) continue ;; esac
+      rest=${line#"${line%%[!$ws]*}"}
+      case "$rest" in
+        \#*) continue ;;
+        requires[" $tab"]*)
+          case "$rest" in
+            *:*) ;;
+            *) printf "E\trequires line has no ':': %s\n" "$(trim "$rest")"; continue ;;
+          esac
+          name=$(trim "${rest%%:*}"); name=$(trim "${name#requires}")
+          cmd=$(trim "${rest#*:}")
+          if [ -z "$cmd" ]; then printf 'E\trequires has no command: %s\n' "$name"; continue; fi
+          printf 'R\t%s\t%s\n' "$name" "$cmd"
+          continue ;;
+      esac
+      name=${line%%:*}
+      case "$name" in
+        *"[fast]"*) sel=1 ;;
+        *) if [ "$profile" = fast ]; then sel=0; else sel=1; fi ;;
+      esac
+      printf 'S\t%s\t%s\n' "$sel" "$(trim "$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//')")"
+    done < "$CONF" | awk '
+      $1 == "E" { print; next }
+      $1 == "S" { s = substr($0, 3); n = substr(s, 3); known[n] = 1; if (substr(s, 1, 1) == "1") want[n] = 1; next }
+      $1 == "R" { r = substr($0, 3); i = index(r, "\t"); st[++k] = substr(r, 1, i - 1); cm[k] = substr(r, i + 1) }
+      END {
+        for (j = 1; j <= k; j++) if (!(st[j] in known)) printf "U\t%s\n", st[j]
+        for (j = 1; j <= k; j++) {
+          if (!(st[j] in want)) continue
+          c = cm[j]
+          if ((c SUBSEP st[j]) in pair) continue
+          pair[c SUBSEP st[j]] = 1
+          if (!(c in on)) { order[++m] = c; on[c] = st[j] } else on[c] = on[c] ", " st[j]
+        }
+        for (j = 1; j <= m; j++) printf "P\t%s\t%s\n", on[order[j]], order[j]
+      }'
+  )
+fi
 unmet=0
 while IFS= read -r entry; do
   [ -n "$entry" ] || continue
   kind=${entry%%"$tab"*}; entry=${entry#*"$tab"}
-  if [ "$kind" = U ]; then
-    printf 'CHECK FAILED (%s) requires names no step: %s\n' "$label" "$entry" >&2
-    unmet=$((unmet + 1)); continue
-  fi
+  case "$kind" in
+    E) printf 'CHECK FAILED (%s) %s\n' "$label" "$entry" >&2; unmet=$((unmet + 1)); continue ;;
+    U) printf 'CHECK FAILED (%s) requires names no step: %s\n' "$label" "$entry" >&2; unmet=$((unmet + 1)); continue ;;
+  esac
   on=${entry%%"$tab"*}; cmd=${entry#*"$tab"}
   if pout=$(cd "$ROOT" && sh -c "$cmd" </dev/null 2>&1); then
     printf 'ok    prerequisite: %s (steps: %s)\n' "$cmd" "$on"
