@@ -245,7 +245,7 @@ done
 for s in "$ROOT/specs/active/"[0-9]*.md; do
   [ -f "$s" ] || continue
   sc=$(grep -m1 '^- Self-critique:' "$s" | sed 's/<!--.*-->//g; s/^- Self-critique:[[:space:]]*//; s/[[:space:]]*$//')
-  case "$sc" in pending*) ;; *) continue ;; esac
+  case "$sc" in [Pp][Ee][Nn][Dd][Ii][Nn][Gg]*) ;; *) continue ;; esac
   st=$(grep -m1 '^- Status:' "$s" | sed 's/<!--.*-->//g; s/^- Status:[[:space:]]*//; s/[[:space:]]*$//')
   case "$st" in
     Approved|"In progress") gate "self-critique still $sc on a spec past approval: specs/active/$(basename "$s") (status: $st)" ;;
@@ -301,25 +301,40 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     [ "$shipped_viol" -eq 0 ] && ok "shipped specs unchanged vs $base (specs/done/ immutable)"
 
     # --- new ships (added to specs/done/ vs the same base; already-shipped specs are never judged
-    # again): every criterion line is checked, or moved out at the ship gate (R-08) with its target
-    # on the same line — `→ moved to B-<n>` (in specs/backlog.md) or `→ moved to spec <NNNN>` (in
-    # active/ or done/); ASCII `->` too. A sensitive-area criterion is never moved out. Untracked
-    # files count when the base is HEAD (a ship not committed yet). ---
-    new_ships=$(printf '%s\n' "$changes" | awk -F'\t' '$1 == "A" { print $2 }')
+    # again): every criterion line is ticked, or moved out at the ship gate (R-08) with its target
+    # after the criterion text on that line — `→ moved to B-<n>` (in specs/backlog.md) or
+    # `→ moved to spec <NNNN>` (open work: specs/active/, not itself); ASCII `->` too; a marker in
+    # backticks is quoted text, not a move. A sensitive-area spec moves nothing. Untracked files
+    # count when the base is HEAD (a ship not committed yet). Paths unquoted (non-ASCII names) and
+    # relative to the workspace (a workspace in a subdirectory of its repo); grep -a: a spec saved
+    # in another encoding is still read. ---
+    new_ships=$(git -C "$ROOT" -c core.quotePath=false diff --relative --no-renames --name-status "$base" -- specs/done/ 2>/dev/null \
+      | awk -F'\t' '$1 == "A" { print $2 }')
     [ "$base" = HEAD ] && new_ships="$new_ships
-$(git -C "$ROOT" ls-files --others --exclude-standard -- specs/done/ 2>/dev/null)"
+$(git -C "$ROOT" -c core.quotePath=false ls-files --others --exclude-standard -- specs/done/ 2>/dev/null)"
+    crit='^[[:space:]]*([-*+]|[0-9]+\.)[[:space:]]+\[[ xX]\][[:space:]]*(\*\*|~~|[[:space:]])*(AC|CB|PB)-[0-9]+'
     oldifs=$IFS; IFS='
 '
     for f in $new_ships; do
       case "$f" in specs/done/[0-9]*.md) ;; *) continue ;; esac
       [ -f "$ROOT/$f" ] || continue
-      sensitive=0; grep -q 'Sensitive area:' "$ROOT/$f" && sensitive=1
+      self=$(basename "$f" | sed 's/-.*//')
+      # Sensitive: a `Sensitive area(s): <name>` declaration line whose value is not empty or none.
+      sensitive=0
+      grep -aiE '^[[:space:]]*(-[[:space:]]*)?sensitive areas?:' "$ROOT/$f" \
+        | sed -E 's/^[^:]*:[[:space:]]*//; s/<!--.*-->//g; s/[[:space:]]*$//' \
+        | grep -qviE '^(none|-|—)?$' && sensitive=1
+      grep -aqE "$crit" "$ROOT/$f" || warn "new ship has no criterion line: $f — a spec ships its criteria ([x] AC-n, or moved out)"
       while IFS= read -r c; do   # a here-doc, not a pipe: gate() must count in this shell
         [ -n "$c" ] || continue
         id=$(printf '%s\n' "$c" | sed -E 's/^[^A-Z]*((AC|CB|PB)-[0-9]+).*/\1/')
-        target=$(printf '%s\n' "$c" | sed -n -e 's/.*→ moved to \(.*\)/\1/p' -e 's/.*-> moved to \(.*\)/\1/p' | head -n 1)
+        # The marker counts only after the criterion id (and after a closing ~~), outside backticks.
+        rest=${c#*"$id"}
+        case "$rest" in *"~~"*) rest=${rest#*"~~"} ;; esac
+        target=$(printf '%s\n' "$rest" | sed 's/`[^`]*`//g' \
+          | sed -n -e 's/.*→ moved to \(.*\)/\1/p' -e 's/.*-> moved to \(.*\)/\1/p' | head -n 1)
         if [ -z "$target" ]; then
-          gate "unproven criterion in a new ship: $f $id — prove it, or move it out at the ship gate (→ moved to …, R-08)"
+          gate "unchecked criterion in a new ship: $f $id — tick it ([x]) if VERIFY proved it, else move it out at the ship gate (→ moved to …, R-08)"
           continue
         fi
         if [ "$sensitive" -eq 1 ]; then
@@ -329,18 +344,21 @@ $(git -C "$ROOT" ls-files --others --exclude-standard -- specs/done/ 2>/dev/null
         case "$target" in
           B-[0-9]*)
             b=$(printf '%s' "$target" | sed -E 's/^(B-[0-9]+).*/\1/')
-            grep -qF "**$b**" "$ROOT/specs/backlog.md" 2>/dev/null \
+            grep -aqF "**$b**" "$ROOT/specs/backlog.md" 2>/dev/null \
               || gate "moved criterion has no backlog entry: $f $id → $b (specs/backlog.md)" ;;
           spec\ [0-9]*)
             n=$(printf '%s' "$target" | sed -E 's/^spec ([0-9]+).*/\1/')
             found=0
-            for t in "$ROOT/specs/active/$n-"*.md "$ROOT/specs/done/$n-"*.md; do [ -f "$t" ] && found=1; done
-            [ "$found" -eq 1 ] \
-              || gate "moved criterion has no target spec: $f $id → spec $n (specs/active/ or specs/done/)" ;;
+            for t in "$ROOT/specs/active/$n-"*.md; do [ -f "$t" ] && found=1; done
+            if [ "$n" = "$self" ]; then
+              gate "moved criterion targets its own spec: $f $id → spec $n"
+            elif [ "$found" -eq 0 ]; then
+              gate "moved criterion has no open target spec: $f $id → spec $n (must be in specs/active/)"
+            fi ;;
           *) gate "moved criterion has no target: $f $id — write → moved to B-<n> or → moved to spec <NNNN>" ;;
         esac
       done <<EOF
-$(grep -E '^[[:space:]]*- \[ \] (~~)?(AC|CB|PB)-[0-9]+' "$ROOT/$f")
+$(grep -aE "$crit" "$ROOT/$f" | grep -avE '^[[:space:]]*([-*+]|[0-9]+\.)[[:space:]]+\[[xX]\]')
 EOF
     done
     IFS=$oldifs

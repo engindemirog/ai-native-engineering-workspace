@@ -5,7 +5,8 @@
   <!-- Same state machine as TEMPLATE.md: Draft → Approved (human) → In progress (/build) → Shipped (ship). -->
 - Mode: lite | strict (from AGENTS.md at creation time)
 - Plan: `specs/plans/NNNN-plan.md`
-- Self-critique: pending <!-- done | pending (<condition>) — as in TEMPLATE.md. -->
+- Self-critique: pending
+  <!-- done | pending (<condition>) — as in TEMPLATE.md. -->
 - Source: <!-- MANDATORY — the work item key (ticket / issue / request id). No key, no mini-spec. -->
 - Design: <!-- UI change only — link to the new design (and the states it changes); never a copy in the repo. -->
 - Supersedes: <!-- optional — <NNNN>/AC-x of the shipped spec whose behavior this replaces. specs/done/ is never edited. -->

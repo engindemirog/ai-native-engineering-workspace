@@ -293,6 +293,8 @@ doctor --strict;   exits 1 "pending self-critique on an Approved spec under --st
 has "FAIL  self-critique still pending (after 0029 ships) on a spec past approval" "… is a gate"
 put specs/active/0030-sc.md '# Spec 0030' '- Status: In progress' '- Self-critique: pending (x)'
 doctor;            has "WARN  self-critique still pending (x) on a spec past approval" "… In progress too (WARN locally)"
+put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved' '- Self-critique: Pending (y)'
+doctor;            has "self-critique still Pending (y) on a spec past approval" "the pending status in any case"
 put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved' '- Self-critique: done'
 doctor;            hasnt "self-critique" "self-critique done → no line"
 put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved'
@@ -301,14 +303,14 @@ doctor;            hasnt "self-critique" "no Self-critique field (older spec) �
 # New ships (vs the base ref): every criterion checked, or moved out at the ship gate with a target.
 doctor_base() { run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=$1; export ANEW_BASE_REF; shift; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
 reset; put specs/done/0020-new.md '# Spec 0020' '- Status: Shipped' '- [x] AC-1 — proven' '- [ ] AC-2 — unproven'
-doctor;            has "WARN  unproven criterion in a new ship: specs/done/0020-new.md AC-2" "an uncommitted new ship with an unproven criterion → WARN"
+doctor;            has "WARN  unchecked criterion in a new ship: specs/done/0020-new.md AC-2" "an uncommitted new ship with an unproven criterion → WARN"
 hasnt "0020-new.md AC-1" "… a checked criterion is fine"
 commit "ship 0020"
 doctor_base "$BASE" --strict
-exits 1 "new ship with an unproven criterion under --strict"; has "FAIL  unproven criterion in a new ship: specs/done/0020-new.md AC-2" "… FAIL, naming spec and criterion"
+exits 1 "new ship with an unproven criterion under --strict"; has "FAIL  unchecked criterion in a new ship: specs/done/0020-new.md AC-2" "… FAIL, naming spec and criterion"
 doctor;            hasnt "unproven criterion" "a spec already shipped at the base is not judged again"
 reset; put specs/done/0021-mini.md '# Spec 0021 (mini)' '- Status: Shipped' '- [x] CB-1 — done' '- [ ] PB-1 — not proven'
-doctor;            has "unproven criterion in a new ship: specs/done/0021-mini.md PB-1" "mini-spec CB-/PB- lines are judged too"
+doctor;            has "unchecked criterion in a new ship: specs/done/0021-mini.md PB-1" "mini-spec CB-/PB- lines are judged too"
 reset; put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~ → moved to B-3 — Ada, 2026-10-29, needs a newer runtime'
 doctor;            has "moved criterion has no backlog entry: specs/done/0022-move.md AC-1 → B-3" "a move to a backlog entry that does not exist → gate"
 put specs/backlog.md '# Backlog' '- **B-3** — needs a newer runtime'
@@ -316,13 +318,66 @@ doctor;            hasnt "0022-move.md" "a move to an existing backlog entry is 
 put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c -> moved to B-3 — Ada, 2026-10-29'
 doctor;            hasnt "0022-move.md" "the ASCII arrow is accepted too"
 put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~'
-doctor;            has "unproven criterion in a new ship: specs/done/0022-move.md AC-1" "striking a criterion through without a target does not move it"
+doctor;            has "unchecked criterion in a new ship: specs/done/0022-move.md AC-1" "striking a criterion through without a target does not move it"
 put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c → moved to spec 0007'
-doctor;            has "moved criterion has no target spec: specs/done/0022-move.md AC-1 → spec 0007" "a move to a spec that does not exist → gate"
+doctor;            has "moved criterion has no open target spec: specs/done/0022-move.md AC-1 → spec 0007" "a move to a spec that does not exist → gate"
 put specs/active/0007-later.md '# Spec 0007' '- Status: Draft'
 doctor;            hasnt "0022-move.md" "a move to an existing spec is accepted"
 put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' 'Sensitive area: payments' '- [ ] AC-1 — c → moved to spec 0007'
 doctor;            has "a sensitive-area criterion cannot be moved out: specs/done/0022-move.md AC-1" "a sensitive-area criterion is never moved out"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- Sensitive area: none' '- [ ] AC-1 — c → moved to spec 0007'
+doctor;            hasnt "0022-move.md" "'Sensitive area: none' is not a sensitive area"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' 'This is not a Sensitive area: just prose.' '- [ ] AC-1 — c → moved to spec 0007'
+doctor;            hasnt "0022-move.md" "prose mentioning a sensitive area is not a declaration"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- sensitive areas: payments' '- [ ] AC-1 — c → moved to spec 0007'
+doctor;            has "a sensitive-area criterion cannot be moved out: specs/done/0022-move.md AC-1" "'Sensitive areas:' in any case is a declaration"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c → moved to foo'
+doctor;            has "moved criterion has no target: specs/done/0022-move.md AC-1" "an unknown move target → gate"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c → moved to spec 0022'
+doctor;            has "moved criterion targets its own spec: specs/done/0022-move.md AC-1" "a spec cannot move a criterion to itself"
+put specs/done/0005-old.md '# Spec 0005' '- Status: Shipped' '- [x] AC-1 — ok'
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — c → moved to spec 0005'
+doctor;            has "moved criterion has no open target spec: specs/done/0022-move.md AC-1 → spec 0005" "a shipped spec is no target (moved work stays open)"
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] AC-1 — doctor rejects a line without `→ moved to B-3` marker'
+doctor;            has "unchecked criterion in a new ship: specs/done/0022-move.md AC-1" "a marker in backticks is quoted text, not a move"
+put specs/backlog.md '# Backlog' '- B-4 — bare id, not an entry'
+put specs/done/0022-move.md '# Spec 0022' '- Status: Shipped' '- [ ] ~~AC-1 — c~~ → moved to B-4'
+doctor;            has "moved criterion has no backlog entry: specs/done/0022-move.md AC-1 → B-4" "a backlog entry is **B-<n>**, not a bare mention"
+reset; put specs/done/0023-md.md '# Spec 0023' '- Status: Shipped' '* [ ] AC-1 — star bullet' '1. [ ] **AC-2** — numbered, bold' '- [X] AC-3 — capital X is ticked'
+doctor;            has "unchecked criterion in a new ship: specs/done/0023-md.md AC-1" "a '*' bullet criterion is judged"
+has "unchecked criterion in a new ship: specs/done/0023-md.md AC-2" "a numbered, bold criterion is judged";  hasnt "0023-md.md AC-3" "[X] counts as ticked"
+reset; put specs/done/0024-none.md '# Spec 0024' '- Status: Shipped' 'criteria lost in an edit'
+doctor;            has "WARN  new ship has no criterion line: specs/done/0024-none.md" "a new ship with no criterion line warns"
+reset; put "specs/done/0025-ödeme.md" '# Spec 0025' '- Status: Shipped' '- [ ] AC-1 — x'
+doctor;            has "unchecked criterion in a new ship: specs/done/0025-ödeme.md AC-1" "a non-ASCII spec name is judged (untracked)"
+git -C "$W" add -A
+doctor;            has "unchecked criterion in a new ship: specs/done/0025-ödeme.md AC-1" "… and staged"
+reset; printf '# Spec 0026\n- Status: Shipped\n- [ ] AC-1 \377 latin-1 byte\n' > "$W/specs/done/0026-enc.md"
+doctor;            has "unchecked criterion in a new ship: specs/done/0026-enc.md AC-1" "a spec with a non-UTF-8 byte is still read"
+reset; put specs/done/0027-mini.md '# Spec 0027 (mini)' '- Status: Shipped' '- [x] CB-1 — ok' '- [ ] CB-2 — not proven'
+doctor;            has "unchecked criterion in a new ship: specs/done/0027-mini.md CB-2" "an unchecked CB- line is judged"
+# Base refs: an old ship next to a new one; the active → done move; the PR merge-base path.
+reset; put specs/done/0028-old.md '# Spec 0028' '- Status: Shipped' '- [ ] AC-1 — old, unchecked'; commit "ship 0028"
+OLD=$(git -C "$W" rev-parse HEAD)
+put specs/active/0029-new.md '# Spec 0029' '- Status: In progress' '- [ ] AC-1 — new, unchecked'; commit "work 0029"
+git -C "$W" mv specs/active/0029-new.md specs/done/0029-new.md; commit "ship 0029"
+doctor_base "$OLD"
+has "unchecked criterion in a new ship: specs/done/0029-new.md AC-1" "a committed active → done move is a new ship vs the base"
+hasnt "0028-old.md" "… a spec already shipped at the base is not judged next to it"
+git -C "$W" update-ref refs/remotes/origin/main "$OLD"
+run sh -c 'unset ANEW_BASE_REF GITHUB_EVENT_PATH; GITHUB_BASE_REF=main; export GITHUB_BASE_REF; exec sh "$0" --strict' "$W/scripts/doctor"
+exits 1 "PR base (GITHUB_BASE_REF): the new ship fails under --strict"
+has "FAIL  unchecked criterion in a new ship: specs/done/0029-new.md AC-1" "… seen through the merge-base"
+git -C "$W" update-ref -d refs/remotes/origin/main
+# A workspace in a subdirectory of its repository: paths are workspace-relative.
+reset; S="$TMP/sub"; mkdir -p "$S/ws"
+( cd "$W" && tar -cf - --exclude=.git . ) | ( cd "$S/ws" && tar -xf - )
+git -C "$S" init -q; git -C "$S" add -A
+git -C "$S" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm fixture
+mkdir -p "$S/ws/specs/done"; printf '%s\n' '# Spec 0031' '- Status: Shipped' '- [ ] AC-1 — x' > "$S/ws/specs/done/0031-sub.md"
+git -C "$S" add -A; git -C "$S" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm ship
+run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=HEAD~1; export ANEW_BASE_REF; exec sh "$0"' "$S/ws/scripts/doctor"
+has "unchecked criterion in a new ship: specs/done/0031-sub.md AC-1" "a workspace in a subdirectory of its repo sees a committed new ship"
 
 reset; put specs/done/0010-fast.md '# Spec 0010' '- Status: Shipped' '| AC-1 | CHECK GREEN (fast, 2 steps, 4 s) |'
 doctor;            exits 0 "fast evidence only warns"; has "WARN  fast output cited as evidence: specs/done/0010-fast.md" "a shipped spec citing only fast output is reported"

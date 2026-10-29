@@ -9,9 +9,10 @@
        moves to specs/done/). /plan refuses to run unless the status is Approved. -->
 - Mode: lite | strict (from AGENTS.md at creation time)
 - Plan: `specs/plans/NNNN-plan.md`
-- Self-critique: pending <!-- done | pending (<condition>) — "done" once the human approved the
-  self-critique gaps (prompts/spec.md); pending with its condition when deferred (e.g. "after
-  0012 ships"). doctor: pending warns on a Draft and is a gate past approval. -->
+- Self-critique: pending
+  <!-- done | pending (<condition>) — "done" once the human approved the self-critique gaps
+       (prompts/spec.md); pending with its condition when deferred (e.g. "after 0012 ships").
+       doctor: pending warns on a Draft (expected until approval) and is a gate past approval. -->
 
 ## Intent
 <!-- 3–5 sentences, BUSINESS language: who wants this and why; what success looks like;
