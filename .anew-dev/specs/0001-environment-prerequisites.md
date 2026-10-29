@@ -1,6 +1,6 @@
 # Spec 0001 — Environment prerequisites, surfaced before BUILD
 
-- Status: Approved
+- Status: In progress
 - Mode: lite (assumed — this repository's AGENTS.md is unconfigured; ANEW's own development)
 - Plan: `.anew-dev/plans/0001-plan.md`
 
