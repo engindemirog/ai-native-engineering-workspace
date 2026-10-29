@@ -28,10 +28,12 @@ clean-clone and residue work (spec 0003).
 2. **doctor checks new ships.** For a spec that appears in `specs/done/` relative to the base ref
    (the same base the immutability check uses — already-shipped specs are never judged again),
    every criterion line (`AC-`, and `CB-` / `PB-` in mini-specs) is either checked or carries a
-   `→ moved to` target; a `B-<n>` target exists in `specs/backlog.md`, a `spec <NNNN>` target
-   exists in `specs/active/` or `specs/done/`. Violations are a gate (WARN locally, FAIL under
-   `--strict`). Locally the base is HEAD, so only an uncommitted ship is seen; CI, with the PR's
-   base, sees every new ship — as for the immutability check; the docs say so.
+   `→ moved to` target after the criterion text; a `B-<n>` target exists in `specs/backlog.md`,
+   a `spec <NNNN>` target is open work in `specs/active/` and not the spec itself. Violations are
+   a gate (WARN locally, FAIL under `--strict`). Locally the base is HEAD, so only an uncommitted
+   ship is seen; CI on a pull request, with the PR's base, sees every new ship — as for the
+   immutability check; the docs say so. (R-08, review round 1 L-3: a done/ target was closed
+   work, contradicting Req. 1 — Engin Demiroğ, 2026-10-29.)
 3. **Triage lives in the plan.** The plan template gets a `## Triage` section: one table per
    review or VERIFY round (finding, verdict, note), with the deciding human and date. The
    workflow step 7, the segments table and the PR template point there; the PR description links
@@ -75,7 +77,8 @@ none — no graphical interface. Terminal and document states:
   FAIL (exit 1) under `--strict`. The same for an unchecked `CB-` / `PB-` line of a mini-spec.
 - [ ] AC-2 — The same spec with the criterion struck through and `→ moved to B-3`, and `B-3`
   present in `specs/backlog.md`: no gate line. With `B-3` missing from the backlog: gate line.
-  `→ moved to spec 0007` with no spec 0007 in `active/` or `done/`: gate line; with one: none.
+  `→ moved to spec 0007` with no spec 0007 in `active/`: gate line; with one in `active/`:
+  none; one only in `done/`, or the spec itself: gate line.
 - [ ] AC-3 — A spec already in `specs/done/` at the base ref, with unchecked criteria: no new
   line (shipped specs are not re-judged).
 - [ ] AC-4 — A move line on a criterion of a spec that declares `Sensitive area:` → gate line
