@@ -80,12 +80,12 @@ conf 'compile [fast]: echo compile ran' 'e2e: echo e2e ran'
 check
 hasnt "prerequisite" "no requires line → no prerequisite output (unchanged behavior)"
 conf 'compile [fast]: echo compile ran' 'unit [fast]: echo unit ran' 'e2e: echo e2e ran' \
-     'requires compile: echo met-output; true' 'requires e2e: echo missing-runtime-text; exit 4'
+     'requires compile: echo met-output; true' 'requires e2e: echo miss""ing-runtime-text; exit 4'
 check
 exits 1 "unmet prerequisite fails check"
 hasnt "compile ran" "unmet prerequisite on the last step: not even the first step runs"
 hasnt "==>" "… no step marker at all";            hasnt "CHECK GREEN" "… and no green line"
-has "CHECK FAILED (full) prerequisite not met: echo missing-runtime-text; exit 4 (steps: e2e)" "failure names command and step"
+has "CHECK FAILED (full) prerequisite not met: echo miss\"\"ing-runtime-text; exit 4 (steps: e2e)" "failure names command and step"
 has "environment gap, see prompts/recovery/environment-gap.md (R-13)" "failure points at R-13"
 has "missing-runtime-text" "an unmet prerequisite shows its output"
 has "ok    prerequisite: echo met-output; true (steps: compile)" "a met prerequisite is one ok line"
@@ -111,7 +111,7 @@ conf 'a: echo a ran' 'requires a:'
 check
 exits 1 "requires with an empty command fails check"; has "CHECK FAILED (full) requires has no command: a" "… and says so"
 hasnt "a ran" "… before any step"
-conf 'a: echo a ran' 'requires a: # docker or podman, to be decided'
+conf 'a: echo a ran' 'requires a: # runtime to be decided'
 check
 exits 1 "a comment-only prerequisite command fails check"; has "requires has no command: a" "… as no command"
 conf 'a: echo a ran' 'requires : true'
@@ -218,10 +218,10 @@ doctor;            has "WARN  scripts/check.conf has no steps" "a requires line 
 
 # Prerequisites: reported per command and as a per-profile verdict; WARN in every mode.
 reset; put scripts/check.conf 'compile [fast]: true' 'e2e: true' 'requires compile: true' \
-  'requires e2e: echo runtime-missing-text; exit 4'
+  'requires e2e: echo runtime-miss""ing-text; exit 4'
 doctor;            exits 0 "unmet prerequisite only warns"
 has "ok    prerequisite met: true (steps: compile)" "a met prerequisite is an ok line naming its step"
-has "WARN  prerequisite not met: echo runtime-missing-text; exit 4 (steps: e2e)" "an unmet one is a WARN naming step and command"
+has "WARN  prerequisite not met: echo runtime-miss\"\"ing-text; exit 4 (steps: e2e)" "an unmet one is a WARN naming step and command"
 has "runtime-missing-text" "… with the command's output"
 has "ok    profile fast: runnable on this machine" "unmet on a full-only step: fast stays runnable"
 has "WARN  profile full: not runnable on this machine (steps: e2e)" "… full is not runnable, naming the step"
@@ -236,7 +236,7 @@ has "WARN  prerequisite not met: no-such-cmd-anew" "… it is reported as not me
 put scripts/check.conf 'a: true' 'requires b: true'
 doctor;            has "WARN  check.conf: requires names no step: b" "a requires line naming no step is reported"
 has "WARN  profile full: check fails on the check.conf errors above" "… and no profile is called runnable"
-put scripts/check.conf 'a: true' 'requires a: # docker or podman, to be decided'
+put scripts/check.conf 'a: true' 'requires a: # runtime to be decided'
 doctor;            has "WARN  check.conf: requires has no command: a" "a comment-only prerequisite command is a conf error"
 put scripts/check.conf 'a: true' 'requires : true'
 doctor;            has "requires names no step: (empty)" "an empty step name is shown as (empty)"
