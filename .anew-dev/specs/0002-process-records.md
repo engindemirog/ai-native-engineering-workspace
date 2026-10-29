@@ -1,6 +1,6 @@
 # Spec 0002 — Process records: descoping at ship, triage, ship commit, self-critique, gates
 
-- Status: Approved
+- Status: In progress
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0002-plan.md`
 
