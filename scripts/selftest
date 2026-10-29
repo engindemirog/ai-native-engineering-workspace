@@ -75,6 +75,37 @@ mkdir -p "$TMP/nodate"; printf '#!/bin/sh\necho unknown\n' > "$TMP/nodate/date";
 run env PATH="$TMP/nodate:$PATH" sh "$C/scripts/check" --fast
 matches '^CHECK GREEN \(fast, 1 steps\)$' "no usable clock: times are left out, the run still counts"
 
+# Prerequisites (requires <step>: <command>): evaluated before step 1, once per distinct command.
+conf 'compile [fast]: echo compile ran' 'e2e: echo e2e ran'
+check
+hasnt "prerequisite" "no requires line → no prerequisite output (unchanged behavior)"
+conf 'compile [fast]: echo compile ran' 'unit [fast]: echo unit ran' 'e2e: echo e2e ran' \
+     'requires compile: echo met-output; true' 'requires e2e: echo missing-runtime-text; exit 4'
+check
+exits 1 "unmet prerequisite fails check"
+hasnt "compile ran" "unmet prerequisite on the last step: not even the first step runs"
+hasnt "==>" "… no step marker at all";            hasnt "CHECK GREEN" "… and no green line"
+has "CHECK FAILED (full) prerequisite not met: echo missing-runtime-text; exit 4 (steps: e2e)" "failure names command and step"
+has "environment gap, see prompts/recovery/environment-gap.md (R-13)" "failure points at R-13"
+has "missing-runtime-text" "an unmet prerequisite shows its output"
+has "ok    prerequisite: echo met-output; true (steps: compile)" "a met prerequisite is one ok line"
+printf '%s\n' "$out" | grep -qx 'met-output'; [ $? -ne 0 ]; report $? "a met prerequisite's output is not printed"
+check --fast
+exits 0 "--fast ignores prerequisites of full-only steps"; has "CHECK GREEN (fast, 2 steps" "… and runs the fast steps"
+conf 'a: echo a ran' 'requires a: no-such-cmd-anew'
+check
+exits 1 "missing prerequisite command → not met";  has "not found" "… with the shell's error text"
+has "CHECK FAILED (full) prerequisite not met: no-such-cmd-anew" "… reported, check does not abort"
+conf 'a: echo a ran' 'requires b: true'
+check
+exits 1 "requires naming no step fails check";     has "requires names no step: b" "… and names it"
+: > "$TMP/req-count"
+conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x >> '$TMP/req-count'" \
+     "requires b: echo x >> '$TMP/req-count'" "requires c: echo x >> '$TMP/req-count'"
+check
+exits 0 "shared prerequisite, met";                has "(steps: a, b, c)" "… listed once for all its steps"
+[ "$(wc -l < "$TMP/req-count" | tr -d ' ')" -eq 1 ]; report $? "a prerequisite on three steps runs once per check run"
+
 # --- scripts/residue: same bare copy. Assertions never require an idle machine: they look for
 # this run's own marker, so another process starting meanwhile cannot make them flaky.
 cp "$ROOT/scripts/residue" "$C/scripts/residue"

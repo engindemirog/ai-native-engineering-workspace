@@ -7,6 +7,10 @@
 #   test: ./gradlew test --no-daemon
 #   lint [fast]: npm run lint
 # Blank or whitespace-only lines and lines whose first non-blank character is # are ignored.
+# Prerequisites: `requires <step>: <command>` attaches a project-written command to a step
+# (exit 0 = met). Before the first step, each prerequisite of the profile's steps runs once per
+# distinct command; an unmet one fails check before any step runs (environment gap, R-13).
+# A `requires` line naming no step fails check too: a typo must not drop a prerequisite silently.
 # Steps run in order, fail fast.
 # Two speeds, one contract (docs/testing.md): ./scripts/check runs every step (full — the only
 # evidence); ./scripts/check --fast runs only steps whose name carries [fast] (inner loop).
@@ -48,13 +52,70 @@ now() { t=$(date +%s 2>/dev/null); case "$t" in ''|*[!0-9]*) echo ;; *) echo "$t
 took() { [ -n "$1" ] && [ -n "$2" ] && echo " ($(($2 - $1)) s)"; }   # " (12 s)" or nothing
 start=$(now)
 
-steps=0
 ws=" $(printf '\t\r\v\f')"   # ASCII whitespace only: the same set in every shell and locale
+tab=$(printf '\t')
+trim() { t=${1#"${1%%[!$ws]*}"}; printf '%s' "${t%"${t##*[!$ws]}"}"; }
+
+# --- prerequisites, before any step. Pass 1 lists every step ("S<TAB>selected<TAB>name") and
+# every requires line ("R<TAB>step<TAB>command"); awk pairs them, reports requires lines that
+# name no step ("U"), and dedupes by command text ("P<TAB>steps<TAB>command"). ---
+plan=$(
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in *[!$ws]*) ;; *) continue ;; esac
+    rest=${line#"${line%%[!$ws]*}"}
+    case "$rest" in
+      \#*) continue ;;
+      requires[" $tab"]*)
+        name=${rest%%:*}
+        printf 'R\t%s\t%s\n' "$(trim "${name#requires}")" "$(trim "${rest#*:}")"
+        continue ;;
+    esac
+    name=${line%%:*}
+    case "$name" in
+      *"[fast]"*) sel=1 ;;
+      *) if [ "$profile" = fast ]; then sel=0; else sel=1; fi ;;
+    esac
+    printf 'S\t%s\t%s\n' "$sel" "$(trim "$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//')")"
+  done < "$CONF" | awk '
+    $1 == "S" { s = substr($0, 3); n = substr(s, 3); known[n] = 1; if (substr(s, 1, 1) == "1") want[n] = 1; next }
+    $1 == "R" { r = substr($0, 3); i = index(r, "\t"); st[++k] = substr(r, 1, i - 1); cm[k] = substr(r, i + 1) }
+    END {
+      for (j = 1; j <= k; j++) if (!(st[j] in known)) printf "U\t%s\n", st[j]
+      for (j = 1; j <= k; j++) {
+        if (!(st[j] in want)) continue
+        c = cm[j]
+        if (!(c in on)) { order[++m] = c; on[c] = st[j] } else on[c] = on[c] ", " st[j]
+      }
+      for (j = 1; j <= m; j++) printf "P\t%s\t%s\n", on[order[j]], order[j]
+    }'
+)
+unmet=0
+while IFS= read -r entry; do
+  [ -n "$entry" ] || continue
+  kind=${entry%%"$tab"*}; entry=${entry#*"$tab"}
+  if [ "$kind" = U ]; then
+    printf 'CHECK FAILED (%s) requires names no step: %s\n' "$label" "$entry" >&2
+    unmet=$((unmet + 1)); continue
+  fi
+  on=${entry%%"$tab"*}; cmd=${entry#*"$tab"}
+  if pout=$(cd "$ROOT" && sh -c "$cmd" </dev/null 2>&1); then
+    printf 'ok    prerequisite: %s (steps: %s)\n' "$cmd" "$on"
+  else
+    [ -n "$pout" ] && printf '%s\n' "$pout"
+    printf 'CHECK FAILED (%s) prerequisite not met: %s (steps: %s) — environment gap, see prompts/recovery/environment-gap.md (R-13)\n' "$label" "$cmd" "$on" >&2
+    unmet=$((unmet + 1))
+  fi
+done <<EOF
+$plan
+EOF
+[ "$unmet" -eq 0 ] || exit 1
+
+steps=0
 while IFS= read -r line || [ -n "$line" ]; do
   # Whitespace-only lines (a stray CR included) and indented comments are not steps either:
   # each would run as an empty command and count as a green step.
   case "$line" in *[!$ws]*) ;; *) continue ;; esac
-  case "${line#"${line%%[!$ws]*}"}" in \#*) continue ;; esac
+  case "${line#"${line%%[!$ws]*}"}" in \#*|requires[" $tab"]*) continue ;; esac
   name=${line%%:*}
   cmd=${line#*:}
   case "$name" in
