@@ -67,9 +67,12 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   (`AGENTS.md`, mode, language, `scripts/check.conf`), the ANEW base version (`.anew-version`),
   adapter presence and parity, this page's coverage, spec/plan gate consistency, twin and shipped specs, `specs/done/` immutability,
   evidence hygiene, fast-only evidence. `--strict` turns gate warnings into failures; CI runs it that way.
+  Step prerequisites (`requires` lines in `check.conf`): runs each distinct command once and
+  prints, per profile, `runnable on this machine` or `not runnable on this machine (steps: …)`
+  — a WARN in every mode, also under `--strict`: it describes the machine (R-13).
 - **When to use it:** after bootstrap, before a PR, whenever the workspace feels off.
 - **Reads / writes:** reads the working tree (and git, for `specs/done/` against a base ref);
-  writes nothing.
+  writes nothing itself; runs the project's prerequisite commands (side-effect free by contract).
 - **Stops at:** exit 0 = healthy (warnings allowed), exit 1 = broken; `FAIL` / `WARN` lines say why.
 - **Lite / Strict:** no difference. The `--strict` flag is not strict mode; the two are independent.
 - **Refusal:** none — it reports.
@@ -78,7 +81,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in
-  order, fail fast. `--fast` runs only the steps tagged `[fast]`.
+  order, fail fast. `--fast` runs only the steps tagged `[fast]`. Before the first step it runs
+  the prerequisites (`requires <step>: <command>`) of the profile's steps, once per command.
   **Fast green is a working state; only full green is evidence.** (`docs/testing.md`, Two speeds,
   one contract)
 - **When to use it:** `--fast` while iterating, and before a push together with the touched
@@ -90,7 +94,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Stops at:** `CHECK GREEN (full, n steps, t s)` (exit 0) or `CHECK FAILED (full) at step: <name>` (exit 1).
 - **Lite / Strict:** no difference.
 - **Refusal:** `check: no scripts/check.conf yet.` (exit 1); an unknown argument prints the
-  usage (exit 2).
+  usage (exit 2); an unmet prerequisite: `CHECK FAILED (<profile>) prerequisite not met: <command>
+  (steps: …) — environment gap, …(R-13)` before any step (exit 1); a `requires` line naming no
+  step: `CHECK FAILED (<profile>) requires names no step: <name>` (exit 1).
 - **Common mistake:** citing `CHECK GREEN (fast, …)` as evidence.
 
 ### `scripts/residue`

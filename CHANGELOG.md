@@ -19,6 +19,59 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.21 — The environment is asked, not assumed
+
+From a field project (.NET, Windows + Git Bash) whose container runtime was too old for its
+integration tests: nobody knew until the end of BUILD, a criterion shipped with its full proof
+missing, and every full proof cost a push and a CI round. ANEW still names no tool (ANEW-0011):
+the project declares what a step needs, ANEW runs it and reports.
+
+- **Step prerequisites** (`docs/testing.md`, Two speeds rule 9): `requires <step>: <command>` in
+  `scripts/check.conf`, exit 0 = met. `scripts/check` runs the profile's prerequisites before the
+  first step and fails on an unmet one — never skips the step. `scripts/doctor` says per profile
+  whether this machine can run it. Bootstrap's gate, the plan's Risks and BUILD's entry show that
+  verdict, so a profile that cannot run here is decided before work depends on it.
+- **R-13 — Environment gap** (`prompts/recovery/environment-gap.md`): when the environment cannot
+  satisfy a rule or a step (a missing tool, a permission layer refusing what a rule requires, a
+  profile that cannot run locally): stop, show the constraint, options with costs, the human
+  decides, a plan amendment records it. Never work around the rule.
+
+### Upgrading
+
+Update the scripts **before** adding `requires` lines: a v1.20 check runs `requires x: cmd` as a
+step named "requires x" (it fails if unmet — never a false green, but the output misleads).
+
+- `scripts/check` — behavior: lines `requires <step>: <command>` (first non-blank word
+  `requires`, then whitespace) are prerequisites, not steps. Before the first step, every
+  prerequisite of the profile's steps runs once per distinct command text (from the repo root,
+  stdin from /dev/null). Met → `ok    prerequisite: <cmd> (steps: …)`, output hidden; unmet →
+  its output, then `CHECK FAILED (<profile>) prerequisite not met: <cmd> (steps: …) — environment
+  gap, see prompts/recovery/environment-gap.md (R-13)`; all are reported, then exit 1 with no
+  step run. `--fast` skips prerequisites of full-only steps. A `requires` line naming no step →
+  `CHECK FAILED (<profile>) requires names no step: <name>`, exit 1. No `requires` line → output
+  unchanged.
+- `scripts/doctor` — behavior: messages print through `printf` (backslashes kept). A conf with
+  only `requires` lines has no steps (WARN as before). With `requires` lines: each distinct
+  command runs once; met → ok, unmet → WARN plus its output; a line naming no step → WARN; then
+  `profile fast|full: runnable on this machine` (ok) or `not runnable on this machine (steps: …)`
+  (WARN). WARN in every mode, also `--strict`. Recovery catalog expects 13 ramps.
+- `scripts/residue` — behavior: `requires` lines are not steps (a conf of only those →
+  `RESIDUE NOT MEASURED`).
+- `scripts/selftest` — scenarios for the behaviors above.
+- `scripts/check.conf.example`: intent: shows the `requires` format with a tool-neutral example
+  and two container runtimes side by side.
+- `prompts/recovery/environment-gap.md` (new), `prompts/recovery/README.md`: intent: R-13. Every
+  "R-01…R-12" reference (README, prompts/README, docs/commands.md, the four `/recover` adapters)
+  reads R-01…R-13; `docs/roles/developer.md` lists R-13.
+- `workflows/bootstrap.md`, `prompts/bootstrap.md`: intent: VERIFY shows doctor's per-profile
+  verdict; a profile not runnable here comes with a recommendation for the human (R-13).
+  `prompts/plan.md`, `specs/plans/TEMPLATE.md`: intent: unmet prerequisites are plan risks.
+  `prompts/build.md`, `workflows/segments.md`: intent: BUILD prints its verdict first and stops
+  on R-13 when it differs from the plan's. `docs/testing.md`: intent: Two speeds rule 9.
+  `docs/commands.md`: intent: the prerequisite outputs of check and doctor.
+- Decisions: `docs/decisions/anew/ANEW-0011-tool-neutral.md` (new).
+- Full diff: `/compare/v1.20...v1.21`.
+
 ## v1.20 — e2e is optional
 
 ANEW read as if every project had browser end-to-end tests: bootstrap asked "which e2e tool?",
