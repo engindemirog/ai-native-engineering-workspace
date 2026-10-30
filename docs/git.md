@@ -7,13 +7,18 @@
 - Refactors: `refactor/<spec-no>-<short-name>` (mini-spec with Changed behavior = none).
 - Fixes: `fix/<report-id>-<short-name>` (bug fixes carry a report, not a spec number);
   incidents: `incident/<date>-<short-name>`; trivial changes: `trivial/<short-name>` (see below).
+- Bootstrap: `chore/bootstrap` — the bootstrap output (`workflows/bootstrap.md`), merged like
+  any branch.
 
 ## Commits
 - Conventional Commits, with a plan reference: `feat(catalog): paging endpoint [plan 0001/3]`.
   Review fixes name their fix round instead of the step:
   `fix(catalog): empty page size [plan 0001/fix-2]` — the reviewer counts rounds from these
   (R-06 after round 3).
-- Agent commits follow the same standard: the agent writes the message, the human approves.
+- Agent commits follow the same standard: the agent writes the message, the human approves it
+  through the gate before the commit, not one by one — an approved plan covers its
+  `[plan NNNN/n]` and `[plan NNNN/fix-k]` commits, the ship approval the ship commit. Every
+  message stays visible in the branch and the PR. Lite and strict alike.
 - Commit named paths only: `git commit -- <paths>`, never `git add -A`, `git add .` or
   `commit -a`. Another session or tool may have written or staged files in the same tree.
 
