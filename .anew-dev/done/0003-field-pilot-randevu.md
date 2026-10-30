@@ -1,6 +1,6 @@
 # Spec 0003 — Field pilot "randevu": residue that tells check apart, agent screenshots, greenfield bootstrap
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0003-plan.md`
 - Self-critique: done (6 gaps G-1…G-6 folded in, approved by Engin Demiroğ 2026-10-30)
@@ -133,58 +133,79 @@ none — no graphical interface. Terminal and gate states:
   release for one field round, as approved in triage.
 
 ## Acceptance criteria
-- [ ] AC-1 — residue: a process started during the runs by something outside check, whose parent
+- [x] AC-1 — residue: a process started during the runs by something outside check, whose parent
   is a live process from before the baseline, is listed as "not from check" with its parent; the
   verdict is `RESIDUE CLEAN` and the exit code is 0.
-- [ ] AC-2 — residue: a process a check step leaves behind (backgrounded and detached, so it is
+- [x] AC-2 — residue: a process a check step leaves behind (backgrounded and detached, so it is
   orphaned or reparented) is a survivor with its parent shown, and the result is `RESIDUE FOUND`,
   exit 1. Zombies still count. Kernel threads are still left out.
-- [ ] AC-3 — residue: memory below baseline beyond `ANEW_RESIDUE_MB` with no survivor from check →
+- [x] AC-3 — residue: memory below baseline beyond `ANEW_RESIDUE_MB` with no survivor from check →
   a line marked informational, `RESIDUE CLEAN`, exit 0.
-- [ ] AC-4 — Documents, residue:
+- [x] AC-4 — Documents, residue:
   - `docs/testing.md` Resource hygiene rule 2 defines the attribution and drops "idle machine";
   - `prompts/bootstrap.md` and `workflows/bootstrap.md` ask nothing of the human about residue
     and use the one-line gate format;
   - ANEW-0007 records the change;
   - `docs/commands.md` describes the new output.
-- [ ] AC-5 — Documents, build evidence:
+- [x] AC-5 — Documents, build evidence:
   - `specs/plans/TEMPLATE.md` has `## Build evidence`;
   - `prompts/build.md` writes the lines there, and its Done includes the residue test when
     check.conf changed;
   - `prompts/review.md`, `prompts/verify.md` and the segments table cite them.
-- [ ] AC-6 — Documents, screenshots: `docs/testing.md` (Test layers 4, Evidence for UI criteria,
+- [x] AC-6 — Documents, screenshots: `docs/testing.md` (Test layers 4, Evidence for UI criteria,
   Evidence policy 3), `workflows/segments.md`, `prompts/verify.md`, `prompts/review.md`, the
   feature, change and fix workflows, `specs/TEMPLATE-mini.md`, `docs/roles/qa.md`, and every
   adapter text the plan inventories say that the agent captures and the human judges at SHIP,
   with the human-capture fallback.
-- [ ] AC-7 — Documents, bootstrap interview and output:
+- [x] AC-7 — Documents, bootstrap interview and output:
   - stack & versions topic (greenfield) and confirmation (adoption);
   - forbidden dependencies folded into architecture;
   - `chore/bootstrap` in `docs/git.md` Branching and in bootstrap;
   - a REPORT item for remote and CI.
-- [ ] AC-8 — Documents, walking skeleton: greenfield check.conf as commented plan, the REPORT names
+- [x] AC-8 — Documents, walking skeleton: greenfield check.conf as commented plan, the REPORT names
   the walking skeleton as the first spec, and R-13 timing in `workflows/bootstrap.md` and
   `prompts/bootstrap.md` agrees with it.
-- [ ] AC-9 — Documents, small rules: `specs/backlog.md` accepts `Source: bootstrap <date>`;
+- [x] AC-9 — Documents, small rules: `specs/backlog.md` accepts `Source: bootstrap <date>`;
   `docs/git.md` Commits states which approval covers which commit messages.
-- [ ] AC-10 — `.gitattributes`: `* text=auto eol=lf`, `*.cmd`/`*.bat` `eol=crlf`; the existing
+- [x] AC-10 — `.gitattributes`: `* text=auto eol=lf`, `*.cmd`/`*.bat` `eol=crlf`; the existing
   `scripts/*` and `*.sh` LF lines stay.
-- [ ] AC-11 — `scripts/selftest` covers AC-1…AC-3, and each turns red on a deliberate break
+- [x] AC-11 — `scripts/selftest` covers AC-1…AC-3, and each turns red on a deliberate break
   (reported by VERIFY). CHANGELOG v1.23 has Upgrading steps; `.anew-version` is v1.23;
   `doctor --strict` reports 0 fail; AGENTS.md invariant text is byte-identical to v1.22.1.
 
+## Evidence
+Full green for the verified code (this template: `doctor --strict` + `selftest`): CI run
+[41049105699](https://github.com/engindemirog/ai-native-engineering-workspace/actions/runs/41049105699)
+on `fe4cbd6` (selftest 261/0, ubuntu); the same selftest 261/0 locally on Windows 10 (Git Bash).
+Commits after it touch `.anew-dev/` only (`.anew-dev/README.md`, rule 6). VERIFY ran in an
+independent read-only session on `c4060c1`; deliberate breaks in temporary copies outside the repo.
+
+| Criterion | Proof | Result |
+|---|---|---|
+| AC-1 | selftest "a process from outside check does not fail it" (real watcher), "a child of a live baseline process is not check's" (fake ps), "(Windows): processes from outside check do not fail it"; break: attribute always C → 13 red | PASS |
+| AC-2 | selftest "leaked process", "the survivor names its parent", "orphans are check's", "a zombie is a survivor", "a kernel thread is not a survivor", "(Windows): orphans are check's", "… parent pid was reused"; breaks: parent gone → F (6 red), no ancestry rule (2 red) | PASS |
+| AC-3 | selftest "a memory drop alone does not fail it" (fake Darwin vm_stat); break: found=1 on a drop → 2 red | PASS |
+| AC-4 | docs/testing.md Resource hygiene 2, bootstrap prompt and workflow (one-line result), ANEW-0007 revision, docs/commands.md | PASS |
+| AC-5 | plan template `## Build evidence`, prompts/build.md (Done + pointer lines), review.md, verify.md, segments.md | PASS |
+| AC-6 | docs/testing.md (Test layers 4, Evidence for UI criteria, Evidence policy 3), segments.md, verify.md, review.md, feature-development.md, change-request.md, TEMPLATE-mini.md, roles/qa.md, both reviewer adapters | PASS |
+| AC-7 | bootstrap prompt and workflow (stack & versions, folded dependencies), docs/git.md `chore/bootstrap`, REPORT remote/CI | PASS |
+| AC-8 | commented check.conf, walking skeleton in REPORT, R-13 timing agree (prompt and workflow) | PASS |
+| AC-9 | specs/backlog.md `Source: bootstrap <date>`; docs/git.md Commits | PASS |
+| AC-10 | `git check-attr eol`: .ts/.md/scripts lf, .cmd/.bat crlf | PASS |
+| AC-11 | CI green above; CHANGELOG v1.23 with Upgrading; `.anew-version` v1.23; `git diff main...HEAD -- AGENTS.md` empty; `doctor --strict` 0 fail | PASS |
+
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (this template: `doctor --strict` + `selftest`, CI)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs / ADRs updated if behavior or architecture changed
-- [ ] Spec moved to `.anew-dev/done/` (it becomes immutable there)
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (this template: `doctor --strict` + `selftest`, CI)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs / ADRs updated if behavior or architecture changed
+- [x] Spec moved to `.anew-dev/done/` (it becomes immutable there)
 
 ## Scorecard (fill at ship)
 | Metric | Value |
 |---|---|
-| Spec revisions | |
-| Fix rounds | |
-| Review findings: real / noise / deferred | |
-| Regressions introduced | |
-| Bugs escaped to production | |
+| Spec revisions | 1 (self-critique G-1…G-6 folded in before approval) |
+| Fix rounds | 1 (3 commits: L-3; M-1+L-1+L-2+I-2 in one, same lines; I-1) |
+| Review findings: real / noise / deferred | round 1: 6 / 1 / 0 · round 2: 0 (2 Info, no action) · VERIFY gaps: 2 deferred (B-5, B-6), 1 noise |
+| Regressions introduced | 0 |
+| Bugs escaped to production | — (not shipped to a project yet; the randevu pilot upgrade is the field test) |
