@@ -228,6 +228,61 @@ run env PATH="$TMP/fakemac:$PATH" PSCOUNT="$TMP/fakemac/count" VMCOUNT="$TMP/fak
 exits 0 "residue: a memory drop alone does not fail it"
 has "over the 512 MB tolerance (informational" "… it is reported as informational"
 has "RESIDUE CLEAN (fast, 2 runs)" "… and the verdict is clean"
+# The Windows path on any machine: a fake uname, powershell.exe (pid, ppid, creation time, name,
+# command) and MSYS ps -el. Baseline: claude.exe 500; MSYS bash 550 (msys 50) and, under it, bash
+# 600 (msys 60) of another session. After the baseline 550 exits, so 600's MSYS parent becomes 1:
+# it must keep its identity (not new, not a survivor). On request: an orphan whose parent is gone
+# and one whose parent pid was reused by a younger process (check's), a native child of claude.exe
+# and an MSYS child (msys 90, a status letter before its PID) whose Windows parent id is a dead
+# exec stub while its MSYS parent is bash 600 (both not from check).
+mkdir -p "$TMP/fakewin"
+printf '#!/bin/sh\necho MINGW64_NT-10.0-19045\n' > "$TMP/fakewin/uname"
+cat > "$TMP/fakewin/powershell.exe" <<'EOF2'
+#!/bin/sh
+n=$(($(cat "$PSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$PSCOUNT"
+t=$(printf '\t')
+echo "MEM${t}8000"
+echo "4${t}0${t}${t}System${t}System"
+echo "500${t}4${t}20260101000000001${t}claude.exe${t}claude.exe"
+echo "960${t}4${t}20260101000000020${t}x.exe${t}x.exe reuser"
+[ "$n" -gt 2 ] || echo "550${t}500${t}20260101000000002${t}bash.exe${t}bash.exe"
+echo "600${t}550${t}20260101000000003${t}bash.exe${t}bash.exe other-session"
+[ "$n" -gt 2 ] || exit 0
+[ -z "${ORPHANS:-}" ] || { echo "700${t}777${t}20260101000000010${t}sleep.exe${t}sleep.exe anew-win-orphan"
+                           echo "950${t}960${t}20260101000000005${t}x.exe${t}x.exe anew-win-reused"; }
+[ -z "${NATIVE:-}" ] || echo "800${t}500${t}20260101000000011${t}dotnet.exe${t}dotnet.exe anew-win-foreign"
+[ -z "${OTHERS:-}" ] || { echo "800${t}500${t}20260101000000011${t}dotnet.exe${t}dotnet.exe anew-win-foreign"
+                          echo "900${t}901${t}20260101000000012${t}tail.exe${t}tail.exe anew-win-repaired"; }
+EOF2
+cat > "$TMP/fakewin/ps" <<'EOF2'
+#!/bin/sh
+[ -z "${NOPS:-}" ] || exit 1
+n=$(($(cat "$MSYSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$MSYSCOUNT"
+echo "      PID    PPID    PGID     WINPID   TTY         UID    STIME COMMAND"
+if [ "$n" -gt 2 ]; then
+  echo "       60       1      60        600  cons0     197609   Oct 28 /usr/bin/bash"
+  echo "S      90      60      90        900  cons0     197609 10:00:01 /usr/bin/tail"
+else
+  echo "       50       1      50        550  cons0     197609   Oct 28 /usr/bin/bash"
+  echo "       60      50      60        600  cons0     197609   Oct 28 /usr/bin/bash"
+fi
+EOF2
+chmod +x "$TMP/fakewin/uname" "$TMP/fakewin/powershell.exe" "$TMP/fakewin/ps"
+fakewin() { rm -f "$TMP/fakewin/count" "$TMP/fakewin/msyscount"
+            run env PATH="$TMP/fakewin:$PATH" PSCOUNT="$TMP/fakewin/count" MSYSCOUNT="$TMP/fakewin/msyscount" "$@" \
+              ANEW_RESIDUE_SETTLE=1 ANEW_RESIDUE_MB=1000000 sh "$C/scripts/residue" --fast; }
+fakewin
+exits 0 "residue (Windows): a process whose MSYS parent exits keeps its identity"; hasnt "  600  " "… and is never listed"
+fakewin OTHERS=1
+exits 0 "residue (Windows): processes from outside check do not fail it"
+has "  not from check  800  dotnet.exe anew-win-foreign  (parent 500 claude.exe)" "… a native child of a baseline process"
+has "  not from check  900  tail.exe anew-win-repaired  (parent 600 bash.exe)" "… an MSYS child behind a dead exec stub (status letter read past)"
+fakewin ORPHANS=1
+exits 1 "residue (Windows): orphans are check's"
+has "  survivor  700  sleep.exe anew-win-orphan  (parent 777 gone)" "… a process whose parent is gone"
+has "  survivor  950  x.exe anew-win-reused  (parent 960 gone)" "… a process whose parent pid was reused by a younger process"
+fakewin NOPS=1 NATIVE=1
+exits 0 "residue (Windows): no MSYS ps still measures"; has "  not from check  800" "… and still attributes"
 
 # --- scripts/doctor: a git-initialised copy of the ANEW core only, reset between scenarios ---
 # Only what doctor reads: no application code, and no real specs or plans (a project's own specs
