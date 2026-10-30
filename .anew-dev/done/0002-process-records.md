@@ -1,6 +1,6 @@
 # Spec 0002 — Process records: descoping at ship, triage, ship commit, self-critique, gates
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0002-plan.md`
 
@@ -72,45 +72,66 @@ none — no graphical interface. Terminal and document states:
   2026-10-29, one record discipline, script code in two of the five parts only.
 
 ## Acceptance criteria
-- [ ] AC-1 — A spec added to `specs/done/` vs the base ref with an unchecked criterion and no
+- [x] AC-1 — A spec added to `specs/done/` vs the base ref with an unchecked criterion and no
   `→ moved to` target: doctor reports a gate line naming spec and criterion; WARN locally,
   FAIL (exit 1) under `--strict`. The same for an unchecked `CB-` / `PB-` line of a mini-spec.
-- [ ] AC-2 — The same spec with the criterion struck through and `→ moved to B-3`, and `B-3`
+- [x] AC-2 — The same spec with the criterion struck through and `→ moved to B-3`, and `B-3`
   present in `specs/backlog.md`: no gate line. With `B-3` missing from the backlog: gate line.
   `→ moved to spec 0007` with no spec 0007 in `active/`: gate line; with one in `active/`:
   none; one only in `done/`, or the spec itself: gate line.
-- [ ] AC-3 — A spec already in `specs/done/` at the base ref, with unchecked criteria: no new
+- [x] AC-3 — A spec already in `specs/done/` at the base ref, with unchecked criteria: no new
   line (shipped specs are not re-judged).
-- [ ] AC-4 — A move line on a criterion of a spec that declares `Sensitive area:` → gate line
+- [x] AC-4 — A move line on a criterion of a spec that declares `Sensitive area:` → gate line
   ("a sensitive-area criterion cannot be moved out").
-- [ ] AC-5 — Self-critique: Draft + `pending (<cond>)` → WARN with the condition; Approved or
+- [x] AC-5 — Self-critique: Draft + `pending (<cond>)` → WARN with the condition; Approved or
   In progress + `pending` → gate (FAIL under `--strict`); `done` or no field → no line.
-- [ ] AC-6 — Documents: `specs/TEMPLATE.md` and `TEMPLATE-mini.md` carry the Self-critique field;
+- [x] AC-6 — Documents: `specs/TEMPLATE.md` and `TEMPLATE-mini.md` carry the Self-critique field;
   `prompts/spec.md` sets it; the ship step (`workflows/feature-development.md` step 10,
   `workflows/segments.md`) describes descoping with its line format; `prompts/recovery/spec-change.md`
   names the ship-gate case.
-- [ ] AC-7 — Documents: `specs/plans/TEMPLATE.md` has `## Triage`; feature-development step 7,
+- [x] AC-7 — Documents: `specs/plans/TEMPLATE.md` has `## Triage`; feature-development step 7,
   the segments VERIFY entry check and `.github/pull_request_template.md` point to it.
-- [ ] AC-8 — Documents: `docs/testing.md` rule 6 states the specs-only inheritance with the
+- [x] AC-8 — Documents: `docs/testing.md` rule 6 states the specs-only inheritance with the
   proving command (`git diff --name-only <sha> HEAD -- . ':!specs/'` empty), and the verify prompt cites it.
-- [ ] AC-9 — Documents: the one-decision rule is in `workflows/segments.md` (gate conventions);
+- [x] AC-9 — Documents: the one-decision rule is in `workflows/segments.md` (gate conventions);
   the plan inventories adapter texts that ask at a gate, and each either states the rule or
   points to segments.md.
-- [ ] AC-10 — `scripts/selftest` covers AC-1 … AC-5; each scenario turns red on a deliberate
+- [x] AC-10 — `scripts/selftest` covers AC-1 … AC-5; each scenario turns red on a deliberate
   break (reported by VERIFY); AGENTS.md rule 4 text is byte-identical to v1.21.
 
+## Evidence
+Full green for the verified code (this template: `doctor --strict` + `selftest`): CI run
+[#62](https://github.com/engindemirog/ai-native-engineering-workspace/actions/runs/40966894686) on
+`ea8317d` (VERIFY round 2's HEAD); the F-4 doc line `2510206` has its own CI run, cited in the PR.
+The ship commit touches `.anew-dev/` only; per `.anew-dev/README.md` this file was judged before
+the commit by running doctor's new-ship check on a copy of it under `specs/done/` (output in the PR).
+VERIFY ran in independent read-only sessions (round 1 on `0829f06`, round 2 narrow on `ea8317d`).
+
+| Criterion | Proof | Result |
+|---|---|---|
+| AC-1 | selftest "an uncommitted new ship with an unproven criterion → WARN", "… under --strict (exit 1)", "mini-spec CB-/PB- lines are judged too", "an unchecked CB- line is judged" | PASS |
+| AC-2 | selftest "a move to a backlog entry that does not exist → gate", "… existing backlog entry is accepted", "the ASCII arrow is accepted too", "a move to a spec that does not exist → gate", "… existing spec is accepted", "a shipped spec is no target", "a spec cannot move a criterion to itself" | PASS |
+| AC-3 | selftest "a spec already shipped at the base is not judged again", "… not judged next to it", "an edited shipped spec … never judged as a new ship" | PASS |
+| AC-4 | selftest "a sensitive-area criterion is never moved out" + declaration and fail-closed variants | PASS |
+| AC-5 | selftest "pending self-critique on a Draft → WARN …", "… Approved … (exit 1)", "… In progress too", "the pending status in any case", "done → no line", "no field → no line" | PASS |
+| AC-6 | templates (field + move-line format), `prompts/spec.md`, feature-development step 10, segments SHIP handoff, R-08 | PASS |
+| AC-7 | plan template `## Triage`, step 7, segments VERIFY entry, PR template | PASS |
+| AC-8 | `docs/testing.md` rule 6 (specs-only inheritance + proving command + doctor on the ship), `prompts/verify.md` | PASS |
+| AC-9 | `workflows/segments.md` Contract, Gate; pointer in new-feature, change, fix-bug, refactor, bootstrap ×4 adapters; segment commands read segments.md | PASS |
+| AC-10 | VERIFY round 1: every AC-1…AC-5 break red (15 breaks) plus ~30 fix-round breaks; round 2: the LC_ALL=C break red; `git diff db9d9ff HEAD -- AGENTS.md` empty | PASS |
+
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (this template: `doctor --strict` + `selftest`, as in spec 0001 Q5)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in the backlog
-- [ ] Docs / ADRs updated (CHANGELOG v1.22; ADR for descoping-instead-of-waiver)
-- [ ] Spec moved to `done/` (it becomes immutable there)
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (this template: `doctor --strict` + `selftest`, as in spec 0001 Q5)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in the backlog
+- [x] Docs / ADRs updated (CHANGELOG v1.22; ADR for descoping-instead-of-waiver)
+- [x] Spec moved to `done/` (it becomes immutable there)
 
 ## Scorecard (fill at ship — honest numbers make the process improvable)
 | Metric | Value |
 |---|---|
-| Spec revisions | |
-| Fix rounds | |
-| Review findings: real / noise / deferred | |
-| Regressions introduced | |
-| Bugs escaped to production | |
+| Spec revisions | 2 (self-critique folded in; Req. 2 / AC-2 via R-08 in fix round 1) |
+| Fix rounds | 4 — the fourth after R-06 (root cause: the plan did not inventory the lanes using the mini template) |
+| Review findings: real / noise / deferred | 38 / 0 / 6 (folded into B-3, B-4 in `.anew-dev/backlog.md`) |
+| Regressions introduced | 3 — a vacuous assertion (fix-1), first-box tick (fix-2), sensitive separator fail-open (fix-3); the first two fixed, the third deferred as B-4 |
+| Bugs escaped to production | 0 at ship |
