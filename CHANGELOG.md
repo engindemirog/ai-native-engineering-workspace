@@ -57,8 +57,9 @@ smaller gaps from the same field log; no invariant rule changes.
 ### Upgrading
 
 - `scripts/residue` — behavior list:
-  - `measure` records parent pid (and on Windows the creation time; MSYS's `ps -el` repairs
-    parent ids broken by exec);
+  - `measure` records parent pid, and on Windows the creation time, which is part of a
+    process's identity. MSYS's `ps -el` repairs parent ids broken by exec; without it, nothing
+    is repaired and the test still runs;
   - each survivor is judged by its parent chain: `C` (check's: orphaned, handed to init or a
     subreaper, too deep or circular) or `F` (a live baseline parent outside the test's own
     ancestry);
@@ -68,7 +69,8 @@ smaller gaps from the same field log; no invariant rule changes.
   - memory over `ANEW_RESIDUE_MB` prints `(informational: …)` and no longer fails;
   - macOS memory is chosen by `uname`.
 
-  Selftest: new residue scenarios; copy `scripts/selftest` with it.
+  Selftest: new residue scenarios, the Windows path among them (fake `powershell.exe` and
+  `ps`, so CI proves it on Linux); copy `scripts/selftest` with it.
 - `docs/testing.md`:
   - intent (Resource hygiene 2): attribution by parent chain, no idle machine, the agent runs it
     when check.conf changes, one-line gate result;

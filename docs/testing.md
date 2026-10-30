@@ -89,7 +89,8 @@ A screenshot proves a criterion only against the spec's "User experience": every
      command line;
    - a process under a live parent from before the first run (another session, an OS service)
      is listed as "not from check" with its parent and never fails the test, so no idle machine
-     is needed.
+     is needed. The known limit: work a step hands to a process that ran before the first run
+     (an earlier daemon, a browser a URL opener reuses) counts as not from check too.
    Memory is reported, not judged. Kernel threads (`[kworker/…]` on Linux) are left out: no step
    can start one. Zombies still count. The agent runs both profiles whenever `scripts/check.conf`
    changes. That is part of BUILD's Done, never an acceptance criterion. The gate shows one line,
