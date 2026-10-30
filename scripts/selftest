@@ -158,18 +158,36 @@ conf "unit: echo unit ran" "server: sh -c 'sleep 25; :' $LEAK >/dev/null 2>&1 &"
 residue
 exits 1 "residue: leaked process";               has "RESIDUE FOUND (full)" "leak is reported"
 has "$LEAK" "the survivor is named with its command line"
-# The POSIX path on any machine: a fake uname and ps. After the baseline, a kernel thread appears
-# (never a survivor) and, with $ZOMBIE set, a zombie too (always one).
+if printf '%s\n' "$out" | grep '^  survivor  ' | grep -F "$LEAK" | grep -qF '(parent '; then report 0 "the survivor names its parent"
+else report 1 "the survivor names its parent"; fi
+# A process started meanwhile by something outside check — here a watcher started before the
+# baseline, not an ancestor of the test — is not check's: listed with its parent, never failing.
+GO="$TMP/go"; FOREIGN=anew-residue-foreign-$$
+( while [ ! -f "$GO" ]; do sleep 1; done; sh -c 'sleep 25; :' "$FOREIGN" & wait ) &
+WATCH=$!
+conf "unit: touch '$GO' && sleep 3"
+residue
+kill "$WATCH" 2>/dev/null
+exits 0 "residue: a process from outside check does not fail it"; has "RESIDUE CLEAN (full, 2 runs)" "… the verdict is clean"
+if printf '%s\n' "$out" | grep '^  not from check  ' | grep -F "$FOREIGN" | grep -qF '(parent '; then report 0 "… and it is listed as not from check, with its parent"
+else report 1 "… and it is listed as not from check, with its parent"; fi
+# The POSIX path on any machine: a fake uname and ps (pid, ppid, args). After the baseline, a
+# kernel thread appears (never a survivor) and, on request, a zombie (always one), a process whose
+# parent is a live baseline process (not from check), and orphans: one handed to init, one whose
+# parent is a new process whose own parent is gone (both check's).
 mkdir -p "$TMP/fakeps"
 printf '#!/bin/sh\necho Linux\n' > "$TMP/fakeps/uname"
-cat > "$TMP/fakeps/ps" <<'EOF'
+cat > "$TMP/fakeps/ps" <<'EOF2'
 #!/bin/sh
 n=$(($(cat "$PSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$PSCOUNT"
-echo "    1 /sbin/init"
+echo "    1     0 /sbin/init"
+echo "  100     1 /usr/bin/anew-other-session"
 [ "$n" -gt 2 ] || exit 0
-echo " 4242 [kworker/0:1-events]"
-[ -z "${ZOMBIE:-}" ] || echo " 4243 [anew-zombie] <defunct>"
-EOF
+echo " 4242     2 [kworker/0:1-events]"
+[ -z "${ZOMBIE:-}" ] || echo " 4243     1 [anew-zombie] <defunct>"
+[ -z "${FOREIGN:-}" ] || echo " 4244   100 anew-foreign --flag"
+[ -z "${ORPHANS:-}" ] || { echo " 4245     1 anew-orphan"; echo " 4246  4247 anew-child"; echo " 4247  9999 anew-parent-gone"; }
+EOF2
 chmod +x "$TMP/fakeps/uname" "$TMP/fakeps/ps"
 conf 'unit [fast]: echo unit ran'
 fakeps() { rm -f "$TMP/fakeps/count"; run env PATH="$TMP/fakeps:$PATH" PSCOUNT="$TMP/fakeps/count" "$@" \
@@ -178,6 +196,34 @@ fakeps
 exits 0 "residue: a kernel thread is not a survivor"; hasnt "kworker" "kernel threads are never listed"
 fakeps ZOMBIE=1
 exits 1 "residue: a zombie is a survivor";       has "[anew-zombie] <defunct>" "the zombie is named"
+fakeps FOREIGN=1
+exits 0 "residue: a child of a live baseline process is not check's"
+has "  not from check  4244  anew-foreign --flag  (parent 100 anew-other-session)" "… listed with its parent"
+has "0 survivor(s), 1 not from check" "… counted apart";  hasnt "  survivor  4244" "… never as a survivor"
+fakeps FOREIGN=1 ORPHANS=1
+exits 1 "residue: orphans are check's"
+has "  survivor  4245  anew-orphan  (parent 1 init)" "an orphan handed to init is a survivor"
+has "  survivor  4247  anew-parent-gone  (parent 9999 gone)" "a process whose parent is gone is a survivor"
+has "  survivor  4246  anew-child  (parent 4247 anew-parent-gone)" "a child of an orphan is a survivor too"
+has "  not from check  4244" "… while the other session's process stays not from check"
+# Memory is reported, never judged: a fake Darwin with vm_stat whose free pages halve after the
+# baseline drops ~3.9 GB, over a 512 MB tolerance, with nothing of check's left.
+mkdir -p "$TMP/fakemac"
+printf '#!/bin/sh\necho Darwin\n' > "$TMP/fakemac/uname"
+cat > "$TMP/fakemac/vm_stat" <<'EOF2'
+#!/bin/sh
+n=$(($(cat "$VMCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$VMCOUNT"
+echo "Mach Virtual Memory Statistics: (page size of 4096 bytes)"
+if [ "$n" -gt 2 ]; then echo "Pages free:                     1000000."; else echo "Pages free:                     2000000."; fi
+EOF2
+cp "$TMP/fakeps/ps" "$TMP/fakemac/ps"
+chmod +x "$TMP/fakemac/uname" "$TMP/fakemac/vm_stat" "$TMP/fakemac/ps"
+rm -f "$TMP/fakemac/count" "$TMP/fakemac/vmcount"
+run env PATH="$TMP/fakemac:$PATH" PSCOUNT="$TMP/fakemac/count" VMCOUNT="$TMP/fakemac/vmcount" \
+  ANEW_RESIDUE_SETTLE=1 ANEW_RESIDUE_MB=512 sh "$C/scripts/residue" --fast
+exits 0 "residue: a memory drop alone does not fail it"
+has "over the 512 MB tolerance (informational" "… it is reported as informational"
+has "RESIDUE CLEAN (fast, 2 runs)" "… and the verdict is clean"
 
 # --- scripts/doctor: a git-initialised copy of the ANEW core only, reset between scenarios ---
 # Only what doctor reads: no application code, and no real specs or plans (a project's own specs
