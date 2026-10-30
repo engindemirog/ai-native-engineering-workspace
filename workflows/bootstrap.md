@@ -37,9 +37,11 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 
 4. **VERIFY.** Run `./scripts/doctor` (structure + configuration) and `./scripts/check`
    (must pass; in an empty greenfield it may be a no-op with a note), then the residue test
-   (`./scripts/residue`, both profiles; `docs/testing.md`, Resource hygiene)
-   — reported at the gate; failing it means not done. Greenfield: `RESIDUE NOT MEASURED`; the
-   work that adds the first steps runs it then.
+   (`./scripts/residue`, both profiles; `docs/testing.md`, Resource hygiene). The agent runs it
+   and the gate shows one line, `Residue: clean (fast + full)`. RESIDUE FOUND comes with the
+   leaking step and a proposed fix, and means not done. The human is never asked to run it or to
+   idle the machine. Greenfield: `RESIDUE NOT MEASURED`; the work that adds the first steps runs
+   it then.
    Environment: a step that needs something of the machine (a toolchain version, a container
    runtime, a service) gets a `requires` line in `check.conf` — the project names its own tool,
    ANEW assumes none. The gate shows doctor's per-profile verdict; a profile that is not runnable

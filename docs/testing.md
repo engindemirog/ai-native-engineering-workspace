@@ -65,11 +65,18 @@ A screenshot proves a criterion only against the spec's "User experience": every
    under test, containers or emulators started for the run. Agents run check an order of magnitude
    more often than humans; per-run residue compounds into machine starvation.
 2. **The residue test** (the rule's definition, not advice): run `./scripts/check` twice back to
-   back; after each run, process count and memory return to the baseline measured before the first.
-   `./scripts/residue` runs it (`--fast` for the fast profile) and names every survivor with its
-   command line; it lists anything started meanwhile too, so run it on an otherwise idle machine.
-   Kernel threads (`[kworker/…]` on Linux) are left out: no step can start one. Zombies still
-   count. Rerun it whenever `scripts/check.conf` changes.
+   back; after each run, no process that check started is still alive. `./scripts/residue` runs
+   it (`--fast` for the fast profile) and judges every new survivor by its parent chain:
+   - an orphan (parent gone, or handed to init or a subreaper) is check's, named with its
+     command line;
+   - a process under a live parent from before the first run (another session, an OS service)
+     is listed as "not from check" with its parent and never fails the test, so no idle machine
+     is needed.
+   Memory is reported, not judged. Kernel threads (`[kworker/…]` on Linux) are left out: no step
+   can start one. Zombies still count. The agent runs both profiles whenever `scripts/check.conf`
+   changes. That is part of BUILD's Done, never an acceptance criterion. The gate shows one line,
+   `Residue: clean (fast + full)`. A human decides only on RESIDUE FOUND, given the leaking step
+   and a proposed fix.
 3. Warm-process caches trade memory for speed for humans who build rarely; with an agent, trade the
    seconds back for a flat memory profile.
 4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e, where a project

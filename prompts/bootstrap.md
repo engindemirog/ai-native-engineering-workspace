@@ -42,9 +42,12 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
       test: sh -c 'tool run; rc=$?; tool stop; exit $rc'
       (Worked examples only, not a supported list: Gradle --no-daemon · Playwright --workers=1.)
    c. Prove — in VERIFY, run the residue test (./scripts/residue, then ./scripts/residue --fast)
-      and report it at the gate. A bootstrap whose check fails the residue test is not done.
+      and report it at the gate as one line: Residue: clean (fast + full). On RESIDUE FOUND,
+      name the step that leaks and propose the fix. A bootstrap whose check fails the residue
+      test is not done. Never ask me to run it or to idle the machine: what other sessions or
+      the OS start is listed as "not from check" and does not count.
       Greenfield (no steps yet): residue says RESIDUE NOT MEASURED; the work that adds the
-      first steps runs it then, on an idle machine, both profiles.
+      first steps runs it then, both profiles.
       Also confirm every test step still runs the same number of tests as before the switches:
       some runners forward unknown flags to the test process and silently run zero tests.
    d. Split — tag the quick steps [fast] in their name, leave slow suites full-only
@@ -55,9 +58,8 @@ Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a r
    Adoption (existing code): changing build flags the team relies on, and the fast/full split, are
    PROPOSED, not imposed; the residue test runs either way so the trade-off is visible.
 4. VERIFY: run ./scripts/doctor and ./scripts/check and show me the output; then the residue test
-   (3c: ./scripts/residue and ./scripts/residue --fast) with its baseline and both post-run
-   measurements. Steps that need something of this machine carry `requires <step>: <command>`
-   lines naming the tool this project uses (ANEW assumes none). Show doctor's per-profile
+   (3c), reported as its one line. Steps that need something of this machine carry
+   `requires <step>: <command>` lines naming the tool this project uses (ANEW assumes none). Show doctor's per-profile
    verdict; a profile not runnable here comes with your recommendation (fix the environment /
    that profile in CI only / change the step) for me to decide (R-13). "check fails on the
    check.conf errors above" is not an environment gap: fix the conf.
