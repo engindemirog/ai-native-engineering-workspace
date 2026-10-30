@@ -35,8 +35,8 @@ One-pass review (lite only, when the chainer asks — workflows/segments.md): fi
 files that the work is outside a sensitive area (docs/domain.md) and that no criterion needs the
 code broken on purpose (prompts/verify.md); if either fails, say so and review only. Only on a
 "clean" verdict, announce the switch to QA and add the prompts/verify.md criterion ↔ evidence
-table to this report (UI screenshots: name each one; the human attaches them to the PR). Any
-finding: stop at the review.
+table to this report (UI screenshots: capture them as prompts/verify.md says, for the SHIP
+gallery). Any finding: stop at the review.
 Do not invent findings to appear useful — "clean" is a valid verdict. I will triage:
 real / noise / defer / investigate.
 Write in the docs language (AGENTS.md, Language); field labels stay English.

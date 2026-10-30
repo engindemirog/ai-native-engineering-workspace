@@ -43,7 +43,7 @@ Same segments as `feature-development.md` (see `segments.md`), same gates, small
 | **BUILD** | Developer | `prompts/build.md` | Spec → `In progress`; `scripts/check` green; changed files match the plan. |
 | **REVIEW** — narrow: the change diff | Reviewer (fresh session / read-only subagent) | `prompts/review.md` | Findings or "clean". Lite: a clean review may carry VERIFY in the same session (one-pass review, `segments.md`). |
 | **TRIAGE** | Human | — | **[GATE: human]** real / noise / defer / investigate. A Known traps line is recorded as in `feature-development.md`, step 7. |
-| **VERIFY** | QA | `prompts/verify.md` | Criterion ↔ evidence table for changed **and** preserved criteria. **UI change: before/after screenshots are the evidence.** |
+| **VERIFY** | QA | `prompts/verify.md` | Criterion ↔ evidence table for changed **and** preserved criteria. **UI change: before/after screenshots are the evidence — agent-captured, judged at SHIP.** |
 | **SHIP** | Human | — | **[GATE: human]** DoD → tick each proven criterion (`[x]`), move out what cannot be proven (R-08, never waived) → mini-spec moves to `specs/done/`, `Status: Shipped`, in the PR → merge. |
 
 The status machine is the one in `specs/TEMPLATE.md`: Draft → Approved → In progress → Shipped.

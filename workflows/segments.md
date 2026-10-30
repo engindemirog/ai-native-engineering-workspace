@@ -65,8 +65,9 @@ holds a Medium or higher finding; a Low/Info-only round goes on to VERIFY
   concurrency, money, authorization, boundary values). It reviews first. On a "clean" verdict it
   announces the hat switch to QA and adds the criterion ↔ evidence table to the same report,
   citing the full green of HEAD as usual (still running → the table waits for it). UI
-  screenshots: the table names each one it needs; the human takes them and attaches them to the
-  PR before SHIP and adds their links to the table. Any review finding ends the pass at the review —
+  screenshots: the session captures them (`docs/testing.md`, Evidence for UI criteria), outside
+  the repo, and the table lists them for the SHIP gallery. Any review finding ends the pass at
+  the review —
   triage, fix rounds and a separate VERIFY follow as usual; gaps in the table go to triage the
   same way. Handoff: `Next: TRIAGE — human (confirm the clean verdict and the evidence table);
   then SHIP`. The triage and ship gates stay. It saves a session and a handoff, never a gate;

@@ -35,5 +35,5 @@ from observation (run it, screenshot it), not from assumption. -->
 ## Definition of Done
 - [ ] `scripts/check` green
 - [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `specs/backlog.md`
-- [ ] Criterion ↔ evidence table complete for CB-* **and** PB-* (UI: before/after screenshots)
+- [ ] Criterion ↔ evidence table complete for CB-* **and** PB-* (UI: before/after screenshots, agent-captured, judged at SHIP)
 - [ ] Spec moved to `specs/done/` (immutable there)
