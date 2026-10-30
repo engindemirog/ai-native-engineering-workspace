@@ -154,22 +154,26 @@ has "baseline: " "residue: measures a baseline";   has "after run 2: " "residue:
 has "==> run 2/2: ./scripts/check --fast" "residue --fast runs the fast profile twice"; hasnt "e2e ran" "residue --fast skips full-only steps"
 if printf '%s\n' "$out" | grep '^  survivor  ' | grep -qF "$LEAK"; then report 1 "a step that waits for its child leaves no survivor"
 else report 0 "a step that waits for its child leaves no survivor"; fi
-conf "unit: echo unit ran" "server: sh -c 'sleep 25; :' $LEAK >/dev/null 2>&1 &"
+# The scenario processes below write their pid and are stopped afterwards: the selftest itself
+# leaves nothing running. Each one also ends on its own after ~30 s, should a kill miss it.
+LIVE='echo $$ >> "$1"; i=0; while [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done'
+conf "unit: echo unit ran" "server: sh -c '$LIVE' $LEAK '$TMP/leak.pid' >/dev/null 2>&1 &"
 residue
+kill $(cat "$TMP/leak.pid" 2>/dev/null) 2>/dev/null
 exits 1 "residue: leaked process";               has "RESIDUE FOUND (full)" "leak is reported"
 has "$LEAK" "the survivor is named with its command line"
 if printf '%s\n' "$out" | grep '^  survivor  ' | grep -F "$LEAK" | grep -qF '(parent '; then report 0 "the survivor names its parent"
 else report 1 "the survivor names its parent"; fi
 # A process started meanwhile by something outside check — here a watcher started before the
 # baseline, not an ancestor of the test — is not check's: listed with its parent, never failing.
-GO="$TMP/go"; FOREIGN=anew-residue-foreign-$$
-( while [ ! -f "$GO" ]; do sleep 1; done; sh -c 'sleep 25; :' "$FOREIGN" & wait ) &
+GO="$TMP/go"; FOREIGN_MARK=anew-residue-foreign-$$
+( while [ ! -f "$GO" ]; do sleep 1; done; sh -c "$LIVE" "$FOREIGN_MARK" "$TMP/foreign.pid" & wait ) &
 WATCH=$!
 conf "unit: touch '$GO' && sleep 3"
 residue
-kill "$WATCH" 2>/dev/null
+kill "$WATCH" $(cat "$TMP/foreign.pid" 2>/dev/null) 2>/dev/null
 exits 0 "residue: a process from outside check does not fail it"; has "RESIDUE CLEAN (full, 2 runs)" "… the verdict is clean"
-if printf '%s\n' "$out" | grep '^  not from check  ' | grep -F "$FOREIGN" | grep -qF '(parent '; then report 0 "… and it is listed as not from check, with its parent"
+if printf '%s\n' "$out" | grep '^  not from check  ' | grep -F "$FOREIGN_MARK" | grep -qF '(parent '; then report 0 "… and it is listed as not from check, with its parent"
 else report 1 "… and it is listed as not from check, with its parent"; fi
 # The POSIX path on any machine: a fake uname and ps (pid, ppid, args). After the baseline, a
 # kernel thread appears (never a survivor) and, on request, a zombie (always one), a process whose
