@@ -18,7 +18,8 @@ Each row's evidence is a pointer — test name + reproduction command, or a PR l
 non-reproducible evidence. Show output in the conversation; write no output files
 (docs/testing.md, Evidence policy). Evidence cites a full-profile run — a CHECK GREEN (fast, …)
 line is not evidence (docs/testing.md, Two speeds, one contract). A full green already shown for
-this exact commit (handoff, or a CI run whose SHA equals HEAD) is cited, not re-run (rule 6) —
+this exact commit (the plan's ## Build evidence, or a CI run whose SHA equals HEAD) is cited, not
+re-run (rule 6) —
 or for an earlier commit when the diff since touches only specs/ and doctor --strict judged the
 ship (rule 6, the ship commit).
 

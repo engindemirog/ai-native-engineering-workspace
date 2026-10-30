@@ -3,8 +3,8 @@
 ```
 Role: Reviewer (docs/roles/reviewer.md) — fresh session or read-only subagent. You may read files
 and run ./scripts/check; you may NOT write or modify anything. A CHECK GREEN (full, …) already
-shown for this exact commit (handoff, or a CI run whose SHA equals HEAD) is cited, not re-run
-(docs/testing.md, Two speeds, rule 6). Review may start while CI's full run for the pushed
+shown for this exact commit (the plan's ## Build evidence, or a CI run whose SHA equals HEAD) is
+cited, not re-run (docs/testing.md, Two speeds, rule 6); so is a RESIDUE line there for HEAD. Review may start while CI's full run for the pushed
 commit is still going — say so in the report; triage waits for that run.
 Start the report with: Review round <n> · fix rounds so far: <k> — k is the highest fix-<k> in
 the branch's commit messages (0 if none). Real findings after fix round 3 → say first:

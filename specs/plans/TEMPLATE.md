@@ -26,6 +26,13 @@
 | AC-1 | | |
 | AC-2 | | |
 
+## Build evidence
+<!-- Written by BUILD, read by REVIEW and VERIFY: pointer lines, never saved output
+     (docs/testing.md, Evidence policy). One line each, with the commit it holds for:
+     CHECK GREEN (full, <n> steps, <t> s) @<sha>   — or the CI run link with its SHA
+     RESIDUE CLEAN (full, 2 runs) @<sha> · RESIDUE CLEAN (fast, 2 runs) @<sha>
+       — only when scripts/check.conf changed in this work; RESIDUE FOUND goes to the human. -->
+
 ## Amendments
 <!-- Approved changes after the plan gate (review triage, R-07), never silent. One line each:
      A-1 — <what changes: files, steps> — <why; source: review round n / R-07> — <name>, <YYYY-MM-DD> -->
