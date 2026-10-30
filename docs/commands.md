@@ -202,7 +202,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
   rounds after triage (`prompts/build.md §fixes`).
 - **Reads / writes:** reads `specs/plans/NNNN-plan.md`, the spec, `prompts/build.md`; writes code
   and tests and sets the spec to `Status: In progress`.
-- **Stops at:** changed files vs. the plan list + real `./scripts/check` output ·
+- **Stops at:** changed files vs. the plan list (as amended) + real `./scripts/check` output ·
   `Next: INDEPENDENT REVIEW — fresh session / read-only reviewer`. A deviation goes to R-07.
 - **Lite / Strict:** no difference in checks; in strict, a session of its own.
 - **Refusal:** "Plan not approved — run PLAN and get the approval recorded first."
