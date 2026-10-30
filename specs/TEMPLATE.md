@@ -9,6 +9,10 @@
        moves to specs/done/). /plan refuses to run unless the status is Approved. -->
 - Mode: lite | strict (from AGENTS.md at creation time)
 - Plan: `specs/plans/NNNN-plan.md`
+- Self-critique: pending
+  <!-- done | pending (<condition>) — "done" once the human approved the self-critique gaps
+       (prompts/spec.md); pending with its condition when deferred (e.g. "after 0012 ships").
+       doctor: pending warns on a Draft (expected until approval) and is a gate past approval. -->
 
 ## Intent
 <!-- 3–5 sentences, BUSINESS language: who wants this and why; what success looks like;
@@ -32,7 +36,10 @@ what is deliberately NOT being done. Decisions from clarifying questions are fol
 
 ## Acceptance criteria
 <!-- Each line independently testable. Cover the happy path, boundaries, empties, and error cases.
-     More than one user capability or ~8–10 criteria → propose a split (prompts/spec.md, SIZE). -->
+     More than one user capability or ~8–10 criteria → propose a split (prompts/spec.md, SIZE).
+     Moved out at the ship gate (never a waiver; workflows/feature-development.md step 10): keep
+     the line, on that same line: - [ ] ~~AC-n — …~~ → moved to B-<n> | spec <NNNN> — <name>,
+     <YYYY-MM-DD>, <why>. doctor checks it on every new ship; a sensitive-area criterion stays. -->
 - [ ] AC-1 —
 - [ ] AC-2 —
 - [ ] AC-3 —

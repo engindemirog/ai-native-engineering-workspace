@@ -11,8 +11,10 @@ BASELINE → SPEC & PLAN → [APPROVAL] → REFACTOR → PROVE UNCHANGED → REV
 2. **SPEC & PLAN** — Role: Developer. The spec is a mini-spec from `specs/TEMPLATE-mini.md`
    (`specs/active/NNNN-refactor-<name>.md`): Changed behavior = *none — no observable behavior
    change*; Preserved behavior = the characterization criteria from step 1; Source = the work
-   item. Then `prompts/plan.md` with explicit boundaries: what improves, what is untouched. Mixed
-   refactor+feature work is forbidden — split it.
+   item. This lane has no ANALYZE: run the SELF-CRITIQUE pass of `prompts/spec.md` on the
+   mini-spec, the human approves its gaps, then set `- Self-critique: done` (doctor gates
+   `pending` past approval). Then `prompts/plan.md` with explicit boundaries: what improves, what
+   is untouched. Mixed refactor+feature work is forbidden — split it.
 3. **APPROVAL.** **[GATE: human]** Especially: is the blast radius worth the payoff?
 4. **REFACTOR.** Small, committable steps; `./scripts/check --fast` green after each step
    (drift → R-07). BASELINE and PROVE UNCHANGED run the full profile (`docs/testing.md`).
@@ -22,4 +24,6 @@ BASELINE → SPEC & PLAN → [APPROVAL] → REFACTOR → PROVE UNCHANGED → REV
 6. **REVIEW** — fresh session. Extra lens: did semantics sneak in? Are names/layers now *more*
    aligned with `docs/architecture.md`? **[GATE: human]** triage (real / noise / defer /
    investigate).
-7. **SHIP.** PR → merge → the mini-spec moves to `specs/done/` (`Status: Shipped`).
+7. **SHIP.** Tick each criterion the proof covers (`[x]`); one that cannot be proven is moved out,
+   never waived (R-08, `feature-development.md` step 10) → the mini-spec moves to `specs/done/`
+   (`Status: Shipped`) in the PR → merge.

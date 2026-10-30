@@ -5,6 +5,8 @@
   <!-- Same state machine as TEMPLATE.md: Draft → Approved (human) → In progress (/build) → Shipped (ship). -->
 - Mode: lite | strict (from AGENTS.md at creation time)
 - Plan: `specs/plans/NNNN-plan.md`
+- Self-critique: pending
+  <!-- done | pending (<condition>) — as in TEMPLATE.md. -->
 - Source: <!-- MANDATORY — the work item key (ticket / issue / request id). No key, no mini-spec. -->
 - Design: <!-- UI change only — link to the new design (and the states it changes); never a copy in the repo. -->
 - Supersedes: <!-- optional — <NNNN>/AC-x of the shipped spec whose behavior this replaces. specs/done/ is never edited. -->
@@ -13,6 +15,7 @@
 <!-- 2–3 sentences, business language: what changes, for whom, why now. -->
 
 ## Changed behavior
+<!-- Moved out at ship: same line format as TEMPLATE.md (→ moved to B-<n> | spec <NNNN>). -->
 <!-- 3–5 atomic, testable criteria describing the NEW behavior. For a refactor write exactly one line:
      "none — no observable behavior change"; the Preserved behavior section carries the proof. -->
 - [ ] CB-1 —

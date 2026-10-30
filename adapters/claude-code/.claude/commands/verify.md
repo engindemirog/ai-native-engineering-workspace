@@ -3,7 +3,7 @@ description: "Segment VERIFY: acceptance criteria against concrete evidence (QA)
 argument-hint: spec number
 ---
 Read AGENTS.md, docs/roles/qa.md, and workflows/segments.md. Run the VERIFY segment for spec
-$ARGUMENTS. Soft entry check: triage is complete — if no review/triage record exists, say so
+$ARGUMENTS. Soft entry check: triage is complete — if the plan's ## Triage has no record, say so
 and ask. A clean one-pass review (lite, workflows/segments.md) already holds the table: point to
 it instead of verifying again.
 

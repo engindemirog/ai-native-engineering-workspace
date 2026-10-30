@@ -9,5 +9,6 @@ docs/git.md ("Trivial changes"): one narrow commit, check green. CHANGE → chec
 with the same "Source:" key (never a twin), then by Mode: strict → ANALYZE segment only with
 specs/TEMPLATE-mini.md, spec approval, handoff, STOP; lite → chain /analyze (mini) → /plan →
 /build → /review (fresh chat) → /verify (before/after screenshots for UI) → ship, asking at every
-gate. Entry checks stay: the plan gate is never skipped. One-pass review
+gate. One decision per gate message
+(workflows/segments.md, Contract, Gate). Entry checks stay: the plan gate is never skipped. One-pass review
 (workflows/segments.md, "The chainer") may join /review and /verify when its conditions hold.

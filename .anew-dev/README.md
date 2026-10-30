@@ -7,5 +7,13 @@ AGENTS.md invariant rules) but live here so the template's `specs/` stays empty 
 - `specs/NNNN-<name>.md` — one per piece of work; numbering is shared with `plans/`.
 - `plans/NNNN-plan.md` — the approved plan, `Approved by / on` is the gate record.
 - Shipped specs move to `done/` and are never edited again.
+- `docs/testing.md` rule 6 (a ship commit touching only `specs/` inherits the full green) applies
+  here to `.anew-dev/`: `git diff --name-only <green-sha> HEAD -- . ':!.anew-dev/'` prints nothing.
+
+- doctor scans `specs/`, not `.anew-dev/`: ANEW's own ships are checked by the reviewer and
+  VERIFY against the same rules (ticked or moved-out criteria, open targets), not by doctor. In rule 6
+  doctor's judgment of the ship is replaced by this: before the ship commit, the human (or a
+  reviewer on the ship diff) checks the `done/` file against those rules, with the diff shown;
+  only then does the `.anew-dev/` ship commit inherit the full green.
 
 Template users: this folder is not part of your workspace — delete it after you create your repo.

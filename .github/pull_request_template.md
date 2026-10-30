@@ -1,6 +1,6 @@
 ## Spec
 <!-- specs/active/NNNN-<name>.md — a PR without a spec should not exist (AGENTS.md rule 1). -->
-- Spec: `specs/active/NNNN-<name>.md` — Status: <!-- In progress (Shipped once merged & moved) -->
+- Spec: `specs/active/NNNN-<name>.md` — Status: <!-- In progress; Shipped once moved to specs/done/ in this PR (before merge) -->
 - Plan: `specs/plans/NNNN-plan.md`
 - Or, for lanes without a spec file (AGENTS.md rule 1 still holds — this is the spec's equivalent):
   bug fix → report + reproduction test: <!-- report id + test name --> · trivial change → work item
@@ -13,8 +13,9 @@
 ## Gate records (copied from files, not from memory — workflows/segments.md)
 - Plan approval line, verbatim from the plan: `Approved by / on: `
 - Review report: <!-- link or paste; produced by a fresh session / read-only reviewer -->
-- Triage: <!-- each finding: real (fixed in <commit>) / noise (rationale) /
-  defer (specs/backlog.md) / investigate (R-05) -->
+- Triage: <!-- link the plan's ## Triage section (the record); each finding: real (fixed in
+  <commit>) / noise (rationale) / defer (specs/backlog.md) / investigate (R-05) -->
+- Criteria moved out at ship (R-08, never waived): <!-- none, or AC-n → B-<n> | spec <NNNN> -->
 - Verify table: <!-- link or paste the criterion ↔ evidence table -->
 
 ## Gates

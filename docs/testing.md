@@ -104,7 +104,13 @@ A screenshot proves a criterion only against the spec's "User experience": every
 6. **A full green is evidence for its commit — run it once.** When `CHECK GREEN (full, …)` exists
    for the exact commit at hand (the builder's handoff, or a CI run), review, verify and the gates
    cite it — the line, plus the CI run link and its commit SHA, which must equal HEAD — instead of
-   running full again. A new commit needs a new full run.
+   running full again. A new commit needs a new full run — with one exception: a commit whose
+   diff against the commit with the cited full green touches only `specs/` (the ship commit:
+   spec moved to done/, criteria ticked, evidence table, scorecard) inherits that green — once
+   `./scripts/doctor --strict` has judged the ship itself before it is committed, output shown
+   (the inherited green never saw the move or the ticks). The evidence names both SHAs and the
+   proof: `git diff --name-only <green-sha> HEAD -- . ':!specs/'` prints nothing (a tree diff;
+   the green commit need not be an ancestor, e.g. after a squash-merge).
 7. **Writing one test runs that test.** While writing or fixing a single test, run it alone with
    the test tool's own filter, without the suites that depend on it. That is authoring, never
    evidence; `scripts/check` stays the way to ask "is this good?". Repeat runs are for the

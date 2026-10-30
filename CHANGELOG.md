@@ -19,6 +19,66 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.22 — Process records
+
+From the same field pilot, and from ANEW's own first run of v1.21: five places where the process
+had no written record, so agents improvised. Each now has one place and one rule; no invariant
+rule is weakened.
+
+- **Moved out, never waived** (ANEW-0012): proven criteria are ticked at ship; one that cannot be
+  proven is moved out at the ship gate (R-08) — its line stays, struck through, `→ moved to
+  B-<n> | spec <NNNN> — <name>, <date>, <why>`, to open work. A sensitive-area criterion cannot
+  move. `scripts/doctor` checks every new ship (on a pull request in CI).
+- **Triage lives in the plan** (`## Triage`): lite has no PR at triage time; the PR links it.
+- **The ship commit inherits the full green** (`docs/testing.md`, Two speeds rule 6) when
+  everything after the cited green touches only `specs/` and `doctor --strict` judged the ship.
+- **Self-critique has a status** (`- Self-critique: done | pending (<condition>)`).
+- **One decision per gate message** (`workflows/segments.md`, Contract, Gate).
+
+### Upgrading
+
+**Tick proven criteria before your next ship.** doctor now judges each new ship: a criterion
+left `- [ ]` is a gate unless it is moved out. If your team kept the evidence table and left the
+boxes empty, tick the proven ones (`- [x]`) at ship from now on — doctor tells you which.
+
+- `scripts/doctor` — behavior: (1) new ships — specs added to `specs/done/` vs the base ref
+  (`$ANEW_BASE_REF`, else the PR's merge-base, else HEAD plus untracked files there): every
+  unchecked criterion line — fail closed: a line with a checkbox (`[ ]`, `[]`, `[x]`, `[X]`)
+  followed by an `AC-|CB-|PB-<n>` id with only punctuation or emphasis between, whatever its
+  bullet; the line's first box and id decide, `[x]`/`[X]` is ticked; a box in backticks or a
+  table cell still counts — without
+  `→ moved to` / `-> moved to` after the id (after the closing `~~` when the id is struck;
+  outside backticks) → gate `unchecked criterion in a new ship: <file> <id> — tick it ([x]) if VERIFY
+  proved it, else move it out`; a `B-<n>` target needs `**B-<n>**` in `specs/backlog.md`, a
+  `spec <NNNN>` target a file in `specs/active/` that is not the spec itself, else gate; any move
+  in a sensitive spec → gate: a line starting (after bullet / emphasis) with "sensitive area" or
+  "sensitive area(s)" and a separator (`:`, `—`, `-`), any case, unless its value (past emphasis,
+  quotes or brackets) starts with none or n/a — an empty value is sensitive; a new ship with no criterion line → WARN.
+  Paths are read unquoted and workspace-relative (non-ASCII names, a workspace in a
+  subdirectory), also in the immutability check's messages; the check runs under `LC_ALL=C`, so
+  specs in other encodings are read byte for byte. Specs already
+  in `specs/done/` at the base are not checked. (2) `- Self-critique: pending …` (any case) in
+  `specs/active/`: Draft → WARN with the condition (expected until approval); Approved / In
+  progress → gate. No field → nothing.
+- `scripts/selftest` — scenarios for the behaviors above.
+- `specs/TEMPLATE.md`, `specs/TEMPLATE-mini.md`: intent: the Self-critique field and the
+  moved-out line format. `prompts/spec.md`: intent: sets the field. `specs/plans/TEMPLATE.md`:
+  intent: `## Triage`. `prompts/recovery/spec-change.md`: intent: R-08 covers the ship-gate move.
+- `workflows/feature-development.md` (steps 7, 10), `workflows/segments.md` (Contract, Gate;
+  VERIFY; SHIP handoff), `prompts/verify.md`, `prompts/recovery/flaky-test.md`,
+  `.github/pull_request_template.md`, `docs/commands.md`: intent: the triage record is the plan;
+  descoping at ship; one decision per gate. `docs/testing.md`: intent: rule 6's specs-only
+  inheritance with its proving command. The four `new-feature` adapters: intent: one decision
+  per gate message; so do the `change`, `fix-bug`, `refactor` and `bootstrap` adapters.
+  `workflows/refactor.md`, `workflows/change-request.md`: intent: tick or move out at ship; the
+  move to done/ is part of the PR (also in step 10 and the segments SHIP handoff).
+  `workflows/refactor.md` (step 2), `workflows/incident.md` (step 3) and the `/refactor`
+  adapters: intent: lanes without ANALYZE run the self-critique pass and set the field, so their
+  mini-specs pass the new gate; `docs/git.md` trivial policy (3) says the same. `specs/backlog.md`:
+  intent: ship-gate moves land there too.
+- Decisions: `docs/decisions/anew/ANEW-0012-descope-not-waive.md` (new).
+- Full diff: `/compare/v1.21...v1.22`.
+
 ## v1.21 — The environment is asked, not assumed
 
 From a field project (.NET, Windows + Git Bash) whose container runtime was too old for its
