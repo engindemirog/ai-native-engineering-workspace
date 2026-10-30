@@ -25,7 +25,8 @@
 <!-- Set at bootstrap. Applies only to requests the change-request triage rubric
      (workflows/change-request.md) classifies as TRIVIAL: no acceptance criterion changes, no shared code. -->
 - Policy: **(1) PR + one reviewer, no spec** — default; alternatives: (2) direct commit allowed on a
-  `trivial/<short-name>` branch · (3) everything goes through a mini-spec (`specs/TEMPLATE-mini.md`).
+  `trivial/<short-name>` branch · (3) everything goes through a mini-spec (`specs/TEMPLATE-mini.md`;
+  no ANALYZE here: run the self-critique pass of `prompts/spec.md`, then `Self-critique: done`).
 - Always: one narrow commit, `scripts/check` green. A second file or a new test means re-triage.
 
 ## Pull requests
