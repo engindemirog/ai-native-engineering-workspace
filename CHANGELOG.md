@@ -19,6 +19,28 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.22.1 — The plan as amended
+
+- `prompts/build.md`: "done" means the changed-file list matches the plan **as amended** — an
+  approved amendment (R-07 or triage) no longer contradicts the definition; the BUILD handoff
+  compares against the same list. `workflows/feature-development.md` step 5 names where a
+  deviation is recorded: the plan's Amendments.
+- Credit: Faruk Atasoy ([@farukatasoy](https://github.com/farukatasoy)) found two gaps before
+  they were closed — the missing executable bit on `scripts/` (PR #2, fixed in v1.3) and the plan
+  having no home for R-07's deviations (PR #3, closed by `## Amendments` in v1.18). This entry
+  carries the rest of PR #3.
+
+### Upgrading
+
+No script changes.
+
+- `prompts/build.md`: intent: done = the changed-file list matches the plan as amended.
+- `workflows/segments.md` (BUILD row), `docs/commands.md` (`/build`, Stops at) and the Claude Code
+  `/build` command: intent: the handoff compares changed files against the plan as amended.
+- `workflows/feature-development.md` (step 5): intent: a deviation is recorded in the plan's
+  Amendments.
+- Full diff: `/compare/v1.22...v1.22.1`.
+
 ## v1.22 — Process records
 
 From the same field pilot, and from ANEW's own first run of v1.21: five places where the process

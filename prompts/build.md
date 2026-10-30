@@ -22,7 +22,8 @@ Two speeds, rule 7). Before every push, run --fast plus the full-only tests of t
 with the test tool's filter (rule 8); when CI runs full on the pushed commit, do not run full
 locally as well. The handoff carries the FULL profile output, shown — CHECK GREEN (full, …)
 (docs/testing.md, Two speeds, one contract).
-Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan.
+Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan
+as amended (its Amendments).
 The full green may be CI's run of the pushed commit (SHA = HEAD): hand off with its link while
 it runs — REVIEW may start; TRIAGE waits for it to be green, and a red run returns to BUILD.
 Return: changed files + check output. Do not self-review; that comes next, independently.

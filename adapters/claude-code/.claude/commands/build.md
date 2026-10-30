@@ -8,4 +8,4 @@ spec $ARGUMENTS.
 Entry check first: refuse with the segment's exact message unless specs/plans/$ARGUMENTS-plan.md
 has a filled "Approved by / on" line. Set the spec to "Status: In progress" (or resume if it
 already is), then prompts/build.md. End with real ./scripts/check output and the changed-file
-list against the plan, write the handoff, STOP. Never review your own build.
+list against the plan (as amended), write the handoff, STOP. Never review your own build.
