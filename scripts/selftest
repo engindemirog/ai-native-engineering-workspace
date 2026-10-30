@@ -154,22 +154,44 @@ has "baseline: " "residue: measures a baseline";   has "after run 2: " "residue:
 has "==> run 2/2: ./scripts/check --fast" "residue --fast runs the fast profile twice"; hasnt "e2e ran" "residue --fast skips full-only steps"
 if printf '%s\n' "$out" | grep '^  survivor  ' | grep -qF "$LEAK"; then report 1 "a step that waits for its child leaves no survivor"
 else report 0 "a step that waits for its child leaves no survivor"; fi
-conf "unit: echo unit ran" "server: sh -c 'sleep 25; :' $LEAK >/dev/null 2>&1 &"
+# The scenario processes below write their pid and are stopped afterwards: the selftest itself
+# leaves nothing running. Each one also ends on its own after ~30 s, should a kill miss it.
+LIVE='echo $$ >> "$1"; i=0; while [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done'
+conf "unit: echo unit ran" "server: sh -c '$LIVE' $LEAK '$TMP/leak.pid' >/dev/null 2>&1 &"
 residue
+kill $(cat "$TMP/leak.pid" 2>/dev/null) 2>/dev/null
 exits 1 "residue: leaked process";               has "RESIDUE FOUND (full)" "leak is reported"
 has "$LEAK" "the survivor is named with its command line"
-# The POSIX path on any machine: a fake uname and ps. After the baseline, a kernel thread appears
-# (never a survivor) and, with $ZOMBIE set, a zombie too (always one).
+if printf '%s\n' "$out" | grep '^  survivor  ' | grep -F "$LEAK" | grep -qF '(parent '; then report 0 "the survivor names its parent"
+else report 1 "the survivor names its parent"; fi
+# A process started meanwhile by something outside check — here a watcher started before the
+# baseline, not an ancestor of the test — is not check's: listed with its parent, never failing.
+GO="$TMP/go"; FOREIGN_MARK=anew-residue-foreign-$$
+( while [ ! -f "$GO" ]; do sleep 1; done; sh -c "$LIVE" "$FOREIGN_MARK" "$TMP/foreign.pid" & wait ) &
+WATCH=$!
+conf "unit: touch '$GO' && sleep 3"
+residue
+kill "$WATCH" $(cat "$TMP/foreign.pid" 2>/dev/null) 2>/dev/null
+exits 0 "residue: a process from outside check does not fail it"; has "RESIDUE CLEAN (full, 2 runs)" "… the verdict is clean"
+if printf '%s\n' "$out" | grep '^  not from check  ' | grep -F "$FOREIGN_MARK" | grep -qF '(parent '; then report 0 "… and it is listed as not from check, with its parent"
+else report 1 "… and it is listed as not from check, with its parent"; fi
+# The POSIX path on any machine: a fake uname and ps (pid, ppid, args). After the baseline, a
+# kernel thread appears (never a survivor) and, on request, a zombie (always one), a process whose
+# parent is a live baseline process (not from check), and orphans: one handed to init, one whose
+# parent is a new process whose own parent is gone (both check's).
 mkdir -p "$TMP/fakeps"
 printf '#!/bin/sh\necho Linux\n' > "$TMP/fakeps/uname"
-cat > "$TMP/fakeps/ps" <<'EOF'
+cat > "$TMP/fakeps/ps" <<'EOF2'
 #!/bin/sh
 n=$(($(cat "$PSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$PSCOUNT"
-echo "    1 /sbin/init"
+echo "    1     0 /sbin/init"
+echo "  100     1 /usr/bin/anew-other-session"
 [ "$n" -gt 2 ] || exit 0
-echo " 4242 [kworker/0:1-events]"
-[ -z "${ZOMBIE:-}" ] || echo " 4243 [anew-zombie] <defunct>"
-EOF
+echo " 4242     2 [kworker/0:1-events]"
+[ -z "${ZOMBIE:-}" ] || echo " 4243     1 [anew-zombie] <defunct>"
+[ -z "${FOREIGN:-}" ] || echo " 4244   100 anew-foreign --flag"
+[ -z "${ORPHANS:-}" ] || { echo " 4245     1 anew-orphan"; echo " 4246  4247 anew-child"; echo " 4247  9999 anew-parent-gone"; }
+EOF2
 chmod +x "$TMP/fakeps/uname" "$TMP/fakeps/ps"
 conf 'unit [fast]: echo unit ran'
 fakeps() { rm -f "$TMP/fakeps/count"; run env PATH="$TMP/fakeps:$PATH" PSCOUNT="$TMP/fakeps/count" "$@" \
@@ -178,6 +200,89 @@ fakeps
 exits 0 "residue: a kernel thread is not a survivor"; hasnt "kworker" "kernel threads are never listed"
 fakeps ZOMBIE=1
 exits 1 "residue: a zombie is a survivor";       has "[anew-zombie] <defunct>" "the zombie is named"
+fakeps FOREIGN=1
+exits 0 "residue: a child of a live baseline process is not check's"
+has "  not from check  4244  anew-foreign --flag  (parent 100 anew-other-session)" "… listed with its parent"
+has "0 survivor(s), 1 not from check" "… counted apart";  hasnt "  survivor  4244" "… never as a survivor"
+fakeps FOREIGN=1 ORPHANS=1
+exits 1 "residue: orphans are check's"
+has "  survivor  4245  anew-orphan  (parent 1 init)" "an orphan handed to init is a survivor"
+has "  survivor  4247  anew-parent-gone  (parent 9999 gone)" "a process whose parent is gone is a survivor"
+has "  survivor  4246  anew-child  (parent 4247 anew-parent-gone)" "a child of an orphan is a survivor too"
+has "  not from check  4244" "… while the other session's process stays not from check"
+# Memory is reported, never judged: a fake Darwin with vm_stat whose free pages halve after the
+# baseline drops ~3.9 GB, over a 512 MB tolerance, with nothing of check's left.
+mkdir -p "$TMP/fakemac"
+printf '#!/bin/sh\necho Darwin\n' > "$TMP/fakemac/uname"
+cat > "$TMP/fakemac/vm_stat" <<'EOF2'
+#!/bin/sh
+n=$(($(cat "$VMCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$VMCOUNT"
+echo "Mach Virtual Memory Statistics: (page size of 4096 bytes)"
+if [ "$n" -gt 2 ]; then echo "Pages free:                     1000000."; else echo "Pages free:                     2000000."; fi
+EOF2
+cp "$TMP/fakeps/ps" "$TMP/fakemac/ps"
+chmod +x "$TMP/fakemac/uname" "$TMP/fakemac/vm_stat" "$TMP/fakemac/ps"
+rm -f "$TMP/fakemac/count" "$TMP/fakemac/vmcount"
+run env PATH="$TMP/fakemac:$PATH" PSCOUNT="$TMP/fakemac/count" VMCOUNT="$TMP/fakemac/vmcount" \
+  ANEW_RESIDUE_SETTLE=1 ANEW_RESIDUE_MB=512 sh "$C/scripts/residue" --fast
+exits 0 "residue: a memory drop alone does not fail it"
+has "over the 512 MB tolerance (informational" "… it is reported as informational"
+has "RESIDUE CLEAN (fast, 2 runs)" "… and the verdict is clean"
+# The Windows path on any machine: a fake uname, powershell.exe (pid, ppid, creation time, name,
+# command) and MSYS ps -el. Baseline: claude.exe 500; MSYS bash 550 (msys 50) and, under it, bash
+# 600 (msys 60) of another session. After the baseline 550 exits, so 600's MSYS parent becomes 1:
+# it must keep its identity (not new, not a survivor). On request: an orphan whose parent is gone
+# and one whose parent pid was reused by a younger process (check's), a native child of claude.exe
+# and an MSYS child (msys 90, a status letter before its PID) whose Windows parent id is a dead
+# exec stub while its MSYS parent is bash 600 (both not from check).
+mkdir -p "$TMP/fakewin"
+printf '#!/bin/sh\necho MINGW64_NT-10.0-19045\n' > "$TMP/fakewin/uname"
+cat > "$TMP/fakewin/powershell.exe" <<'EOF2'
+#!/bin/sh
+n=$(($(cat "$PSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$PSCOUNT"
+t=$(printf '\t')
+echo "MEM${t}8000"
+echo "4${t}0${t}${t}System${t}System"
+echo "500${t}4${t}20260101000000001${t}claude.exe${t}claude.exe"
+echo "960${t}4${t}20260101000000020${t}x.exe${t}x.exe reuser"
+[ "$n" -gt 2 ] || echo "550${t}500${t}20260101000000002${t}bash.exe${t}bash.exe"
+echo "600${t}550${t}20260101000000003${t}bash.exe${t}bash.exe other-session"
+[ "$n" -gt 2 ] || exit 0
+[ -z "${ORPHANS:-}" ] || { echo "700${t}777${t}20260101000000010${t}sleep.exe${t}sleep.exe anew-win-orphan"
+                           echo "950${t}960${t}20260101000000005${t}x.exe${t}x.exe anew-win-reused"; }
+[ -z "${NATIVE:-}" ] || echo "800${t}500${t}20260101000000011${t}dotnet.exe${t}dotnet.exe anew-win-foreign"
+[ -z "${OTHERS:-}" ] || { echo "800${t}500${t}20260101000000011${t}dotnet.exe${t}dotnet.exe anew-win-foreign"
+                          echo "900${t}901${t}20260101000000012${t}tail.exe${t}tail.exe anew-win-repaired"; }
+EOF2
+cat > "$TMP/fakewin/ps" <<'EOF2'
+#!/bin/sh
+[ -z "${NOPS:-}" ] || exit 1
+n=$(($(cat "$MSYSCOUNT" 2>/dev/null || echo 0) + 1)); echo "$n" > "$MSYSCOUNT"
+echo "      PID    PPID    PGID     WINPID   TTY         UID    STIME COMMAND"
+if [ "$n" -gt 2 ]; then
+  echo "       60       1      60        600  cons0     197609   Oct 28 /usr/bin/bash"
+  echo "S      90      60      90        900  cons0     197609 10:00:01 /usr/bin/tail"
+else
+  echo "       50       1      50        550  cons0     197609   Oct 28 /usr/bin/bash"
+  echo "       60      50      60        600  cons0     197609   Oct 28 /usr/bin/bash"
+fi
+EOF2
+chmod +x "$TMP/fakewin/uname" "$TMP/fakewin/powershell.exe" "$TMP/fakewin/ps"
+fakewin() { rm -f "$TMP/fakewin/count" "$TMP/fakewin/msyscount"
+            run env PATH="$TMP/fakewin:$PATH" PSCOUNT="$TMP/fakewin/count" MSYSCOUNT="$TMP/fakewin/msyscount" "$@" \
+              ANEW_RESIDUE_SETTLE=1 ANEW_RESIDUE_MB=1000000 sh "$C/scripts/residue" --fast; }
+fakewin
+exits 0 "residue (Windows): a process whose MSYS parent exits keeps its identity"; hasnt "  600  " "… and is never listed"
+fakewin OTHERS=1
+exits 0 "residue (Windows): processes from outside check do not fail it"
+has "  not from check  800  dotnet.exe anew-win-foreign  (parent 500 claude.exe)" "… a native child of a baseline process"
+has "  not from check  900  tail.exe anew-win-repaired  (parent 600 bash.exe)" "… an MSYS child behind a dead exec stub (status letter read past)"
+fakewin ORPHANS=1
+exits 1 "residue (Windows): orphans are check's"
+has "  survivor  700  sleep.exe anew-win-orphan  (parent 777 gone)" "… a process whose parent is gone"
+has "  survivor  950  x.exe anew-win-reused  (parent 960 gone)" "… a process whose parent pid was reused by a younger process"
+fakewin NOPS=1 NATIVE=1
+exits 0 "residue (Windows): no MSYS ps still measures"; has "  not from check  800" "… and still attributes"
 
 # --- scripts/doctor: a git-initialised copy of the ANEW core only, reset between scenarios ---
 # Only what doctor reads: no application code, and no real specs or plans (a project's own specs

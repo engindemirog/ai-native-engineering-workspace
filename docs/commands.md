@@ -112,15 +112,19 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 
 ### `scripts/residue`
 - **What it does:** the residue test (`docs/testing.md`, Resource hygiene) — runs check twice and
-  names every process, or memory drop over the tolerance, that outlives a run. `--fast` tests the
-  fast profile.
-- **When to use it:** at bootstrap (both profiles), and whenever `scripts/check.conf` changes.
+  names every process check left running, judged by its parent chain. What other sessions or the
+  OS started meanwhile is listed as `not from check` with its parent and never fails it. Memory
+  is reported, not judged (a drop over `ANEW_RESIDUE_MB` is marked informational). `--fast` tests
+  the fast profile.
+- **When to use it:** at bootstrap and whenever `scripts/check.conf` changes (BUILD's Done), both
+  profiles. The agent runs it; the gate shows one line, `Residue: clean (fast + full)`.
 - **Reads / writes:** runs `scripts/check`; writes only a temp dir, deleted on exit.
 - **Stops at:** `RESIDUE CLEAN (<profile>, 2 runs)` (exit 0) or `RESIDUE FOUND (<profile>)` (exit 1).
   A `check.conf` without steps: `RESIDUE NOT MEASURED (<profile>)` (exit 0) — never evidence of clean.
 - **Lite / Strict:** no difference.
 - **Refusal:** a red check stops it: `RESIDUE TEST ABORTED (<profile>): check failed in run <n> — the residue test needs a green check`.
-- **Common mistake:** running it on a busy machine — whatever starts meanwhile is listed too.
+- **Common mistake:** writing it into a spec as an acceptance criterion — it is BUILD's duty when
+  check.conf changes; or asking a human to idle the machine — attribution makes that unnecessary.
 
 ### `scripts/selftest`
 - **What it does:** proves that `scripts/check`, `scripts/doctor` and `scripts/residue` behave as

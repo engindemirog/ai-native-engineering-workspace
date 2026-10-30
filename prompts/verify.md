@@ -13,12 +13,16 @@ Evidence is one of:
 - a reproducible observation — command + output;
 - for UI criteria, a screenshot; for change requests, before/after screenshots that cover the
   preserved behavior too. Each is checked against the spec's User experience: every listed
-  state and the design link, not only the happy path.
+  state and the design link, not only the happy path. You capture them yourself
+  (docs/testing.md, Evidence for UI criteria): scripted and headless, outside the repo and
+  check. List the gallery (state → path) for the SHIP gate; never ask the human to take them
+  unless the state is out of your reach.
 Each row's evidence is a pointer — test name + reproduction command, or a PR link for
 non-reproducible evidence. Show output in the conversation; write no output files
 (docs/testing.md, Evidence policy). Evidence cites a full-profile run — a CHECK GREEN (fast, …)
 line is not evidence (docs/testing.md, Two speeds, one contract). A full green already shown for
-this exact commit (handoff, or a CI run whose SHA equals HEAD) is cited, not re-run (rule 6) —
+this exact commit (the plan's ## Build evidence, or a CI run whose SHA equals HEAD) is cited, not
+re-run (rule 6) —
 or for an earlier commit when the diff since touches only specs/ and doctor --strict judged the
 ship (rule 6, the ship commit).
 

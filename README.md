@@ -136,7 +136,7 @@ Not every rule is held the same way, and not every tool can hold it the same way
 | No force-push / hard reset | Enforced (permission deny) | Documented | Documented | Documented | Documented |
 | "Done" = `scripts/check` green | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) | Validated (CI) |
 | Evidence is referenced, not stored (no `evidence/`, no repo clone inside the repo) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) | Validated (doctor warns, every mode) |
-| `scripts/check` leaves nothing running, and no data for the next run | Documented (the residue test, `scripts/residue`, runs at bootstrap — not in CI; it does not measure data) | Documented (same) | Documented (same) | Documented (same) | Documented (same) |
+| `scripts/check` leaves nothing running, and no data for the next run | Documented (the residue test, `scripts/residue`, runs at bootstrap and whenever check.conf changes — not in CI; it does not measure data) | Documented (same) | Documented (same) | Documented (same) | Documented (same) |
 | UI specs define flow, states and the design link | Documented | Documented | Documented | Documented | Documented |
 | Evidence cites the full profile, not `--fast` | Validated (doctor warns: shipped specs, and the PR description in CI) | Validated (same) | Validated (same) | Validated (same) | Validated (same) |
 
@@ -162,7 +162,7 @@ branch protection setting makes "no force-push" Enforced for every tool.
 | `adapters/` | Per-tool wiring. `scripts/init <tool>` installs one. |
 | `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. `--fast` runs only the steps tagged `[fast]` for the inner loop; only the full run is evidence. Reports each step's duration and the total. |
 | `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI), evidence hygiene warnings. |
-| `scripts/residue` | The residue test (`docs/testing.md`, Resource hygiene): runs check twice and names every process or memory drop that outlives a run. Bootstrap runs it for both profiles; rerun it whenever check.conf changes. |
+| `scripts/residue` | The residue test (`docs/testing.md`, Resource hygiene): runs check twice and names every process check left running, judged by its parent chain (what others start meanwhile never counts; memory is reported, not judged). Bootstrap runs it for both profiles; BUILD reruns it whenever check.conf changes. |
 | `scripts/selftest` | Proves `scripts/check`, `scripts/doctor` and `scripts/residue` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
 | `scripts/init` | Installs an adapter; keeps existing files unless `--force`. |
 | `CHANGELOG.md` | What changed between versions of the workspace, for template users upgrading their copy. |

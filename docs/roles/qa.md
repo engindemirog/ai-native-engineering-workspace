@@ -13,7 +13,8 @@ test output. Not the builder's chat.
 - MAY NOT: write production code, fix bugs (that's the Developer's, after triage), soften criteria.
 
 **Output format:** a criterion ↔ evidence table — every acceptance criterion mapped to a passing
-test or a reproducible observation (for UI: a screenshot is evidence). Gaps listed explicitly.
+test or a reproducible observation (for UI: a screenshot you capture outside the repo is
+evidence the human judges at SHIP — docs/testing.md). Gaps listed explicitly.
 
 **One-pass review (lite):** after a clean review, the Reviewer's session may take this role and
 add the table to its report (`workflows/segments.md`, "The chainer"); this card applies unchanged.

@@ -19,6 +19,81 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.23 — From the randevu pilot
+
+A TypeScript appointment system built with v1.22.1 (lite) shipped its walking skeleton in about
+71 minutes. Besides the 4 lite gates it needed 5 extra human decisions, 3 of them caused by two
+rules that work against an agent-driven workflow. This release removes both and closes the
+smaller gaps from the same field log; no invariant rule changes.
+
+- **The residue test counts only what check left running** (ANEW-0007, revised). Each survivor's
+  parent chain decides:
+  - an orphan (parent gone, or handed to init or a subreaper) is check's;
+  - a process under a live parent from before the first run (another agent session, an OS
+    service) is listed as `not from check` with its parent and never fails the test.
+  No idle machine is needed. Memory is reported, not judged.
+- **Residue is the agent's job.** It runs whenever `check.conf` changes (BUILD's Done, never an
+  acceptance criterion). The gate shows one line, `Residue: clean (fast + full)`, and a human
+  decides only on RESIDUE FOUND.
+- **Build evidence lives in the plan** (`## Build evidence`): pointer lines `CHECK GREEN (full,
+  …) @<sha>` and `RESIDUE … @<sha>`. Review and VERIFY cite them instead of re-running.
+- **The agent captures screenshots, the human looks.** The capture is scripted and headless, runs
+  outside the repo and check, and produces one gallery per screen and state at the SHIP gate. The
+  ship approval covers looking at it. A human captures only what the agent cannot reach; a PR
+  attachment is optional.
+- **Greenfield bootstrap.**
+  - A stack & versions topic.
+  - The forbidden module dependencies are folded into the architecture topic.
+  - The output is committed on `chore/bootstrap`.
+  - The REPORT asks about remote and CI.
+  - `check.conf` is a commented plan until the first spec, a **walking skeleton**, activates it.
+    Its PLAN gate carries the per-profile verdict (R-13).
+  - Deferred bootstrap decisions go to the backlog as `Source: bootstrap <date>`.
+- **Commit messages are covered by the gate before them** (the plan, the ship approval), not
+  approved one by one (`docs/git.md`).
+- **`.gitattributes`: LF in the repository by default** (`* text=auto eol=lf`); `*.cmd` and
+  `*.bat` keep CRLF.
+
+### Upgrading
+
+- `scripts/residue` — behavior list:
+  - `measure` records parent pid, and on Windows the creation time, which is part of a
+    process's identity. MSYS's `ps -el` repairs parent ids broken by exec; without it, nothing
+    is repaired and the test still runs;
+  - each survivor is judged by its parent chain: `C` (check's: orphaned, handed to init or a
+    subreaper, too deep or circular) or `F` (a live baseline parent outside the test's own
+    ancestry);
+  - output per run: `after run n: P processes, k survivor(s), m not from check`; survivor lines
+    and `not from check` lines both name `(parent <pid> <name> | gone)`;
+  - only `C` survivors fail the test (exit codes unchanged);
+  - memory over `ANEW_RESIDUE_MB` prints `(informational: …)` and no longer fails;
+  - macOS memory is chosen by `uname`.
+
+  Selftest: new residue scenarios, the Windows path among them (fake `powershell.exe` and
+  `ps`, so CI proves it on Linux); copy `scripts/selftest` with it.
+- `docs/testing.md`:
+  - intent (Resource hygiene 2): attribution by parent chain, no idle machine, the agent runs it
+    when check.conf changes, one-line gate result;
+  - intent (Test layers 4, Evidence for UI criteria, Evidence policy 3): agent capture by
+    default, a gallery at SHIP, human fallback.
+- `specs/plans/TEMPLATE.md`: intent: add `## Build evidence`. Existing plans may add it.
+- `prompts/build.md`, `prompts/review.md`, `prompts/verify.md`, `workflows/segments.md`: intent:
+  write and cite the build evidence lines; residue in BUILD's Done; screenshots captured by the
+  agent.
+- `workflows/feature-development.md`, `workflows/change-request.md`, `specs/TEMPLATE-mini.md`,
+  `docs/roles/qa.md`, and the Claude Code and Copilot `reviewer` agents: intent: screenshots are
+  agent-captured, judged at SHIP.
+- `prompts/bootstrap.md`, `workflows/bootstrap.md`: intent: stack topic, folded dependencies
+  topic, commented check.conf in greenfield, `chore/bootstrap`, remote/CI question, the walking
+  skeleton, deferred decisions to the backlog, one-line residue report.
+- `docs/git.md`: intent: `chore/bootstrap` branch; the gate covers commit messages.
+  `specs/backlog.md`: intent: `Source: bootstrap <date>` is valid.
+- `docs/commands.md`, `README.md`, ANEW-0007: intent: the residue test as revised.
+- `.gitattributes`: intent: LF by default, CRLF for `*.cmd`/`*.bat`. Optional: `git add
+  --renormalize .` and commit, if your repository holds CRLF files; it can produce a large diff,
+  so it is never required.
+- Full diff: `/compare/v1.22.1...v1.23`.
+
 ## v1.22.1 — The plan as amended
 
 - `prompts/build.md`: "done" means the changed-file list matches the plan **as amended** — an

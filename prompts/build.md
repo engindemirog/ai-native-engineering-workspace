@@ -23,11 +23,16 @@ with the test tool's filter (rule 8); when CI runs full on the pushed commit, do
 locally as well. The handoff carries the FULL profile output, shown — CHECK GREEN (full, …)
 (docs/testing.md, Two speeds, one contract).
 Done means: all steps complete, ./scripts/check GREEN (full), changed-file list matches the plan
-as amended (its Amendments).
+as amended (its Amendments); if scripts/check.conf changed in this work, ./scripts/residue and
+./scripts/residue --fast are clean (docs/testing.md, Resource hygiene 2) — you run them, never
+the human; RESIDUE FOUND → name the leaking step and propose the fix.
 The full green may be CI's run of the pushed commit (SHA = HEAD): hand off with its link while
 it runs — REVIEW may start; TRIAGE waits for it to be green, and a red run returns to BUILD.
 Return: changed files + check output. Do not self-review; that comes next, independently.
-Show check output in the conversation and reference it; never save it to a file.
+Show check output in the conversation and reference it; never save it to a file. Record the
+verdict lines in the plan's ## Build evidence — one pointer line each with its SHA (CHECK GREEN
+(full, …) @<sha> or the CI run link; RESIDUE … @<sha> when it ran): review and VERIFY work from
+files and cite them instead of re-running.
 
 §fixes — For triaged review findings: fix ONLY findings marked real, smallest change per finding,
 one commit per finding referencing it and the round: [plan <NNNN>/fix-<k>], k = this fix round

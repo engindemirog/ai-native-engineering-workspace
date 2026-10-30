@@ -26,8 +26,8 @@
    full-only (Two speeds). A suite outside check costs its upkeep and proves nothing: it is never
    evidence, and nobody sees it break.
 4. A UI criterion also needs a screenshot against the spec's User experience (Evidence for UI
-   criteria). The screenshot is no reason for an e2e test: the states are tested at the lowest
-   layer that can (rule 1).
+   criteria). The agent captures it and the human judges it at SHIP. The screenshot is no reason
+   for an e2e test: the states are tested at the lowest layer that can (rule 1).
 
 ## Protected-tests rule
 Weakening asserts, deleting, or skipping tests to reach green is forbidden. A red test triggers
@@ -40,7 +40,24 @@ included. They are written from observation, not from what the code "should" do.
 
 ## Evidence for UI criteria
 A screenshot is evidence for a UI criterion; for change requests, before/after screenshots that
-also show the preserved behavior. Screenshots go into the PR, not the repo (Evidence policy).
+also show the preserved behavior. Tests prove the states (Test layers 1); the screenshot is the
+human's visual sign-off.
+
+**The agent captures, the human looks.**
+1. **Capture.** The session running VERIFY captures one screenshot per screen and state listed in
+   the spec's User experience:
+   - with a scripted, headless browser (the tool is the project's choice);
+   - with the app in its deterministic mode (Determinism) and its data stubbed;
+   - with the script and the images outside the repo and outside check, in a temporary directory
+     that is deleted after the SHIP gate. They are never stored in the repo (Evidence policy).
+2. **Look.** The SHIP gate shows them as one gallery (state → image). The ship approval covers
+   looking at them; it is not a separate decision. The evidence table records `S-1…S-n
+   agent-captured, judged by <name> at SHIP, <date>`.
+3. **PR.** With a PR, the human may attach the screenshots before the gate closes; without one,
+   the gate is enough.
+4. **Fallback.** A human captures a state only when the agent cannot reach it (a real device, an
+   external system), and the table says so.
+
 A screenshot proves a criterion only against the spec's "User experience": every state it lists
 (empty, loading, error, success, no permission), compared with the linked design if there is one.
 
@@ -50,9 +67,10 @@ A screenshot proves a criterion only against the spec's "User experience": every
    table in the spec/plan is the only evidence artifact that lives in the repo.
 2. **Reproducible evidence is never filed.** No saved check output, console dumps, coverage reports
    or log copies in the repo — git history and CI runs already archive every execution.
-3. **Non-reproducible evidence** (a screenshot of a manual UI check, a one-off measurement, an
-   external-system confirmation) goes into the pull request (description or attachment); the
-   evidence table links to it. It is the exception, not the rule.
+3. **Non-reproducible evidence** (a human-captured screenshot, a one-off measurement, an
+   external-system confirmation) goes into the pull request (description or attachment), or,
+   with no PR, is shown at the SHIP gate; the evidence table links to it or names it. It is the
+   exception, not the rule. Agent-captured screenshots follow Evidence for UI criteria.
 4. **Never clone or copy the repository inside its own working tree.** Clean-clone verification
    runs in a temporary directory outside the repo; only the one-line result (command + green/red)
    is recorded in the evidence table. The clone is always deleted, never kept.
@@ -65,11 +83,19 @@ A screenshot proves a criterion only against the spec's "User experience": every
    under test, containers or emulators started for the run. Agents run check an order of magnitude
    more often than humans; per-run residue compounds into machine starvation.
 2. **The residue test** (the rule's definition, not advice): run `./scripts/check` twice back to
-   back; after each run, process count and memory return to the baseline measured before the first.
-   `./scripts/residue` runs it (`--fast` for the fast profile) and names every survivor with its
-   command line; it lists anything started meanwhile too, so run it on an otherwise idle machine.
-   Kernel threads (`[kworker/…]` on Linux) are left out: no step can start one. Zombies still
-   count. Rerun it whenever `scripts/check.conf` changes.
+   back; after each run, no process that check started is still alive. `./scripts/residue` runs
+   it (`--fast` for the fast profile) and judges every new survivor by its parent chain:
+   - an orphan (parent gone, or handed to init or a subreaper) is check's, named with its
+     command line;
+   - a process under a live parent from before the first run (another session, an OS service)
+     is listed as "not from check" with its parent and never fails the test, so no idle machine
+     is needed. The known limit: work a step hands to a process that ran before the first run
+     (an earlier daemon, a browser a URL opener reuses) counts as not from check too.
+   Memory is reported, not judged. Kernel threads (`[kworker/…]` on Linux) are left out: no step
+   can start one. Zombies still count. The agent runs both profiles whenever `scripts/check.conf`
+   changes. That is part of BUILD's Done, never an acceptance criterion. The gate shows one line,
+   `Residue: clean (fast + full)`. A human decides only on RESIDUE FOUND, given the leaking step
+   and a proposed fix.
 3. Warm-process caches trade memory for speed for humans who build rarely; with an agent, trade the
    seconds back for a flat memory profile.
 4. Interactive modes (watchers, dev servers, REPLs) never belong in check. e2e, where a project

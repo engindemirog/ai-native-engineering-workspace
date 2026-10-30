@@ -1,8 +1,11 @@
-# Normalize line endings; POSIX scripts must stay LF even on Windows checkouts (autocrlf=true),
-# otherwise `sh` fails on the carriage return.
-* text=auto
+# Normalize line endings to LF in the repository and on every checkout, so a formatter or a
+# script sees the same bytes on Windows (autocrlf=true) as on Linux CI. POSIX scripts must stay
+# LF, otherwise `sh` fails on the carriage return; Windows batch files need CRLF.
+* text=auto eol=lf
 scripts/* text eol=lf
 *.sh text eol=lf
 *.md text
 *.yml text
 *.json text
+*.cmd text eol=crlf
+*.bat text eol=crlf

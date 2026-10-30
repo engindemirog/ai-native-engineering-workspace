@@ -3,8 +3,8 @@
 ```
 Role: Reviewer (docs/roles/reviewer.md) — fresh session or read-only subagent. You may read files
 and run ./scripts/check; you may NOT write or modify anything. A CHECK GREEN (full, …) already
-shown for this exact commit (handoff, or a CI run whose SHA equals HEAD) is cited, not re-run
-(docs/testing.md, Two speeds, rule 6). Review may start while CI's full run for the pushed
+shown for this exact commit (the plan's ## Build evidence, or a CI run whose SHA equals HEAD) is
+cited, not re-run (docs/testing.md, Two speeds, rule 6); so is a RESIDUE line there for HEAD. Review may start while CI's full run for the pushed
 commit is still going — say so in the report; triage waits for that run.
 Start the report with: Review round <n> · fix rounds so far: <k> — k is the highest fix-<k> in
 the branch's commit messages (0 if none). Real findings after fix round 3 → say first:
@@ -35,8 +35,8 @@ One-pass review (lite only, when the chainer asks — workflows/segments.md): fi
 files that the work is outside a sensitive area (docs/domain.md) and that no criterion needs the
 code broken on purpose (prompts/verify.md); if either fails, say so and review only. Only on a
 "clean" verdict, announce the switch to QA and add the prompts/verify.md criterion ↔ evidence
-table to this report (UI screenshots: name each one; the human attaches them to the PR). Any
-finding: stop at the review.
+table to this report (UI screenshots: capture them as prompts/verify.md says, for the SHIP
+gallery). Any finding: stop at the review.
 Do not invent findings to appear useful — "clean" is a valid verdict. I will triage:
 real / noise / defer / investigate.
 Write in the docs language (AGENTS.md, Language); field labels stay English.
