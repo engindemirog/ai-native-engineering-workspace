@@ -75,6 +75,57 @@ mkdir -p "$TMP/nodate"; printf '#!/bin/sh\necho unknown\n' > "$TMP/nodate/date";
 run env PATH="$TMP/nodate:$PATH" sh "$C/scripts/check" --fast
 matches '^CHECK GREEN \(fast, 1 steps\)$' "no usable clock: times are left out, the run still counts"
 
+# Prerequisites (requires <step>: <command>): evaluated before step 1, once per distinct command.
+conf 'compile [fast]: echo compile ran' 'e2e: echo e2e ran'
+check
+hasnt "prerequisite" "no requires line → no prerequisite output (unchanged behavior)"
+conf 'compile [fast]: echo compile ran' 'unit [fast]: echo unit ran' 'e2e: echo e2e ran' \
+     'requires compile: echo met-output; true' 'requires e2e: echo miss""ing-runtime-text; exit 4'
+check
+exits 1 "unmet prerequisite fails check"
+hasnt "compile ran" "unmet prerequisite on the last step: not even the first step runs"
+hasnt "==>" "… no step marker at all";            hasnt "CHECK GREEN" "… and no green line"
+has "CHECK FAILED (full) prerequisite not met: echo miss\"\"ing-runtime-text; exit 4 (steps: e2e)" "failure names command and step"
+has "environment gap, see prompts/recovery/environment-gap.md (R-13)" "failure points at R-13"
+has "missing-runtime-text" "an unmet prerequisite shows its output"
+has "ok    prerequisite: echo met-output; true (steps: compile)" "a met prerequisite is one ok line"
+printf '%s\n' "$out" | grep -qx 'met-output'; [ $? -ne 0 ]; report $? "a met prerequisite's output is not printed"
+check --fast
+exits 0 "--fast ignores prerequisites of full-only steps"; has "CHECK GREEN (fast, 2 steps" "… and runs the fast steps"
+conf 'a: echo a ran' 'requires a: no-such-cmd-anew'
+check
+exits 1 "missing prerequisite command → not met";  has "not found" "… with the shell's error text"
+has "CHECK FAILED (full) prerequisite not met: no-such-cmd-anew" "… reported, check does not abort"
+conf 'a: echo a ran' 'requires b: true'
+check
+exits 1 "requires naming no step fails check";     has "requires names no step: b" "… and names it"
+: > "$TMP/req-count"
+conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x >> '$TMP/req-count'" \
+     "requires b: echo x >> '$TMP/req-count'" "requires c: echo x >> '$TMP/req-count'"
+check
+exits 0 "shared prerequisite, met";                has "(steps: a, b, c)" "… listed once for all its steps"
+[ "$(wc -l < "$TMP/req-count" | tr -d ' ')" -eq 1 ]; report $? "a prerequisite on three steps runs once per check run"
+conf 'a: true' 'requires a: true' 'requires a: true'
+check;             has "ok    prerequisite: true (steps: a)" "the same requires line twice lists its step once"
+conf 'a: echo a ran' 'requires a:'
+check
+exits 1 "requires with an empty command fails check"; has "CHECK FAILED (full) requires has no command: a" "… and says so"
+hasnt "a ran" "… before any step"
+conf 'a: echo a ran' 'requires a: # runtime to be decided'
+check
+exits 1 "a comment-only prerequisite command fails check"; has "requires has no command: a" "… as no command"
+conf 'a: echo a ran' 'requires : true'
+check;             has "requires names no step: (empty)" "an empty step name is shown as (empty)"
+conf 'a: echo a ran' 'requires a'
+check
+exits 1 "requires line without ':' fails check";  has "requires line has no ':': requires a" "… as a conf error"
+hasnt "environment gap" "… not as an environment gap"
+printf 'requires\fx: echo ff ran\n' > "$C/scripts/check.conf"
+check;             has "ff ran" "only a space or tab after 'requires' makes a requires line (as in doctor and residue)"
+printf 'a: echo a ran\r\nrequires a: true\r\n' > "$C/scripts/check.conf"
+check
+exits 0 "CRLF conf with a requires line";         has "ok    prerequisite: true (steps: a)" "… pairs step and prerequisite"
+
 # --- scripts/residue: same bare copy. Assertions never require an idle machine: they look for
 # this run's own marker, so another process starting meanwhile cannot make them flaky.
 cp "$ROOT/scripts/residue" "$C/scripts/residue"
@@ -88,6 +139,12 @@ printf '# only a comment\n\n  # indented\n \r\n' > "$C/scripts/check.conf"
 residue
 exits 0 "residue: conf without steps";           has "RESIDUE NOT MEASURED (full)" "no steps → not measured, never clean"
 hasnt "baseline: " "no steps → nothing is measured"
+conf '# a prerequisite alone' 'requires unit: true'
+residue
+has "RESIDUE NOT MEASURED (full)" "residue: a requires line is not a step"
+printf 'requires\fx: true\n' > "$C/scripts/check.conf"
+residue
+hasnt "RESIDUE NOT MEASURED" "residue: only a space or tab after 'requires' makes a requires line (as in check)"
 conf 'unit [fast]: exit 3'
 residue
 exits 1 "residue: red check";                    has "RESIDUE TEST ABORTED (full): check failed in run 1" "red check aborts the residue test"
@@ -155,6 +212,56 @@ doctor;            has "WARN  scripts/check.conf has no steps" "a conf without s
 put scripts/check.conf 'unit [fast]: echo unit ran'
 doctor;            hasnt "check.conf has no steps" "a conf with a step is fine"
 has "ok    verification contract configured" "… and reported as configured"
+hasnt "prerequisite" "no requires line → no prerequisite output";  hasnt "profile fast" "… and no profile verdict"
+put scripts/check.conf 'requires unit: true'
+doctor;            has "WARN  scripts/check.conf has no steps" "a requires line is not a step"
+
+# Prerequisites: reported per command and as a per-profile verdict; WARN in every mode.
+reset; put scripts/check.conf 'compile [fast]: true' 'e2e: true' 'requires compile: true' \
+  'requires e2e: echo runtime-miss""ing-text; exit 4'
+doctor;            exits 0 "unmet prerequisite only warns"
+has "ok    prerequisite met: true (steps: compile)" "a met prerequisite is an ok line naming its step"
+has "WARN  prerequisite not met: echo runtime-miss\"\"ing-text; exit 4 (steps: e2e)" "an unmet one is a WARN naming step and command"
+has "runtime-missing-text" "… with the command's output"
+has "ok    profile fast: runnable on this machine" "unmet on a full-only step: fast stays runnable"
+has "WARN  profile full: not runnable on this machine (steps: e2e)" "… full is not runnable, naming the step"
+doctor --strict;   exits 0 "unmet prerequisite under --strict still only warns"
+has "WARN  prerequisite not met" "… as a WARN, not a FAIL"
+put scripts/check.conf 'compile [fast]: true' 'e2e: true' 'requires compile: exit 1'
+doctor;            has "WARN  profile fast: not runnable on this machine (steps: compile)" "unmet on a fast step: fast not runnable"
+has "WARN  profile full: not runnable on this machine (steps: compile)" "… and full neither"
+put scripts/check.conf 'a: true' 'requires a: no-such-cmd-anew'
+doctor;            exits 0 "missing prerequisite command does not abort doctor"
+has "WARN  prerequisite not met: no-such-cmd-anew" "… it is reported as not met";  has "not found" "… with the shell's error text"
+put scripts/check.conf 'a: true' 'requires b: true'
+doctor;            has "WARN  check.conf: requires names no step: b" "a requires line naming no step is reported"
+has "WARN  profile full: check fails on the check.conf errors above" "… and no profile is called runnable"
+put scripts/check.conf 'a: true' 'requires a: # runtime to be decided'
+doctor;            has "WARN  check.conf: requires has no command: a" "a comment-only prerequisite command is a conf error"
+put scripts/check.conf 'a: true' 'requires : true'
+doctor;            has "requires names no step: (empty)" "an empty step name is shown as (empty)"
+: > "$TMP/doc-count"
+put scripts/check.conf 'a [fast]: true' 'b: true' 'c: true' "requires a: echo x >> '$TMP/doc-count'" \
+  "requires b: echo x >> '$TMP/doc-count'" "requires c: echo x >> '$TMP/doc-count'"
+doctor;            has "(steps: a, b, c)" "a shared prerequisite is listed once for all its steps"
+[ "$(wc -l < "$TMP/doc-count" | tr -d ' ')" -eq 1 ]; report $? "a prerequisite on three steps runs once per doctor run"
+put scripts/check.conf 'e2e: true' 'requires e2e: true' 'requires e2e: exit 1'
+doctor;            has "ok    prerequisite met: true (steps: e2e)" "one step, one met prerequisite: ok"
+has "WARN  prerequisite not met: exit 1 (steps: e2e)" "… and one unmet: WARN";  has "WARN  profile full: not runnable on this machine (steps: e2e)" "… the step is not runnable"
+put scripts/check.conf 'lint, format [fast]: true' 'e2e: true' 'requires lint, format: false'
+doctor;            has "WARN  profile fast: not runnable on this machine (steps: lint, format)" "a step name with ', ' keeps the verdict exact"
+put scripts/check.conf 'a\tb [fast]: true' 'requires a\tb: false'
+doctor;            has "WARN  profile fast: not runnable on this machine (steps: a\tb)" "a backslash in a step name keeps the verdict exact"
+put scripts/check.conf 'a: true' 'requires a:'
+doctor;            has "WARN  check.conf: requires has no command: a" "an empty prerequisite command is a conf error"
+has "WARN  profile full: check fails on the check.conf errors above" "… and no profile is called runnable"
+put scripts/check.conf 'a: true' 'requires a'
+doctor;            has "WARN  check.conf: requires line has no ':': requires a" "a requires line without ':' is a conf error"
+put scripts/check.conf 'a: true' 'requires a: true' 'requires a: true'
+doctor;            has "ok    prerequisite met: true (steps: a)" "the same requires line twice lists its step once"
+printf 'requires\fx: true\n' > "$W/scripts/check.conf"
+doctor;            hasnt "check.conf has no steps" "only a space or tab after 'requires' makes a requires line (as in check)"
+hasnt "profile fast" "… and no prerequisite verdict is printed for it"
 
 reset; put specs/plans/0001-plan.md '# Plan 0001' '- Approved by / on: —'
 doctor;            has "WARN  plan exists for unapproved spec 0001" "plan without a spec → WARN locally"

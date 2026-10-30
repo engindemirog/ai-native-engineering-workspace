@@ -116,6 +116,11 @@ A screenshot proves a criterion only against the spec's "User experience": every
    and a triage. Like rule 7 this is authoring, never evidence. When CI runs the full profile on
    the pushed commit, that run is the full green (rule 6): do not also run full locally before
    pushing.
+9. **A step states what it needs of the machine.** A step that needs a toolchain version, a
+   container runtime or a service gets `requires <step>: <command>` in check.conf — a command the
+   project writes, exit 0 = met; ANEW names no tool (ANEW-0011). check runs them before the first
+   step (unmet → red, never skipped); doctor says which profile this machine can run. A profile
+   that cannot run here is decided at bootstrap or plan time, not found at BUILD's end (R-13).
 
 ## Determinism
 Flaky tests are fixed, not retried or skipped — see R-03. Evidence of a fix: 5 consecutive green runs.
