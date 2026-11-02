@@ -66,7 +66,7 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **What it does:** workspace health — required core files, recovery catalog, configuration
   (`AGENTS.md`, mode, language, `scripts/check.conf`), the ANEW base version (`.anew-version`),
   adapter presence and parity, this page's coverage, spec/plan gate consistency, twin and shipped specs, `specs/done/` immutability,
-  evidence hygiene, fast-only evidence. `--strict` turns gate warnings into failures; CI runs it that way.
+  evidence hygiene, fast-only evidence, criterion-map names no file holds (WARN). `--strict` turns gate warnings into failures; CI runs it that way.
   Step prerequisites (`requires` lines in `check.conf`): runs each distinct command once and
   prints, per profile, `runnable on this machine` or `not runnable on this machine (steps: …)`
   — a WARN in every mode, also under `--strict`: it describes the machine (R-13). A malformed
@@ -215,7 +215,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ### `/review`
 - **What it does:** an independent, read-only review of the diff against the spec.
 - **When to use it:** after a build, and again on a fix diff with a Medium or higher finding
-  (in a sensitive area: every fix diff).
+  (in a sensitive area: every fix diff that is not documentation only).
 - **Reads / writes:** reads the diff, the spec in `specs/active/`, its plan in `specs/plans/`
   (file list, criterion ↔ test map), `prompts/review.md`; writes nothing.
 - **Stops at:** the findings report, verbatim · `Next: TRIAGE — human (real / noise / defer / investigate); then Developer fix rounds, then VERIFY`.
