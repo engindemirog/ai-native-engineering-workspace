@@ -36,11 +36,15 @@ Weakening asserts, deleting, or skipping tests to reach green is forbidden. A re
 **Lists that grow.** A list that later work extends (navigation, menus, allowed values):
 - its test asserts what its criterion needs — the items it adds, in order where order matters —
   not the whole list, unless the exact list is the behavior;
-- when a shipped test pins an exact list and new work adds an item, adding that item to the
-  expected list is an allowed edit: it removes no expectation. It is on the plan's file list and
-  named in the commit message; no spec revision is needed. Removing or loosening an expectation
-  stays forbidden, and reordering an exact list changes behavior — it needs the criterion that
-  orders it.
+- when a shipped test pins an exact list and a criterion of the new spec adds an item, adding
+  that item to the expected list is an allowed edit: it removes no expectation. It is on the
+  plan's file list and named in the commit message; no spec revision is needed;
+- except where the list's exactness is itself the behavior — an allow-list (roles, permissions,
+  accepted values: "nothing else is accepted") or any list in a sensitive area (`docs/domain.md`).
+  There an added item removes the expectation that it is refused, so the shipped criterion is
+  revised first (R-08, `prompts/recovery/spec-change.md`);
+- removing or loosening an expectation stays forbidden, and reordering an exact list changes
+  behavior — it needs the criterion that orders it.
 
 ## Characterization tests
 Before refactoring untested code (`workflows/refactor.md`) and for brownfield change requests
