@@ -41,9 +41,9 @@ Weakening asserts, deleting, or skipping tests to reach green is forbidden. A re
   plan's file list and named in the commit message; no spec revision is needed;
 - except where the list's exactness is itself the behavior — an allow-list (roles, permissions,
   accepted values: "nothing else is accepted") or any list in a sensitive area (`docs/domain.md`).
-  There an added item removes the expectation that it is refused, so the new work states the
-  changed behavior (CHANGE lane, `workflows/change-request.md`: a mini-spec's Changed behavior)
-  and the shipped spec stays as it is;
+  There an added item removes the expectation that it is refused, so that change is its own
+  mini-spec (CHANGE lane, `workflows/change-request.md`) — even when a feature spec needs it —
+  with `Supersedes: <NNNN>/AC-x` naming the shipped criterion; the shipped spec stays as it is;
 - removing or loosening an expectation stays forbidden, and reordering an exact list changes
   behavior — it needs the criterion that orders it.
 
