@@ -1,6 +1,6 @@
 # Spec 0004 — Field pilot "bütçe": proof that scales, lists that grow, check's exit code, a map that exists
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0004-plan.md`
 - Self-critique: done (gaps folded in below, G-1…G-3)
@@ -73,12 +73,12 @@ docs-vs-routes checks (stack-specific; a project's own test).
    (G-3: shipped plans are not scanned — later work may rename a test legitimately.)
 
 ## Acceptance criteria
-- [ ] AC-1 `prompts/verify.md` states one break per criterion in a sensitive area, more only where named.
-- [ ] AC-2 All six places of Requirement 2 state the documents-only exception; none still says "every fix round is re-reviewed" without it.
-- [ ] AC-3 `docs/testing.md` states the list rules of Requirement 3: the allowed addition, the allow-list / sensitive-area exception through the CHANGE lane, the reorder case.
-- [ ] AC-4 `docs/git.md` states the exit-code rule with the grep example.
-- [ ] AC-5 selftest: doctor warns for a missing name, a missing `::` part and a missing wildcard prefix; stays quiet for a name in an untracked test file, a basename, a path, a `[param]` name; a name found only in `specs/` warns; a shipped plan is not scanned; `--strict` exit stays 0 for it.
-- [ ] AC-6 `./scripts/selftest` and `./scripts/doctor` green; CHANGELOG v1.24 with the Upgrading behavior list and document intents; `.anew-version` v1.24.
+- [x] AC-1 `prompts/verify.md` states one break per criterion in a sensitive area, more only where named.
+- [x] AC-2 All six places of Requirement 2 state the documents-only exception; none still says "every fix round is re-reviewed" without it.
+- [x] AC-3 `docs/testing.md` states the list rules of Requirement 3: the allowed addition, the allow-list / sensitive-area exception through the CHANGE lane, the reorder case.
+- [x] AC-4 `docs/git.md` states the exit-code rule with the grep example.
+- [x] AC-5 selftest: doctor warns for a missing name, a missing `::` part and a missing wildcard prefix; stays quiet for a name in an untracked test file, a basename, a path, a `[param]` name; a name found only in `specs/` warns; a shipped plan is not scanned; `--strict` exit stays 0 for it.
+- [x] AC-6 `./scripts/selftest` and `./scripts/doctor` green; CHANGELOG v1.24 with the Upgrading behavior list and document intents; `.anew-version` v1.24.
 
 ## Constraints
 - Stack-neutral: no language, tool or framework named in rules (memory: ANEW docs are stack-neutral).
