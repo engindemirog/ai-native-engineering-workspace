@@ -43,8 +43,9 @@ as the spec (Source mandatory, changed + preserved criteria); entry checks and g
 
 Steps 7 (triage) and 10 (ship) belong to the human; step 8 (fix rounds) is the Developer applying
 triage with `prompts/build.md §fixes`, followed by REVIEW again on the fix diff when the round
-holds a Medium or higher finding; a Low/Info-only round, and in any area a round that touches
-documentation only, goes on to VERIFY (`feature-development.md`, step 8).
+holds a Medium or higher finding (in a sensitive area: every round); a Low/Info-only round, and
+in any area a round that touches documentation only, goes on to VERIFY (`feature-development.md`,
+step 8).
 
 ## The chainer
 
