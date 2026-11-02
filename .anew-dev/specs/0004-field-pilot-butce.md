@@ -24,9 +24,9 @@ work without buying quality, or let a false claim through:
   naming a test that does not exist in 0002 (L-3) and 0005 (I-1); VERIFY trusts that map.
 
 Success means a sensitive area costs one break per criterion and no re-review for a
-documents-only fix; a growing list needs no spec revision unless its exactness is the behavior;
-only check's own exit code can
-gate a commit; doctor names a map entry that no file holds before review has to.
+documents-only fix; a growing list never needs a spec revision, and an allow-list or a
+sensitive-area list takes the CHANGE lane; only check's own exit code can gate a commit; doctor
+names a map entry that no file holds before review has to.
 
 Deliberately not done: anything specific to Money (a sensitive area is chosen per project at
 bootstrap — "None" is valid), mutation tools (stack-specific; a project adds one as a check step),
@@ -46,7 +46,7 @@ docs-vs-routes checks (stack-specific; a project's own test).
    e.g. a business rule in `docs/domain.md`, is still documentation; VERIFY's diff read is the
    check, and a real gap there is a finding.)
 3. **Lists that grow.** `docs/testing.md`, Protected-tests rule:
-   - a test of a list that later work extends (navigation, menus, allowed values) asserts what its
+   - a test of a list that later work extends (navigation, menus, report columns) asserts what its
      criterion needs — the items it adds, in order where order matters — not the whole list, unless
      the exact list is the behavior;
    - when a shipped test pins an exact list and a criterion of the new spec adds an item, adding
@@ -54,8 +54,8 @@ docs-vs-routes checks (stack-specific; a project's own test).
      plan's file list and named in the commit message; no spec revision is needed;
    - except where the list's exactness is the behavior — an allow-list ("nothing else is
      accepted") or any list in a sensitive area: an added item removes the expectation that it is
-     refused, so the new spec states the changed behavior (CHANGE lane,
-     `workflows/change-request.md`) and the shipped spec stays as it is (invariant 7);
+     refused, so that change is its own mini-spec (CHANGE lane, `workflows/change-request.md`) with
+     `Supersedes: <NNNN>/AC-x`, and the shipped spec stays as it is (invariant 7);
    - removing or loosening an expectation stays forbidden (G-2: reordering an exact list is a
      change of behavior, not an addition — it needs the criterion that orders it).
 4. **Only check's own exit code gates a commit.** `docs/git.md`, Commits: a commit (or push) is
