@@ -20,7 +20,8 @@
 
 ## Criterion ↔ test map
 <!-- Profile: fast or full — the check.conf step whose selector runs the test
-     (docs/testing.md, Two speeds, rule 4). -->
+     (docs/testing.md, Two speeds, rule 4). Put test names, files and path::name in backticks:
+     doctor warns for one that no file outside specs/ holds. -->
 | Acceptance criterion | Proven by | Profile |
 |---|---|---|
 | AC-1 | | |

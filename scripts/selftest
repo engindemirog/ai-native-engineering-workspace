@@ -405,6 +405,45 @@ doctor;            hasnt "self-critique" "self-critique done → no line"
 put specs/active/0030-sc.md '# Spec 0030' '- Status: Approved'
 doctor;            hasnt "self-critique" "no Self-critique field (older spec) → no line"
 
+# Criterion ↔ test map: every backticked name in an active plan must be held by a file outside
+# specs/ (path, basename or text); WARN only; shipped plans are not scanned.
+reset
+rm -f "$W/scripts/selftest"   # its own text holds every name below
+put specs/active/0040-map.md '# Spec 0040' '- Status: In progress' 'mentions test_only_in_spec'
+put specs/plans/0040-plan.md '# Plan 0040' '- Approved by / on: Ada, 2026-11-02' '' '## Criterion ↔ test map' \
+  '| Acceptance criterion | Proven by | Profile |' '|---|---|---|' \
+  '| AC-1 | `test_present_one`; `tests/unit/sample_test.txt::test_in_file`; `sample_test.txt` | fast |' \
+  '| AC-2 | `test_wild_*`; `test_param[a-b]`; `test_only_in_spec` | fast |' \
+  '| AC-3 | `test_absent_name`; `tests/unit/sample_test.txt::test_not_in_file`; `nomatch_*` | fast |' \
+  '' '## Build evidence' '| AC-9 | `test_outside_the_map` | fast |'
+put tests/unit/sample_test.txt 'def test_present_one(): ...' 'def test_in_file(): ...' 'def test_wild_card(): ...' 'def test_param(): ...'
+put specs/done/0041-old.md '# Spec 0041' '- Status: Shipped'
+put specs/plans/0041-plan.md '# Plan 0041' '- Approved by / on: Ada, 2026-10-01' '## Criterion ↔ test map' \
+  '| Acceptance criterion | Proven by | Profile |' '|---|---|---|' '| AC-1 | `test_renamed_since` | fast |'
+doctor
+has "WARN  plan 0040: criterion map names \`test_absent_name\` — no file holds it" "a map name no file holds → WARN"
+has "names \`tests/unit/sample_test.txt::test_not_in_file\`" "… a missing part of a::b → WARN"
+has "names \`nomatch_*\`" "… a wildcard prefix no file holds → WARN"
+has "names \`test_only_in_spec\`" "… a name found only under specs/ → WARN"
+hasnt "\`test_present_one\`" "a name in an untracked test file is held"
+hasnt "\`tests/unit/sample_test.txt::test_in_file\`" "a path::name with both parts held is fine"
+hasnt "\`sample_test.txt\`" "a basename is held"
+hasnt "\`test_wild_*\`" "a wildcard is cut to its prefix"
+hasnt "\`test_param[a-b]\`" "a [param] is cut off"
+hasnt "test_outside_the_map" "a table outside the map section is not scanned"
+hasnt "test_renamed_since" "a shipped plan is not scanned"
+has "ok    criterion maps checked (9 name(s))" "the scan reports how many names it checked"
+doctor --strict;   exits 0 "a missing map name stays a WARN under --strict"
+NG="$TMP/nogit"; rm -rf "$NG"; cp -R "$W" "$NG"; rm -rf "$NG/.git"
+run sh "$NG/scripts/doctor"
+has "names \`test_absent_name\`" "without git: a missing name → WARN"
+hasnt "\`test_present_one\`" "without git: a name in a file is held"
+hasnt "\`sample_test.txt\`" "without git: a basename is held"
+has "names \`test_only_in_spec\`" "without git: specs/ still does not count"
+rm -rf "$NG"
+put .gitignore 'ignored/'; put ignored/x.txt 'test_absent_name'
+doctor;            has "names \`test_absent_name\`" "a git-ignored file does not hold a name"
+
 # New ships (vs the base ref): every criterion checked, or moved out at the ship gate with a target.
 doctor_base() { run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=$1; export ANEW_BASE_REF; shift; exec sh "$0" "$@"' "$W/scripts/doctor" "$@"; }
 reset; put specs/done/0020-new.md '# Spec 0020' '- Status: Shipped' '- [x] AC-1 — proven' '- [ ] AC-2 — unproven'

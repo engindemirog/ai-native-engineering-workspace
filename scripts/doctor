@@ -228,6 +228,74 @@ for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
 done
 [ "$plans_checked" -gt 0 ] && ok "spec/plan consistency checked ($plans_checked plan(s))"
 
+# --- criterion ↔ test map (specs/plans/TEMPLATE.md): every mode, WARN, active plans only ---
+# Each backticked name in the "Proven by" column must be held by a file outside specs/ and
+# .anew-dev/ — as its path, its basename, or in its text. Untracked files count (a test exists
+# before its commit), git-ignored files don't. a::b is checked per part; a part is cut at its
+# first * [ ( (a wildcard or a parameter); a part under 3 characters is skipped. WARN only: the
+# map is prose. Shipped plans are not scanned — later work may rename a test.
+map_names() {
+  awk '
+    /^## / { inmap = ($0 ~ /^## Criterion/); row = 0; next }
+    !inmap || !/^\|/ { next }
+    /^\|[-:| ]+$/ { next }
+    { if (++row == 1) next                      # the header row
+      line = $0; gsub(/\\\|/, "@ANEW-PIPE@", line)   # an escaped | stays in its cell
+      if (split(line, c, "|") < 4) next
+      cell = c[3]
+      while (match(cell, /`[^`]+`/)) {
+        name = substr(cell, RSTART + 1, RLENGTH - 2); gsub(/@ANEW-PIPE@/, "|", name); print name
+        cell = substr(cell, RSTART + RLENGTH)
+      } }
+  ' "$1" | tr -d '\r'
+}
+map_parts() {
+  printf '%s\n' "$1" | awk '{ n = split($0, a, "::")
+    for (i = 1; i <= n; i++) { s = a[i]; sub(/[*[(].*/, "", s); gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+      if (length(s) >= 3) print s } }'
+}
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then map_git=1; else map_git=0; fi
+map_files=""
+map_held() {
+  if [ "$map_git" -eq 1 ]; then
+    printf '%s\n' "$map_files" | awk -v n="$1" '$0 == n || substr($0, length($0) - length(n)) == "/" n { f = 1; exit } END { exit !f }' \
+      && return 0
+    git -C "$ROOT" grep -qF --untracked -e "$1" -- . ':!specs' ':!.anew-dev' 2>/dev/null
+  else
+    [ -e "$ROOT/$1" ] && return 0
+    [ -n "$(find "$ROOT" \( -path "$ROOT/.git" -o -path "$ROOT/specs" -o -path "$ROOT/.anew-dev" -o -name node_modules \) -prune \
+      -o -type f \( -name "$1" -o -exec grep -qF -e "$1" {} \; \) -print 2>/dev/null | head -n 1)" ]
+  fi
+}
+map_checked=0
+for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
+  [ -f "$p" ] || continue
+  n=$(basename "$p" | sed 's/-plan\.md$//')
+  active=0
+  for s in "$ROOT/specs/active/$n-"*.md; do [ -f "$s" ] && active=1; done
+  [ "$active" -eq 1 ] || continue
+  names=$(map_names "$p")
+  [ -n "$names" ] || continue
+  if [ "$map_git" -eq 1 ] && [ -z "$map_files" ]; then
+    map_files=$(git -C "$ROOT" -c core.quotePath=false ls-files --cached --others --exclude-standard -- . ':!specs' ':!.anew-dev' 2>/dev/null)
+  fi
+  while IFS= read -r name; do
+    map_checked=$((map_checked + 1))
+    held=1
+    parts=$(map_parts "$name")
+    while IFS= read -r part; do
+      [ -n "$part" ] || continue
+      map_held "$part" || held=0
+    done <<MAPPARTS
+$parts
+MAPPARTS
+    [ "$held" -eq 1 ] || warn "plan $n: criterion map names \`$name\` — no file holds it (specs/plans/TEMPLATE.md, Criterion ↔ test map)"
+  done <<MAPNAMES
+$names
+MAPNAMES
+done
+[ "$map_checked" -gt 0 ] && ok "criterion maps checked ($map_checked name(s))"
+
 minis=0
 for s in "$ROOT/specs/active/"[0-9]*.md; do
   [ -f "$s" ] || continue
