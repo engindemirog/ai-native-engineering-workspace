@@ -251,20 +251,33 @@ map_names() {
 }
 map_parts() {
   printf '%s\n' "$1" | awk '{ n = split($0, a, "::")
-    for (i = 1; i <= n; i++) { s = a[i]; sub(/[*[(].*/, "", s); gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+    for (i = 1; i <= n; i++) { s = a[i]; sub(/[*[(].*/, "", s); gsub(/^[ \t]+|[ \t]+$/, "", s)
       if (length(s) >= 3) print s } }'
 }
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then map_git=1; else map_git=0; fi
-map_files=""
-map_held() {
+# Files outside specs/ and .anew-dev/, relative to ROOT, listed once: git's view (tracked and
+# untracked, not ignored), else a find pass that prunes .git and node_modules.
+map_prune() { find "$ROOT" \( -path "$ROOT/.git" -o -path "$ROOT/specs" -o -path "$ROOT/.anew-dev" -o -name node_modules \) -prune "$@"; }
+map_list() {
   if [ "$map_git" -eq 1 ]; then
-    printf '%s\n' "$map_files" | awk -v n="$1" '$0 == n || substr($0, length($0) - length(n)) == "/" n { f = 1; exit } END { exit !f }' \
-      && return 0
+    git -C "$ROOT" -c core.quotePath=false ls-files --cached --others --exclude-standard -- . ':!specs' ':!.anew-dev' 2>/dev/null
+  else
+    map_prune -o -type f -print 2>/dev/null | MAP_ROOT="$ROOT/" awk '
+      index($0, ENVIRON["MAP_ROOT"]) == 1 { print substr($0, length(ENVIRON["MAP_ROOT"]) + 1) }'
+  fi
+}
+map_files=""
+# held = a listed file has that path or basename, or a file's text holds it. ENVIRON, not awk -v,
+# so a backslash in the name stays as written.
+map_held() {
+  printf '%s\n' "$map_files" | MAP_NAME=$1 awk '
+    BEGIN { n = ENVIRON["MAP_NAME"] }
+    $0 == n || substr($0, length($0) - length(n)) == "/" n { f = 1; exit }
+    END { exit !f }' && return 0
+  if [ "$map_git" -eq 1 ]; then
     git -C "$ROOT" grep -qF --untracked -e "$1" -- . ':!specs' ':!.anew-dev' 2>/dev/null
   else
-    [ -e "$ROOT/$1" ] && return 0
-    [ -n "$(find "$ROOT" \( -path "$ROOT/.git" -o -path "$ROOT/specs" -o -path "$ROOT/.anew-dev" -o -name node_modules \) -prune \
-      -o -type f \( -name "$1" -o -exec grep -qF -e "$1" {} \; \) -print 2>/dev/null | head -n 1)" ]
+    [ -n "$(map_prune -o -type f -exec grep -lF -e "$1" {} + 2>/dev/null | head -n 1)" ]
   fi
 }
 map_checked=0
@@ -276,9 +289,7 @@ for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
   [ "$active" -eq 1 ] || continue
   names=$(map_names "$p")
   [ -n "$names" ] || continue
-  if [ "$map_git" -eq 1 ] && [ -z "$map_files" ]; then
-    map_files=$(git -C "$ROOT" -c core.quotePath=false ls-files --cached --others --exclude-standard -- . ':!specs' ':!.anew-dev' 2>/dev/null)
-  fi
+  [ -n "$map_files" ] || map_files=$(map_list)
   while IFS= read -r name; do
     map_checked=$((map_checked + 1))
     held=1
