@@ -19,6 +19,51 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.24 — From the bütçe pilot
+
+A Python expense tracker built with v1.23 (lite, local-only, Money declared a sensitive area)
+shipped six specs. Its records show proof work that grew without finding more, a rule silent on
+growing lists, a commit that passed on a red check, and plans naming tests that don't exist.
+No invariant rule changes.
+
+- **A sensitive area costs one break per criterion.** Every criterion is still proven red by a
+  deliberate break; more breaks only where a criterion holds several risky behaviors, each named
+  (`prompts/verify.md`). A fix round that touches documentation only goes on to VERIFY, which
+  reads its diff, instead of a full re-review.
+- **Lists that grow** (`docs/testing.md`, Protected-tests rule). A test of a list that later work
+  extends asserts what its criterion needs, not the whole list. Adding an item to a shipped
+  test's exact list is an allowed, recorded edit; removing, loosening or reordering is not.
+- **Only check's own exit code gates a commit** (`docs/git.md`): never `check | grep … && git
+  commit`.
+- **doctor names a criterion-map entry no file holds.** Each backticked name in an active plan's
+  "Proven by" column must be a path, a basename or text in a file outside `specs/` and
+  `.anew-dev/`. WARN, never FAIL.
+
+### Upgrading
+
+- `scripts/doctor` — behavior list:
+  - for each plan whose spec is in `specs/active/`, the backticked names in the third column of
+    `## Criterion ↔ test map` are checked; `a::b` per part, a part cut at its first `*`, `[` or
+    `(`, parts under 3 characters skipped;
+  - a part is held by a path or basename (git: tracked and untracked, not ignored) or by a file's
+    text (`git grep -F --untracked`; without git, `find` + `grep -F`), outside `specs/` and
+    `.anew-dev/`;
+  - `WARN  plan <NNNN>: criterion map names \`<name>\` — no file holds it …` in every mode, and
+    `ok    criterion maps checked (<n> name(s))`; exit codes unchanged; shipped plans are not
+    scanned.
+
+  Selftest: new criterion-map scenarios (git and no-git); copy `scripts/selftest` with it.
+- `prompts/verify.md`: intent: one break per criterion in a sensitive area; a documents-only fix
+  round is read, not re-reviewed.
+- `workflows/feature-development.md` (step 8), `workflows/README.md` (Modes), `docs/domain.md`
+  (Sensitive areas comment), `prompts/build.md` (fixes), `docs/commands.md` (`/review`): intent: a
+  documents-only fix round is not re-reviewed in a sensitive area either.
+- `docs/testing.md`: intent: the "Lists that grow" paragraph under the Protected-tests rule.
+- `docs/git.md`: intent: only check's own exit code gates a commit or a push.
+- `specs/plans/TEMPLATE.md`, `docs/commands.md` (doctor): intent: map names in backticks are
+  checked by doctor.
+- Full diff: `/compare/v1.23...v1.24`.
+
 ## v1.23 — From the randevu pilot
 
 A TypeScript appointment system built with v1.22.1 (lite) shipped its walking skeleton in about
