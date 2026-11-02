@@ -30,11 +30,13 @@ For each test, check it would FAIL if the behavior broke — a test that can't f
 evidence. Reading the assert is enough by default. Break the code on purpose — in a temporary
 copy outside the repo, watching the test go red, nothing committed — for risky behavior:
 concurrency, money, authorization, boundary values (typically 4–5 per spec), and for every
-criterion in a sensitive area (docs/domain.md). Name in the table which ones you broke.
+criterion in a sensitive area (docs/domain.md) — one break per criterion proves it; break more
+only where a criterion holds several risky behaviors, each named. Name in the table which ones
+you broke.
 
-A fix round with only Low/Info findings skipped re-review: read its diff — anything beyond the
-finding is a finding. Each deferred finding has its entry in specs/backlog.md; the triage record is the plan's
-## Triage section.
+A fix round that skipped re-review (Low/Info only outside a sensitive area, or documents only):
+read its diff — anything beyond the finding is a finding. Each deferred finding has its entry
+in specs/backlog.md; the triage record is the plan's ## Triage section.
 
 Each PASS row is the criterion ticked at ship (`- [x]`); doctor checks every new ship for it.
 List explicitly: criteria WITHOUT real evidence, and tests that assert implementation details

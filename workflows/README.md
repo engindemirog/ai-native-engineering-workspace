@@ -36,8 +36,9 @@ Set at bootstrap, recorded in `AGENTS.md`:
   Review → **[GATE: triage]** → Verify → **[GATE: ship]**. For teams and critical systems.
 
 **Sensitive areas** (`docs/domain.md`, set at bootstrap) are stricter in every mode: the clarify
-gate is asked in lite too, every fix round is re-reviewed (no Low/Info shortcut), and every
-criterion is proven red by breaking the code (`prompts/verify.md`).
+gate is asked in lite too, every fix round is re-reviewed (no Low/Info shortcut; a round that
+touches documentation only goes on to VERIFY), and every criterion is proven red by one
+deliberate break (`prompts/verify.md`).
 
 **Segments and the chainer** (`segments.md`). Each stage is a *segment* — ANALYZE, PLAN, BUILD,
 REVIEW, VERIFY — canonical, entry-checked, and always ending at a handoff. Adapters expose them
