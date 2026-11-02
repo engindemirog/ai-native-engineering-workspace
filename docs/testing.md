@@ -33,6 +33,15 @@
 Weakening asserts, deleting, or skipping tests to reach green is forbidden. A red test triggers
 `prompts/recovery/red-test.md` (R-02) — first decide what is wrong: code, test, or spec.
 
+**Lists that grow.** A list that later work extends (navigation, menus, allowed values):
+- its test asserts what its criterion needs — the items it adds, in order where order matters —
+  not the whole list, unless the exact list is the behavior;
+- when a shipped test pins an exact list and new work adds an item, adding that item to the
+  expected list is an allowed edit: it removes no expectation. It is on the plan's file list and
+  named in the commit message; no spec revision is needed. Removing or loosening an expectation
+  stays forbidden, and reordering an exact list changes behavior — it needs the criterion that
+  orders it.
+
 ## Characterization tests
 Before refactoring untested code (`workflows/refactor.md`) and for brownfield change requests
 (`workflows/change-request.md`, Preserved behavior), pin the current behavior first — warts

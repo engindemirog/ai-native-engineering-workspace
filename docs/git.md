@@ -19,6 +19,9 @@
   through the gate before the commit, not one by one — an approved plan covers its
   `[plan NNNN/n]` and `[plan NNNN/fix-k]` commits, the ship approval the ship commit. Every
   message stays visible in the branch and the PR. Lite and strict alike.
+- Only `./scripts/check`'s own exit code gates a commit or a push. Never pipe its output into
+  another command in the chain that decides it: in `./scripts/check | grep … && git commit` the
+  chain takes grep's exit code, so a red check commits.
 - Commit named paths only: `git commit -- <paths>`, never `git add -A`, `git add .` or
   `commit -a`. Another session or tool may have written or staged files in the same tree.
 
