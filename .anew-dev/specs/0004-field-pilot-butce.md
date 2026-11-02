@@ -4,6 +4,8 @@
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0004-plan.md`
 - Self-critique: done (gaps folded in below, G-1…G-3)
+- Revised (R-08): Requirement 3 and the Success line — allow-lists and sensitive areas take the
+  CHANGE lane (review rounds 1–2) — approved by Engin Demiroğ, 2026-11-02
 
 ## Intent
 The bütçe pilot (a Python expense tracker built with ANEW v1.23, lite, local-only, Money declared a
@@ -22,7 +24,8 @@ work without buying quality, or let a false claim through:
   naming a test that does not exist in 0002 (L-3) and 0005 (I-1); VERIFY trusts that map.
 
 Success means a sensitive area costs one break per criterion and no re-review for a
-documents-only fix; a growing list never needs a spec revision; only check's own exit code can
+documents-only fix; a growing list needs no spec revision unless its exactness is the behavior;
+only check's own exit code can
 gate a commit; doctor names a map entry that no file holds before review has to.
 
 Deliberately not done: anything specific to Money (a sensitive area is chosen per project at
@@ -46,11 +49,15 @@ docs-vs-routes checks (stack-specific; a project's own test).
    - a test of a list that later work extends (navigation, menus, allowed values) asserts what its
      criterion needs — the items it adds, in order where order matters — not the whole list, unless
      the exact list is the behavior;
-   - when a shipped test pins an exact list and new work adds an item, adding that item to the
-     expected list is an allowed edit: it removes no expectation. It is on the plan's file list and
-     named in the commit message; no spec revision is needed. Removing or loosening an expectation
-     stays forbidden (G-2: reordering an exact list is a change of behavior, not an addition — it
-     needs the criterion that orders it).
+   - when a shipped test pins an exact list and a criterion of the new spec adds an item, adding
+     that item to the expected list is an allowed edit: it removes no expectation. It is on the
+     plan's file list and named in the commit message; no spec revision is needed;
+   - except where the list's exactness is the behavior — an allow-list ("nothing else is
+     accepted") or any list in a sensitive area: an added item removes the expectation that it is
+     refused, so the new spec states the changed behavior (CHANGE lane,
+     `workflows/change-request.md`) and the shipped spec stays as it is (invariant 7);
+   - removing or loosening an expectation stays forbidden (G-2: reordering an exact list is a
+     change of behavior, not an addition — it needs the criterion that orders it).
 4. **Only check's own exit code gates a commit.** `docs/git.md`, Commits: a commit (or push) is
    gated by `./scripts/check`'s own exit code; its output is never piped into another command in
    the chain that decides the commit (`check | grep … && git commit` takes grep's exit code).
@@ -68,7 +75,7 @@ docs-vs-routes checks (stack-specific; a project's own test).
 ## Acceptance criteria
 - [ ] AC-1 `prompts/verify.md` states one break per criterion in a sensitive area, more only where named.
 - [ ] AC-2 All six places of Requirement 2 state the documents-only exception; none still says "every fix round is re-reviewed" without it.
-- [ ] AC-3 `docs/testing.md` states both list rules of Requirement 3, with the reorder case.
+- [ ] AC-3 `docs/testing.md` states the list rules of Requirement 3: the allowed addition, the allow-list / sensitive-area exception through the CHANGE lane, the reorder case.
 - [ ] AC-4 `docs/git.md` states the exit-code rule with the grep example.
 - [ ] AC-5 selftest: doctor warns for a missing name, a missing `::` part and a missing wildcard prefix; stays quiet for a name in an untracked test file, a basename, a path, a `[param]` name; a name found only in `specs/` warns; a shipped plan is not scanned; `--strict` exit stays 0 for it.
 - [ ] AC-6 `./scripts/selftest` and `./scripts/doctor` green; CHANGELOG v1.24 with the Upgrading behavior list and document intents; `.anew-version` v1.24.
