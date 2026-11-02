@@ -257,13 +257,13 @@ map_parts() {
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then map_git=1; else map_git=0; fi
 # Files outside specs/ and .anew-dev/, relative to ROOT, listed once: git's view (tracked and
 # untracked, not ignored), else a find pass that prunes .git and node_modules.
-map_prune() { find "$ROOT" \( -path "$ROOT/.git" -o -path "$ROOT/specs" -o -path "$ROOT/.anew-dev" -o -name node_modules \) -prune "$@"; }
+# The walk starts inside ROOT, so a [ * ? in ROOT's own path is never read as a pattern.
+map_prune() { ( cd "$ROOT" && find . \( -path ./.git -o -path ./specs -o -path ./.anew-dev -o -name node_modules \) -prune "$@" ); }
 map_list() {
   if [ "$map_git" -eq 1 ]; then
     git -C "$ROOT" -c core.quotePath=false ls-files --cached --others --exclude-standard -- . ':!specs' ':!.anew-dev' 2>/dev/null
   else
-    map_prune -o -type f -print 2>/dev/null | MAP_ROOT="$ROOT/" awk '
-      index($0, ENVIRON["MAP_ROOT"]) == 1 { print substr($0, length(ENVIRON["MAP_ROOT"]) + 1) }'
+    map_prune -o -type f -print 2>/dev/null | sed 's|^\./||'
   fi
 }
 map_files=""

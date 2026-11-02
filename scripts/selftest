@@ -435,7 +435,8 @@ hasnt "test_outside_the_map" "a table outside the map section is not scanned"
 hasnt "test_renamed_since" "a shipped plan is not scanned"
 has "ok    criterion maps checked (10 name(s))" "the scan reports how many names it checked"
 doctor --strict;   exits 0 "a missing map name stays a WARN under --strict"
-NG="$TMP/nogit"; rm -rf "$NG"; cp -R "$W" "$NG"; rm -rf "$NG/.git"
+NG="$TMP/no[git]*"   # glob characters in ROOT are never a pattern
+rm -rf "$NG"; cp -R "$W" "$NG"; rm -rf "$NG/.git"
 run env GIT_CEILING_DIRECTORIES="$TMP" sh "$NG/scripts/doctor"   # no outer repo either
 has "names \`test_absent_name\`" "without git: a missing name → WARN"
 hasnt "\`test_present_one\`" "without git: a name in a file is held"
