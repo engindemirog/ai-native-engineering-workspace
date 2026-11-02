@@ -33,7 +33,7 @@ No invariant rule changes.
 - **Lists that grow** (`docs/testing.md`, Protected-tests rule). A test of a list that later work
   extends asserts what its criterion needs, not the whole list. Adding an item to a shipped
   test's exact list is an allowed, recorded edit when a new criterion needs it — except for an
-  allow-list or a list in a sensitive area, where the shipped criterion is revised first (R-08).
+  allow-list or a list in a sensitive area, which takes the CHANGE lane (the shipped spec stays).
   Removing or loosening is forbidden; reordering needs a criterion.
 - **Only check's own exit code gates a commit** (`docs/git.md`): never `check | grep … && git
   commit`.
@@ -63,7 +63,7 @@ No invariant rule changes.
   `workflows/segments.md`, `docs/roles/qa.md`: intent: a documents-only fix round goes on to
   VERIFY in any area, a sensitive area included; QA reads its diff.
 - `docs/testing.md`: intent: the "Lists that grow" paragraph under the Protected-tests rule
-  (allow-lists and sensitive areas go through R-08).
+  (allow-lists and sensitive areas take the CHANGE lane).
 - `docs/git.md`: intent: only check's own exit code gates a commit or a push; the right form.
 - `specs/plans/TEMPLATE.md`, `docs/commands.md` (doctor): intent: map names in backticks are
   checked by doctor.
