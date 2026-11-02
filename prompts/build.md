@@ -38,7 +38,7 @@ files and cite them instead of re-running.
 one commit per finding referencing it and the round: [plan <NNNN>/fix-<k>], k = this fix round
 (1, 2, 3). A fourth round is not started: R-06 first. --fast green after each finding's commit;
 full green before the fix diff goes on — back to review, or to VERIFY when the round holds only
-Low/Info findings outside a sensitive area, or touches documentation only
+Low/Info findings outside a sensitive area, or touches documentation only in any area
 (workflows/feature-development.md, step 8).
 Never touch unrelated code.
 ```

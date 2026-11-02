@@ -34,8 +34,8 @@ criterion in a sensitive area (docs/domain.md) — one break per criterion prove
 only where a criterion holds several risky behaviors, each named. Name in the table which ones
 you broke.
 
-A fix round that skipped re-review (Low/Info only outside a sensitive area, or documents only): read its diff — anything beyond the
-finding is a finding. Each deferred finding has its entry in specs/backlog.md; the triage record is the plan's
+A fix round that skipped re-review (Low/Info only outside a sensitive area, or documents only):
+read its diff — anything beyond the finding is a finding. Each deferred finding has its entry in specs/backlog.md; the triage record is the plan's
 ## Triage section.
 
 Each PASS row is the criterion ticked at ship (`- [x]`); doctor checks every new ship for it.

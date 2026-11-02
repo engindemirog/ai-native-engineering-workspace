@@ -215,7 +215,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ### `/review`
 - **What it does:** an independent, read-only review of the diff against the spec.
 - **When to use it:** after a build, and again on a fix diff with a Medium or higher finding
-  (in a sensitive area: every fix diff that is not documentation only).
+  (in a sensitive area: every fix diff) — never on a fix diff that touches documentation only.
 - **Reads / writes:** reads the diff, the spec in `specs/active/`, its plan in `specs/plans/`
   (file list, criterion ↔ test map), `prompts/review.md`; writes nothing.
 - **Stops at:** the findings report, verbatim · `Next: TRIAGE — human (real / noise / defer / investigate); then Developer fix rounds, then VERIFY`.

@@ -20,4 +20,5 @@
 <!-- Where a mistake costs money, access or legal standing (e.g. payments, identity, personal
      data). A spec that touches one says so in Constraints (`Sensitive area: <name>`); there the
      clarify gate is asked in lite too, every fix round but a documents-only one is
-     re-reviewed, and every criterion is proven red by one deliberate break (workflows/README.md, Modes). "None" is a valid answer. -->
+     re-reviewed, and every criterion is proven red by one deliberate break
+     (workflows/README.md, Modes). "None" is a valid answer. -->
