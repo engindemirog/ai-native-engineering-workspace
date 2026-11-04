@@ -15,7 +15,7 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
 - **Start from a tag**, not the template button (it copies `main`): `git clone --branch v1.24.1`
   or the release archive. Training and adoption pin a `v1.24.x` tag.
 - **Inside the line**, read `CHANGELOG.md` on the `lts/1.24` branch and apply the entries above
-  your base. **Leaving the line** for current: your base is v1.24 — apply every `main` entry above
+  your base. **Leaving the line** for current: your base is v1.24.1 — apply every `main` entry above
   it, skipping a fix marked "also in v1.24.n" when your base already holds v1.24.n.
 
 ## How to upgrade

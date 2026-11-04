@@ -45,7 +45,8 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 ## Quickstart
 
 ```bash
-# 1. Use this template on GitHub (or copy the files into an existing repo), then:
+# 1. Use this template on GitHub (or copy the files into an existing repo) — for a pinned
+#    version (training, adoption): git clone --branch v1.24.1 (README, Versions and support). Then:
 ./scripts/init claude-code        # or: github-copilot | cursor | codex | generic
 
 # 2. Open your AI tool and run the bootstrap workflow
@@ -216,7 +217,7 @@ ANEW itself is versioned: every template release is a tag (`git checkout v1.24.1
 - **Start from a tag**, not the template button (it copies `main`): `git clone --branch v1.24.1`
   or the release archive. Training and adoption pin a `v1.24.x` tag.
 - **Inside the line**, read `CHANGELOG.md` on the `lts/1.24` branch and apply the entries above
-  your base. **Leaving the line** for current: your base is v1.24 — apply every `main` entry above
+  your base. **Leaving the line** for current: your base is v1.24.1 — apply every `main` entry above
   it, skipping a fix marked "also in v1.24.n" when your base already holds v1.24.n.
 
 ## Adapting it
