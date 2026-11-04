@@ -16,4 +16,14 @@ AGENTS.md invariant rules) but live here so the template's `specs/` stays empty 
   reviewer on the ship diff) checks the `done/` file against those rules, with the diff shown;
   only then does the `.anew-dev/` ship commit inherit the full green.
 
+## Releases and the LTS line
+
+- Every release is an annotated tag on the commit that ships it (message: its CHANGELOG heading),
+  pushed by name; its GitHub release carries the CHANGELOG entry.
+- `lts/1.24` starts at the v1.24.1 tag and takes fixes only (`README.md`, Versions and support).
+- A fix lands on `main` first, through its own spec. It then reaches `lts/1.24` by a cherry-pick PR
+  with CI green, its own CHANGELOG entry on that branch, and the tag `v1.24.<n+1>`.
+- A fix that does not apply cleanly is redone on the branch, never forced. Nothing reaches
+  `lts/1.24` that `main` does not already hold.
+
 Template users: this folder is not part of your workspace — delete it after you create your repo.

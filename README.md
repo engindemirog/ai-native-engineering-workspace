@@ -201,6 +201,18 @@ deliberately out of scope — that is where organizations differ most and alread
 ANEW connects to it through `scripts/check` and CI instead of replacing it. The incident workflow
 (`workflows/incident.md`) is the existing bridge back from production into this loop.
 
+## Versions and support
+
+Every release is a tag (`git checkout v1.24.1`); `CHANGELOG.md` says what each one changed.
+
+- **LTS line `1.24.x`: fixes only** — a script that does not behave as documented, a document
+  that contradicts another, a broken reference, a selftest that cannot fail. No new rule, no new
+  behavior, no new step.
+- **Supported** until the next LTS is announced, and for at least 6 months after v1.24.1.
+- **`main` is current**: new work ships there as v1.25, v1.26, … — not LTS.
+- **Pin a `v1.24.x` tag** for training and adoption. Upgrading inside the line is the same as
+  any upgrade: apply the CHANGELOG entries above your base.
+
 ## Adapting it
 
 Everything is plain Markdown and POSIX shell — edit, don't fork the philosophy:
