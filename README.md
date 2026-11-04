@@ -45,7 +45,8 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 ## Quickstart
 
 ```bash
-# 1. Use this template on GitHub (or copy the files into an existing repo), then:
+# 1. Use this template on GitHub (or copy the files into an existing repo) — for a pinned
+#    version (training, adoption): git clone --branch v1.24.1 (README, Versions and support). Then:
 ./scripts/init claude-code        # or: github-copilot | cursor | codex | generic
 
 # 2. Open your AI tool and run the bootstrap workflow
@@ -200,6 +201,24 @@ implementation, independent review, evidence. Release, deployment and production
 deliberately out of scope — that is where organizations differ most and already have tooling;
 ANEW connects to it through `scripts/check` and CI instead of replacing it. The incident workflow
 (`workflows/incident.md`) is the existing bridge back from production into this loop.
+
+## Versions and support
+
+ANEW itself is versioned: every template release is a tag (`git checkout v1.24.1`);
+`CHANGELOG.md` says what each one changed.
+
+- **LTS line `1.24.x`: fixes only** — a script that does not behave as documented, a document
+  that contradicts another, a broken reference, a selftest that cannot fail, a security weakness
+  in a script or a rule. No new rule, no new behavior, no new step.
+- **Supported** until the next LTS is announced, and in any case until 2027-05-04 (6 months after
+  v1.24.1).
+- **`main` is current**: new work ships there as v1.25, v1.26, … — not LTS. GitHub's "Latest"
+  release is the newest current one.
+- **Start from a tag**, not the template button (it copies `main`): `git clone --branch v1.24.1`
+  or the release archive. Training and adoption pin a `v1.24.x` tag.
+- **Inside the line**, read `CHANGELOG.md` on the `lts/1.24` branch and apply the entries above
+  your base. **Leaving the line** for current: your base is v1.24.1 — apply every `main` entry above
+  it, skipping a fix marked "also in v1.24.n" when your base already holds v1.24.n.
 
 ## Adapting it
 

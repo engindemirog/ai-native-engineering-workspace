@@ -3,6 +3,21 @@
 Template users: compare your copy against the version you started from and pull what you need —
 the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not migrations.
 
+## Versions and support
+
+- **LTS line `1.24.x`: fixes only** — a script that does not behave as documented, a document
+  that contradicts another, a broken reference, a selftest that cannot fail, a security weakness
+  in a script or a rule. No new rule, no new behavior, no new step.
+- **Supported** until the next LTS is announced, and in any case until 2027-05-04 (6 months after
+  v1.24.1).
+- **`main` is current**: new work ships there as v1.25, v1.26, … — not LTS. GitHub's "Latest"
+  release is the newest current one.
+- **Start from a tag**, not the template button (it copies `main`): `git clone --branch v1.24.1`
+  or the release archive. Training and adoption pin a `v1.24.x` tag.
+- **Inside the line**, read `CHANGELOG.md` on the `lts/1.24` branch and apply the entries above
+  your base. **Leaving the line** for current: your base is v1.24.1 — apply every `main` entry above
+  it, skipping a fix marked "also in v1.24.n" when your base already holds v1.24.n.
+
 ## How to upgrade
 
 1. **Your base** is the version in `.anew-version` (doctor prints it). If it is missing, find the
@@ -18,6 +33,25 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
 5. **Decisions:** take new `docs/decisions/anew/ANEW-*.md` files as they are (ANEW-0010); your own
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
+
+## v1.24.1 — v1.24 is the first LTS line
+
+Organizations adopting ANEW need one version to train on and build on while new work continues.
+v1.24 becomes the first LTS line; this patch adds the policy and the missing tags, nothing else.
+
+- **Versions and support** (`README.md`, the head of this file): the `1.24.x` line takes fixes
+  only, is supported until the next LTS and in any case until 2027-05-04; `main` is current. Start
+  from a `v1.24.x` tag, not the template button.
+- **Every release is tagged.** v1.19 … v1.24 had no tag, so their `/compare/` links were broken;
+  they are tagged on the commits that shipped them, and from now on each release is tagged at ship.
+
+### Upgrading
+
+No script changes.
+
+- `README.md`, `CHANGELOG.md`: intent: the `1.24.x` line is LTS — fixes only, supported until
+  2027-05-04 at least; start from and pin a `v1.24.x` tag.
+- Full diff: `/compare/v1.24...v1.24.1`.
 
 ## v1.24 — From the bütçe pilot
 
