@@ -24,11 +24,10 @@ AGENTS.md invariant rules) but live here so the template's `specs/` stays empty 
 - A fix lands on `main` first, through its own spec. It reaches `lts/1.24` by
   `git cherry-pick -x <main commit>` in a PR with CI green. Its `.anew-dev/` hunks are dropped;
   its `CHANGELOG.md` and `.anew-version` hunks are replaced by the branch's own `v1.24.<n+1>`
-  entry and marker. After
-  merge the tag `v1.24.<n+1>`; then `main`'s entry for that fix gets "also in v1.24.<n+1>".
+  entry and marker. After merge the tag `v1.24.<n+1>`; then `main`'s entry for that fix gets
+  "also in v1.24.<n+1>".
 - If the fix's other files do not apply cleanly, it is redone on the branch, never forced. Every
   fix on `lts/1.24` names its `main` commit (`cherry picked from`; a redone fix writes that line
-  by hand): no fix reaches the line that
-  `main` does not already hold.
+  by hand): no fix reaches the line that `main` does not already hold.
 
 Template users: this folder is not part of your workspace — delete it after you create your repo.
