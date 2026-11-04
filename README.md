@@ -203,15 +203,21 @@ ANEW connects to it through `scripts/check` and CI instead of replacing it. The 
 
 ## Versions and support
 
-Every release is a tag (`git checkout v1.24.1`); `CHANGELOG.md` says what each one changed.
+ANEW itself is versioned: every template release is a tag (`git checkout v1.24.1`);
+`CHANGELOG.md` says what each one changed.
 
 - **LTS line `1.24.x`: fixes only** — a script that does not behave as documented, a document
-  that contradicts another, a broken reference, a selftest that cannot fail. No new rule, no new
-  behavior, no new step.
-- **Supported** until the next LTS is announced, and for at least 6 months after v1.24.1.
-- **`main` is current**: new work ships there as v1.25, v1.26, … — not LTS.
-- **Pin a `v1.24.x` tag** for training and adoption. Upgrading inside the line is the same as
-  any upgrade: apply the CHANGELOG entries above your base.
+  that contradicts another, a broken reference, a selftest that cannot fail, a security weakness
+  in a script or a rule. No new rule, no new behavior, no new step.
+- **Supported** until the next LTS is announced, and in any case until 2027-05-04 (6 months after
+  v1.24.1).
+- **`main` is current**: new work ships there as v1.25, v1.26, … — not LTS. GitHub's "Latest"
+  release is the newest current one.
+- **Start from a tag**, not the template button (it copies `main`): `git clone --branch v1.24.1`
+  or the release archive. Training and adoption pin a `v1.24.x` tag.
+- **Inside the line**, read `CHANGELOG.md` on the `lts/1.24` branch and apply the entries above
+  your base. **Leaving the line** for current: your base is v1.24 — apply every `main` entry above
+  it, skipping a fix marked "also in v1.24.n" when your base already holds v1.24.n.
 
 ## Adapting it
 
