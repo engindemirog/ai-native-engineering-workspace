@@ -29,7 +29,7 @@ Always available, outside the loop:
 
 | Group | Commands |
 |---|---|
-| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
+| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
 
@@ -89,6 +89,42 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Common mistake:** reading a local gate `WARN` (spec/plan consistency) as harmless — under
   `--strict`, in CI, it is a `FAIL`.
 
+### `scripts/status`
+- **What it does:** where every piece of work stands — one row per spec in `specs/active/` and
+  `specs/done/` with its spec and plan status, the stage, who acts next and the next step, in the
+  words of `workflows/segments.md` (status follows that page: a change there changes status). The
+  stage comes from the files, in this order: spec `Draft` → ANALYZE (human); `Approved` without
+  plan → PLAN (Developer); plan without `Approved by / on` → PLAN (human); approved plan, spec not
+  started → BUILD; `In progress` without a `CHECK GREEN (full, …)` line in `## Build evidence` →
+  BUILD; with it and no triage table → REVIEW (a review writes no file: status says it cannot tell
+  whether it ran); the newest `### Review round` / `### VERIFY round` table with a `real` verdict
+  and no `[plan NNNN/fix-k]` commit after the commit that recorded that round → FIX ROUND; a
+  review round without open real findings → VERIFY (a clean VERIFY writes no table: same caveat);
+  a VERIFY round without real findings → SHIP (human). Anything else is `unclear: <what is
+  missing>`, never a stage. HTML comments and fenced blocks are not read — a template comment is
+  not a record.
+  Two warnings per active row. **Evidence older than the code:** files outside `specs/` and
+  `.anew-dev/` changed after the last full line's `@<sha>`, committed or not (`docs/testing.md`,
+  rule 6), or `<sha>` is not a commit here. **Changed after approval:** against the oldest commit
+  whose plan holds an `Approved by / on` value, the spec's Intent, Requirements, User experience,
+  Constraints and criterion texts, and the plan's Files, Ordered steps, Risks and Criterion ↔ test
+  map. Status lines, ticked boxes, a criterion moved out per the template, build evidence, triage
+  and amendments are not changes; a plan change with a new `A-<n>` line reads `amended (A-<n>)`. A
+  squash or rebase moves the approval commit. Without git, or with an approval not yet committed,
+  the row says the check could not run — never clean.
+- **When to use it:** at the start of a session, after a gate, whenever you wonder whose turn it is.
+- **Reads / writes:** reads `specs/` and git; writes nothing (not `.anew-dev/`).
+- **Stops at:** the rows, `WARN` and `note` lines; `no work yet — start with /new-feature or
+  /analyze` when there is no spec. Exit 0 whenever it could read the workspace, warnings included.
+  `--json` prints one document, stable within a minor version:
+  `{"anew_status":1,"rows":[{"spec","name","spec_status","plan_status","stage","who","next",
+  "warnings":[…],"notes":[…]}],"notes":[…]}` — all values strings; a shipped row has stage
+  `shipped` and empty who, next and plan status.
+- **Lite / Strict:** no difference.
+- **Refusal:** an unknown argument prints `usage: scripts/status [--json]` (exit 2).
+- **Common mistake:** reading `REVIEW` as "the review has not run" — a review writes no file, so
+  status cannot tell; the next triage table moves the row on.
+
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in
   order, fail fast. `--fast` runs only the steps tagged `[fast]`. Before the first step it runs
@@ -127,8 +163,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   check.conf changes; or asking a human to idle the machine — attribution makes that unnecessary.
 
 ### `scripts/selftest`
-- **What it does:** proves that `scripts/check`, `scripts/doctor` and `scripts/residue` behave as
-  documented, scenario by scenario.
+- **What it does:** proves that `scripts/check`, `scripts/doctor`, `scripts/residue` and
+  `scripts/status` behave as documented, scenario by scenario.
 - **When to use it:** after changing any ANEW script; CI runs it after doctor.
 - **Reads / writes:** copies the ANEW core into a temp dir outside the repo; writes nothing in the repo.
 - **Stops at:** `== selftest: <n> passed, <m> failed ==` (exit 1 on any failure).

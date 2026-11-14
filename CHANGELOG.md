@@ -34,6 +34,40 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.25 — scripts/status: where every piece of work stands
+
+The first current release after the LTS line (not in `1.24.x`). Finding out whose turn it is
+meant opening every spec and plan; and two failures stayed silent — a plan edited after its
+approval, and evidence cited after the code it proved had changed. No rule changes.
+
+- **`scripts/status`** prints one row per spec: spec and plan status, the stage, who acts next and
+  the next step, derived from the files in the words of `workflows/segments.md`. A state outside
+  the rules is `unclear: …`, never a guessed stage.
+- **Two warnings**: the build evidence is older than the code (rule 6 of `docs/testing.md`
+  applied), and approved spec or plan content changed after the approval commit (an `A-<n>`
+  amendment reads as amended). Without git it says the checks could not run.
+- **`--json`** gives tools the same rows; a later screen builds on it, not on its own parsing.
+
+### Upgrading
+
+- `scripts/status` (new): copy it. Behavior list in `docs/commands.md`, `scripts/status`:
+  - rows from `specs/active/` and `specs/done/` (`NNNN-<name>.md`), plans paired by number;
+    HTML comments and fenced blocks are not read;
+  - the stage rules in order; FIX ROUND reads the newest triage table's `real` verdicts and the
+    `[plan NNNN/fix-k]` commits after the commit that recorded it;
+  - evidence age: the last `CHECK GREEN (full, …) @<sha>` in `## Build evidence` against
+    `git diff --name-only <sha> HEAD` and `git status --porcelain`, `specs/` and `.anew-dev/`
+    excluded;
+  - changed after approval: the oldest commit whose plan has an `Approved by / on` value, the
+    approved sections compared; status lines, ticks, moved-out criteria, evidence, triage and
+    amendments excluded;
+  - exit 0 when it could read, 2 on an unknown argument; writes nothing.
+
+  Selftest: new `scripts/status` scenarios; copy `scripts/selftest` with it.
+- `docs/commands.md`, `README.md`: intent: `scripts/status` documented, the `--json` shape stable
+  within a minor version.
+- Full diff: `/compare/v1.24.1...v1.25`.
+
 ## v1.24.1 — v1.24 is the first LTS line
 
 Organizations adopting ANEW need one version to train on and build on while new work continues.

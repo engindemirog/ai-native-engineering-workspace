@@ -1,5 +1,6 @@
 #!/bin/sh
-# ANEW selftest — proves that scripts/check, scripts/doctor and scripts/residue behave as documented.
+# ANEW selftest — proves that scripts/check, scripts/doctor, scripts/residue and scripts/status
+# behave as documented.
 # Every scenario runs in a throwaway copy of this workspace in a temp dir OUTSIDE the repo
 # (docs/testing.md, Evidence policy), asserts on the real output and exit code, and is deleted.
 # Exit 0 = all scenarios pass, exit 1 = at least one failed. Runs in CI next to doctor.
