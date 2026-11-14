@@ -680,6 +680,17 @@ mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 �
   "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
   "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |"; status
 has "→  SHIP (human)" "status: a VERIFY round without real findings → SHIP"
+# Evidence age: the last full line's @<sha> against later changes outside specs/ (rule 6).
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "evidence"; status
+hasnt "evidence is older" "status: a specs-only commit after the evidence warns nothing"
+put app.txt changed; status
+has "evidence is older than the code: CHECK GREEN @$BASE, then changed: app.txt" "status: an uncommitted code change makes the evidence old"
+commit "code"; status
+has "then changed: app.txt — re-run ./scripts/check" "status: a code commit after the evidence makes it old"
+mkplan 0001 "selftest, 2026-01-01" "- CHECK GREEN (full, 1 steps, 1 s) @deadbee"; status
+has "evidence @deadbee is not a commit in this repository" "status: an unknown evidence sha is named"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "- CHECK GREEN (full, 1 steps, 1 s) @$(git -C "$W" rev-parse HEAD)"; status
+hasnt "evidence is older" "status: the last evidence line is the one that counts"
 reset; put specs/done/0001-demo.md "# Spec 0001 — demo" "" "- Status: Shipped"; status
 has "0001  demo  shipped" "status: a spec in specs/done/ is shipped"
 reset; mkspec 0001 "In progress"; status

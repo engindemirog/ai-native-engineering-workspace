@@ -59,6 +59,26 @@ fixed_after() {
   git -C "$ROOT" log --format=%s "$c..HEAD" 2>/dev/null | grep -qF "[plan $1/fix-"
 }
 
+# evidence_age <plan>: a warning when the last "CHECK GREEN (full, …) @<sha>" line no longer proves
+# the code — files outside specs/ and .anew-dev/ changed since <sha>, committed or not
+# (docs/testing.md, rule 6), or <sha> is not a commit here.
+evidence_age() {
+  line=$(clean "$1" | section "Build evidence" | grep -F 'CHECK GREEN (full,' | tail -n 1)
+  [ -n "$line" ] || return 0
+  sha=$(printf '%s\n' "$line" | sed -n 's/.*@\([0-9a-fA-F]\{7,40\}\).*/\1/p')
+  if [ -z "$sha" ]; then echo "the evidence line has no @<sha>: status cannot check its age"; return 0; fi
+  [ "$has_git" -eq 1 ] || return 0
+  if ! git -C "$ROOT" cat-file -e "$sha^{commit}" 2>/dev/null; then
+    echo "evidence @$sha is not a commit in this repository — re-run ./scripts/check and record it"; return 0
+  fi
+  changed=$( { git -C "$ROOT" diff --name-only "$sha" HEAD -- . ':!specs' ':!.anew-dev'
+               git -C "$ROOT" status --porcelain -- . ':!specs' ':!.anew-dev' | cut -c4-; } 2>/dev/null | sort -u)
+  [ -n "$changed" ] || return 0
+  count=$(printf '%s\n' "$changed" | wc -l | tr -d ' ')
+  more=""; [ "$count" -gt 1 ] && more=" (+$((count - 1)) more)"
+  echo "evidence is older than the code: CHECK GREEN @$sha, then changed: $(printf '%s\n' "$changed" | head -n 1)$more — re-run ./scripts/check and record it"
+}
+
 # --- output: text, or JSON (shape in docs/commands.md) ---
 rows=0
 notes=""
@@ -112,6 +132,9 @@ for spec in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do
       elif ! clean "$plan" | section "Build evidence" | grep -qF 'CHECK GREEN (full,'; then
         stage="BUILD"; who="Developer"; next="finish the plan's steps; record ./scripts/check (full) in ## Build evidence"
       else
+        ew=$(evidence_age "$plan")
+        [ -n "$ew" ] && warns="$warns$ew
+"
         round=$(newest_round "$plan")
         if [ -z "$round" ]; then
           stage="REVIEW"; who="fresh session / read-only reviewer"
