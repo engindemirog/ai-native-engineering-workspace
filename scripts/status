@@ -147,8 +147,28 @@ rows=0
 notes=""
 note() { notes="$notes$1
 "; }
+# jstr <text>: a JSON string; a multi-line text is one string with \n. jarr <lines>: an array of them.
+jstr() {
+  printf '%s' "$1" | awk '{ s = $0; o = ""
+    for (i = 1; i <= length(s); i++) { ch = substr(s, i, 1)
+      if (ch == "\\") o = o "\\\\"; else if (ch == "\"") o = o "\\\""; else if (ch == "\t") o = o "\\t"; else o = o ch }
+    printf "%s%s", (NR > 1 ? "\\n" : ""), o }
+    BEGIN { printf "\"" } END { printf "\"" }'
+}
+jarr() {
+  o=""
+  while IFS= read -r l; do [ -n "$l" ] && o="$o${o:+,}$(jstr "$l")"; done <<JARR
+$1
+JARR
+  printf '[%s]' "$o"
+}
+jrows=""
 emit() {  # emit <n> <name> <spec status> <plan status> <stage> <who> <next> <warnings> <notes> (one per line)
   rows=$((rows + 1))
+  if [ "$json" -eq 1 ]; then
+    jrows="$jrows${jrows:+,}{\"spec\":$(jstr "$1"),\"name\":$(jstr "$2"),\"spec_status\":$(jstr "$3"),\"plan_status\":$(jstr "$4"),\"stage\":$(jstr "$5"),\"who\":$(jstr "$6"),\"next\":$(jstr "$7"),\"warnings\":$(jarr "$8"),\"notes\":$(jarr "${9:-}")}"
+    return 0
+  fi
   if [ "$5" = "shipped" ]; then
     printf '%s  %s  shipped\n' "$1" "$2"
   else
@@ -228,6 +248,10 @@ for spec in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do
   [ "$approved" -eq 1 ] && drift "$spec" "specs/active/$b.md" "$plan" "$planrel"
   emit "$n" "$name" "${st:-—}" "${pst:-—}" "$stage" "$who" "$next" "$warns" "$infos"
 done
+if [ "$json" -eq 1 ]; then
+  printf '{"anew_status":1,"rows":[%s],"notes":%s}\n' "$jrows" "$(jarr "$notes")"
+  exit 0
+fi
 [ "$rows" -gt 0 ] || echo "no work yet — start with /new-feature or /analyze"
 printf '%s' "$notes" | while IFS= read -r l; do [ -n "$l" ] && printf 'note  %s\n' "$l"; done
 exit 0

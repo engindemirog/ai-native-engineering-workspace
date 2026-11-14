@@ -724,6 +724,22 @@ reset; mkspec 0001 "In progress"; status
 has "unclear: the spec is In progress but has no plan" "status: a state outside the rules is unclear, not a stage"
 reset; mkspec 0001 Draft; mkplan 0001 "—"; status
 has "unclear: a plan exists but the spec is Draft" "status: a plan for a Draft spec is unclear"
+# --json: the same rows for tools, in the shape docs/commands.md documents.
+reset; mkspec 0001 Draft; put specs/done/0002-demo.md "# Spec 0002 — demo" "" "- Status: Shipped"; status --json
+exits 0 "status --json: exit 0"
+has '{"anew_status":1,"rows":[{"spec":"0001","name":"demo","spec_status":"Draft","plan_status":"—","stage":"ANALYZE","who":"human","next":"approve the spec (end of /analyze)","warnings":[],"notes":[]},{"spec":"0002","name":"demo","spec_status":"Shipped","plan_status":"","stage":"shipped","who":"","next":"","warnings":[],"notes":[]}],"notes":[]}' "status --json: exact document for a two-row workspace"
+hasnt "== ANEW status ==" "status --json: no text header"
+reset; put specs/active/0001-demo.md "# Spec 0001 — demo" "" '- Status: Dr"aft\x	y'; status --json
+has '"stage":"unclear: spec status '"'"'Dr\"aft\\x\ty'"'"' is not Draft, Approved or In progress"' "status --json: quotes, backslashes and tabs are escaped"
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "- CHECK GREEN (full, 1 steps, 1 s) @deadbee"; status --json
+has '"warnings":["evidence @deadbee is not a commit in this repository — re-run ./scripts/check and record it"],"notes":["the plan approval is not committed yet: changes after approval cannot be checked"]' "status --json: a row carries its warnings and notes"
+reset; status --json
+has '{"anew_status":1,"rows":[],"notes":[]}' "status --json: an empty workspace is an empty list"
+# Read-only: a run with every check active leaves the working tree as it was.
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "approved"
+put app.txt changed; edit specs/plans/0001-plan.md 's/^1\. Write app\.txt\.$/1. Changed./'
+before=$(git -C "$W" status --porcelain); status; status --json; after=$(git -C "$W" status --porcelain)
+[ "$before" = "$after" ]; report $? "status: a run changes no file (git status --porcelain unchanged)"
 status --jsno
 exits 2 "status: unknown argument";               has "usage: scripts/status [--json]" "status: unknown argument prints the usage"
 
