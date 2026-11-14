@@ -691,6 +691,33 @@ mkplan 0001 "selftest, 2026-01-01" "- CHECK GREEN (full, 1 steps, 1 s) @deadbee"
 has "evidence @deadbee is not a commit in this repository" "status: an unknown evidence sha is named"
 mkplan 0001 "selftest, 2026-01-01" "$GREEN" "- CHECK GREEN (full, 1 steps, 1 s) @$(git -C "$W" rev-parse HEAD)"; status
 hasnt "evidence is older" "status: the last evidence line is the one that counts"
+# Changed after approval: the approval commit's spec and plan against the working files.
+edit() { sed "$2" "$W/$1" > "$W/.edit" && mv "$W/.edit" "$W/$1"; }
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; status
+has "note  the plan approval is not committed yet" "status: an uncommitted approval is named, never clean"
+commit "approved"; status
+hasnt "changed after approval" "status: no change since the approval warns nothing"
+edit specs/active/0001-demo.md 's/^- \[ \] AC-1/- [x] AC-1/'
+printf '%s\n' "- CHECK GREEN (full, 1 steps, 1 s) @$BASE" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-1 Low | noise | ok |" >> "$W/specs/plans/0001-plan.md"; status
+hasnt "changed after approval" "status: ticks, new evidence and a triage table are not changes after approval"
+edit specs/active/0001-demo.md 's/^- \[x\] AC-1 — it works$/- [ ] ~~AC-1 — it works~~ → moved to B-1 | selftest, 2026-01-02, why/'; status
+hasnt "changed after approval" "status: a criterion moved out per the template is not a change after approval"
+edit specs/plans/0001-plan.md 's/^1\. Write app\.txt\.$/1. Write app.txt twice./'; status
+has "WARN  the plan changed after approval (@" "status: a changed plan step after approval warns"
+has "Ordered steps — record an amendment" "… naming the section and what to do"
+printf '%s\n' "" "## Amendments" "A-1 — step 1 writes twice — review round 1 — selftest, 2026-01-02" >> "$W/specs/plans/0001-plan.md"; status
+has "note  amended (A-1): the plan's Ordered steps changed after approval" "status: the same change with a new A-<n> line reads amended"
+hasnt "WARN  the plan changed" "… and does not warn"
+edit specs/active/0001-demo.md 's/AC-1 — it works/AC-1 — it works fast/'; status
+has "WARN  the spec changed after approval (@" "status: a changed criterion text after approval warns"
+has "Acceptance criteria — get it re-approved" "… naming the section"
+rm -rf "$TMP/nogit"; cp -R "$W" "$TMP/nogit"; rm -rf "$TMP/nogit/.git"
+run sh "$TMP/nogit/scripts/status"
+has "note  no git history: changes after approval cannot be checked" "status: without git the row says the check could not run"
+has "note  no git history: evidence age" "… and a note says so for the whole run"
+rm -rf "$TMP/nogit"
+
 reset; put specs/done/0001-demo.md "# Spec 0001 — demo" "" "- Status: Shipped"; status
 has "0001  demo  shipped" "status: a spec in specs/done/ is shipped"
 reset; mkspec 0001 "In progress"; status

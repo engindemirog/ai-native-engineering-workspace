@@ -17,8 +17,9 @@ if git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then has_git=1; el
 
 # The file as status reads it: CR stripped, HTML comments and fenced blocks dropped — a template
 # comment holds example headings and evidence lines that are not records.
-clean() {
-  tr -d '\r' < "$1" | awk '
+clean() { clean_in < "$1"; }
+clean_in() {
+  tr -d '\r' | awk '
     !incom && /^[ \t]*```/ { fence = !fence; next }
     fence { next }
     { line = $0; out = ""
@@ -79,12 +80,74 @@ evidence_age() {
   echo "evidence is older than the code: CHECK GREEN @$sha, then changed: $(printf '%s\n' "$changed" | head -n 1)$more — re-run ./scripts/check and record it"
 }
 
+# --- changed after approval (spec 0006, Requirement 4) ---
+# region <spec|plan>: the approved content of a cleaned file on stdin, one "<section><TAB><line>"
+# per line. Later records are left out: status lines, build evidence, triage, amendments. A
+# criterion keeps its text only: box, strike-through and a "→ moved to …" tail are cut.
+region() {
+  awk -v kind="$1" '
+    /^## / { s = ""; h = substr($0, 4)
+      if (kind == "spec" && $0 ~ /^## (Intent|Requirements|User experience|Constraints|Acceptance criteria)/) s = h
+      if (kind == "plan" && $0 ~ /^## (Files to change|Ordered steps|Risks|Criterion)/) s = h
+      if (s != "") print s "\t"
+      next }
+    s == "" { next }
+    { line = $0; sub(/[ \t]+$/, "", line)
+      if (s ~ /^Acceptance criteria/ && line ~ /^[ \t]*- \[[ xX]\]/) {
+        sub(/^[ \t]*- \[[ xX]\][ \t]*/, "- ", line); gsub(/~~/, "", line)
+        sub(/[ \t]*(→|->)[ \t]*moved to .*/, "", line) }
+      print s "\t" line }'
+}
+# changed_sections <old region> <new region>: the sections whose lines differ, comma-separated.
+changed_sections() {
+  { printf '%s\n' "$1" | awk '{ print "A\t" $0 }'; printf '%s\n' "$2" | awk '{ print "B\t" $0 }'; } | awk -F'\t' '
+    NF >= 2 { k = $2; t[$1, k] = t[$1, k] substr($0, length($1) + length($2) + 3) "\n"; ks[k] = 1 }
+    END { for (k in ks) if (t["A", k] != t["B", k]) print k }' | sort | awk '{ o = o (NR > 1 ? ", " : "") $0 } END { print o }'
+}
+amendment_ids() { section "Amendments" | sed -n 's/^[-* ]*\(A-[0-9][0-9]*\).*/\1/p' | sort -u; }
+# approval_commit <plan, repo-relative>: the oldest commit whose plan holds an Approved by / on value.
+approval_commit() {
+  git -C "$ROOT" log --format=%H --reverse -- "$1" 2>/dev/null | while IFS= read -r c; do
+    a=$(git -C "$ROOT" show "$c:$1" 2>/dev/null | clean_in | sed -n 's|^- Approved by / on:[[:space:]]*||p' | head -n 1 | sed 's/[[:space:]]*$//')
+    case "$a" in ""|"-"|"—") ;; *) echo "$c"; break ;; esac
+  done
+}
+# drift <spec> <spec, repo-relative> <plan> <plan, repo-relative>: adds to $warns and $infos.
+drift() {
+  if [ "$has_git" -eq 0 ]; then
+    infos="${infos}no git history: changes after approval cannot be checked
+"; return 0
+  fi
+  c=$(approval_commit "$4")
+  if [ -z "$c" ]; then
+    infos="${infos}the plan approval is not committed yet: changes after approval cannot be checked
+"; return 0
+  fi
+  short=$(git -C "$ROOT" rev-parse --short "$c")
+  if git -C "$ROOT" cat-file -e "$c:$2" 2>/dev/null; then
+    d=$(changed_sections "$(git -C "$ROOT" show "$c:$2" | clean_in | region spec)" "$(clean "$1" | region spec)")
+    [ -n "$d" ] && warns="${warns}the spec changed after approval (@$short): $d — get it re-approved, or revert
+"
+  else
+    infos="${infos}the spec is not at $2 in the approval commit @$short: its changes cannot be checked
+"
+  fi
+  d=$(changed_sections "$(git -C "$ROOT" show "$c:$4" | clean_in | region plan)" "$(clean "$3" | region plan)")
+  [ -n "$d" ] || return 0
+  new=$({ git -C "$ROOT" show "$c:$4" | clean_in | amendment_ids; echo "--"; clean "$3" | amendment_ids; } | awk '$0 == "--" { b = 1; next } !b { old[$0] = 1; next } !($0 in old) { o = o (o ? ", " : "") $0 } END { print o }')
+  if [ -n "$new" ]; then infos="${infos}amended ($new): the plan's $d changed after approval (@$short)
+"
+  else warns="${warns}the plan changed after approval (@$short): $d — record an amendment (A-<n>) or get it re-approved
+"
+  fi
+}
+
 # --- output: text, or JSON (shape in docs/commands.md) ---
 rows=0
 notes=""
 note() { notes="$notes$1
 "; }
-emit() {  # emit <n> <name> <spec status> <plan status> <stage> <who> <next> <warnings, one per line>
+emit() {  # emit <n> <name> <spec status> <plan status> <stage> <who> <next> <warnings> <notes> (one per line)
   rows=$((rows + 1))
   if [ "$5" = "shipped" ]; then
     printf '%s  %s  shipped\n' "$1" "$2"
@@ -93,6 +156,7 @@ emit() {  # emit <n> <name> <spec status> <plan status> <stage> <who> <next> <wa
     [ -n "$7" ] && printf '      next: %s\n' "$7"
   fi
   printf '%s' "$8" | while IFS= read -r w; do [ -n "$w" ] && printf '      WARN  %s\n' "$w"; done
+  printf '%s' "${9:-}" | while IFS= read -r w; do [ -n "$w" ] && printf '      note  %s\n' "$w"; done
 }
 
 [ "$has_git" -eq 1 ] || note "no git history: evidence age and changes after approval cannot be checked"
@@ -105,7 +169,7 @@ for spec in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do
   name=${b#*-}
   plan="$ROOT/specs/plans/$n-plan.md"
   planrel="specs/plans/$n-plan.md"
-  warns=""
+  warns=""; infos=""
   case "$spec" in
     "$ROOT/specs/done/"*) emit "$n" "$name" "Shipped" "" "shipped" "" "" ""; continue ;;
   esac
@@ -161,7 +225,8 @@ for spec in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do
       fi ;;
     *) stage="unclear: spec status '${st:-none}' is not Draft, Approved or In progress" ;;
   esac
-  emit "$n" "$name" "${st:-—}" "${pst:-—}" "$stage" "$who" "$next" "$warns"
+  [ "$approved" -eq 1 ] && drift "$spec" "specs/active/$b.md" "$plan" "$planrel"
+  emit "$n" "$name" "${st:-—}" "${pst:-—}" "$stage" "$who" "$next" "$warns" "$infos"
 done
 [ "$rows" -gt 0 ] || echo "no work yet — start with /new-feature or /analyze"
 printf '%s' "$notes" | while IFS= read -r l; do [ -n "$l" ] && printf 'note  %s\n' "$l"; done
