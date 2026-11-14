@@ -637,6 +637,58 @@ fi
 reset; rm -f "$W/docs/testing.md"
 doctor;            exits 1 "core file missing"; has "FAIL  missing: docs/testing.md" "missing core file is a failure"
 
+# --- scripts/status: the same git-initialised copy, one fixture spec (and plan) per scenario ---
+status() { run sh "$W/scripts/status" "$@"; }
+mkspec() { put "specs/active/$1-demo.md" "# Spec $1 — demo" "" "- Status: $2" "- Mode: lite" \
+  "- Plan: \`specs/plans/$1-plan.md\`" "- Self-critique: done" "" "## Intent" "Demo intent." "" \
+  "## Requirements" "1. It works." "" "## Acceptance criteria" "- [ ] AC-1 — it works"; }
+mkplan() { n=$1; a=$2; shift 2; put "specs/plans/$n-plan.md" "# Plan $n — demo" "" \
+  "- Spec: \`specs/active/$n-demo.md\`" "- Status: Approved" "- Approved by / on: $a" "" \
+  "## Files to change or add" "- app.txt" "" "## Ordered steps" "1. Write app.txt." "" \
+  "## Build evidence" "$@"; }
+GREEN="- CHECK GREEN (full, 1 steps, 1 s) @$BASE"
+
+echo "== scripts/status =="
+reset; status
+exits 0 "status: empty workspace";                has "no work yet — start with /new-feature or /analyze" "status: empty state is named"
+reset; mkspec 0001 Draft; status
+has "0001  demo  spec: Draft · plan: —  →  ANALYZE (human)" "status: Draft → ANALYZE, human"
+reset; mkspec 0001 Approved; status
+has "→  PLAN (Developer)" "status: approved spec without plan → PLAN, Developer"
+mkplan 0001 "—"; status
+has "plan: Approved  →  PLAN (human)" "status: plan without approval → the human approves it"
+mkplan 0001 "selftest, 2026-01-01"; status
+has "→  BUILD (Developer)" "status: approved plan, spec not started → BUILD";  has "next: /build" "… next is /build"
+mkspec 0001 "In progress"; status
+has "finish the plan's steps" "status: in progress without evidence → BUILD continues"
+mkplan 0001 "selftest, 2026-01-01" '<!-- CHECK GREEN (full, 1 steps, 1 s) @abc1234 -->'; status
+has "finish the plan's steps" "status: an evidence line inside an HTML comment is not evidence"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN"; status
+has "→  REVIEW (fresh session / read-only reviewer)" "status: full evidence, no triage → REVIEW"
+has "a review writes no file" "… and says it cannot tell whether the review ran"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| M-1 Medium | real | fix-1 |" "| L-2 Low | noise | rationale |"
+commit "triage"; status
+has "→  FIX ROUND (Developer)" "status: a real finding with no fix commit after its round → FIX ROUND"
+has "[plan 0001/fix-k]" "… next names the fix commit label"
+put app.txt fixed; commit "fix: m-1 [plan 0001/fix-1]"; status
+has "→  VERIFY (QA)" "status: a fix commit after the round → VERIFY"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |"; status
+has "→  VERIFY (QA)" "status: a review round without real findings → VERIFY"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
+  "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |"; status
+has "→  SHIP (human)" "status: a VERIFY round without real findings → SHIP"
+reset; put specs/done/0001-demo.md "# Spec 0001 — demo" "" "- Status: Shipped"; status
+has "0001  demo  shipped" "status: a spec in specs/done/ is shipped"
+reset; mkspec 0001 "In progress"; status
+has "unclear: the spec is In progress but has no plan" "status: a state outside the rules is unclear, not a stage"
+reset; mkspec 0001 Draft; mkplan 0001 "—"; status
+has "unclear: a plan exists but the spec is Draft" "status: a plan for a Draft spec is unclear"
+status --jsno
+exits 2 "status: unknown argument";               has "usage: scripts/status [--json]" "status: unknown argument prints the usage"
+
 echo "== selftest: $passed passed, $failed failed =="
 [ "$failed" -eq 0 ] || exit 1
 exit 0

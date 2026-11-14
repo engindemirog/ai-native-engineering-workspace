@@ -1,6 +1,6 @@
 # Spec 0006 — scripts/status: where every piece of work stands
 
-- Status: Approved
+- Status: In progress
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0006-plan.md`
 - Self-critique: done (G-1–G-4 accepted, 2026-11-14)
