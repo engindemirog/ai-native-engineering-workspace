@@ -380,6 +380,13 @@ reset; put specs/active/0003-wip.md '# Spec 0003' '- Status: In progress'; put s
 doctor;            has "build started without recorded plan approval (spec 0003" "In progress without plan approval is caught"
 put specs/plans/0003-plan.md '# Plan 0003' '- Approved by / on: Ada, 2026-10-16'
 doctor;            hasnt "build started without recorded plan approval" "a recorded approval clears it"
+put specs/plans/0003-plan.md '# Plan 0003' '- Approved by / on: — <!-- This line IS the plan gate record: "<name>, <YYYY-MM-DD>", written' \
+  '  at the end of /plan on human approval. While it is empty ("—"), /build refuses to start. -->'
+doctor;            has "build started without recorded plan approval (spec 0003" "the template's untouched approval line (a comment spanning lines) is no approval"
+put specs/plans/0003-plan.md '# Plan 0003' '- Approved by / on: Ada, 2026-10-16 <!-- a note that' '  spans lines -->'
+doctor;            hasnt "build started without recorded plan approval" "a value before a comment that spans lines is an approval"
+put specs/plans/0003-plan.md '# Plan 0003' '- Approved by / on: Ada, 2026-10-16 <!-- a note -->'
+doctor;            hasnt "build started without recorded plan approval" "a value before a comment closed on the line is an approval"
 
 reset; put specs/done/0004-old.md '# Spec 0004' '- Status: Shipped'; commit "ship 0004"
 put specs/done/0004-old.md '# Spec 0004' '- Status: Shipped' 'edited after shipping'
