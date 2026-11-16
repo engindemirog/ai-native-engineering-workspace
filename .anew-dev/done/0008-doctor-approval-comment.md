@@ -1,6 +1,6 @@
 # Spec 0008 — doctor reads the untouched template approval line as not approved (mini)
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0008-plan.md`
 - Self-critique: done (no gaps: one line of doctor, the behavior named by B-8)
@@ -18,23 +18,23 @@ documented): on `main` as v1.26.1, then on `lts/1.24` as v1.24.2.
 Not done: doctor's other one-line comment strips (no reported case), B-3.
 
 ## Changed behavior
-- [ ] CB-1 — A plan whose approval line is the template's untouched line (a comment that opens
+- [x] CB-1 — A plan whose approval line is the template's untouched line (a comment that opens
   after `—` and closes on a later line), with its spec `In progress`, gets doctor's gate "build
   started without recorded plan approval" (WARN locally, FAIL under `--strict`).
-- [ ] CB-2 — A value followed by a comment that opens and does not close on that line
+- [x] CB-2 — A value followed by a comment that opens and does not close on that line
   (`- Approved by / on: Ada, 2026-10-16 <!-- …`) still reads approved.
 
 ## Preserved behavior
-- [ ] PB-1 — A recorded value, with or without a comment closed on the same line, reads approved;
+- [x] PB-1 — A recorded value, with or without a comment closed on the same line, reads approved;
   `—`, `-` and empty read not approved; the existing doctor scenarios stay green.
-- [ ] PB-2 — `lts/1.24` receives only this fix (cherry-pick `-x`, `.anew-dev/` hunks dropped, its
+- [x] PB-2 — `lts/1.24` receives only this fix (cherry-pick `-x`, `.anew-dev/` hunks dropped, its
   own v1.24.2 CHANGELOG entry and `.anew-version`); its selftest and doctor --strict are green.
 
 ## Out of scope
 Other comment handling in doctor; status and gate (already correct); any new rule.
 
 ## Definition of Done
-- [ ] `scripts/check` green (here: doctor --strict + selftest), on `main` and on `lts/1.24`
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Criterion ↔ evidence table complete for CB-* **and** PB-*
-- [ ] Spec moved to `.anew-dev/done/` (immutable there)
+- [x] `scripts/check` green (here: doctor --strict + selftest), on `main` and on `lts/1.24`
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Criterion ↔ evidence table complete for CB-* **and** PB-*
+- [x] Spec moved to `.anew-dev/done/` (immutable there)
