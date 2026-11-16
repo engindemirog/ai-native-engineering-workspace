@@ -99,11 +99,12 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   BUILD; with it and no triage table → REVIEW (a review writes no file: status says it cannot tell
   whether it ran); the newest `### Review round` / `### VERIFY round` table (any case) with a
   `real` finding whose Note cell names no fix → FIX ROUND. A finding is closed by its own Note: a
-  `fix-<k>` with a `[plan NNNN/fix-k]` commit anywhere in the history, or a commit sha this
-  repository knows; other words read as open, and the order of the commits does not matter. Every
-  real finding closed: one of them Medium or higher (a `C-`/`H-`/`M-` id, or the first severity
-  word in the Finding cell) → REVIEW again on the fix diff; Low/Info only → VERIFY; a severity it
-  cannot read → unclear. A review round without real findings → VERIFY (a clean VERIFY writes no
+  `fix-<k>` with a `[plan NNNN/fix-k]` commit anywhere in the history, or the sha of a commit
+  labeled `[plan NNNN/fix-…]` (a sha cited as background closes nothing); other words read as
+  open, and the order of the commits does not matter. Every real finding closed: one of them
+  Medium or higher (a `C-`/`H-`/`M-` id, or a severity word among the first two words of the
+  Finding cell) → REVIEW again on the fix diff; Low/Info only → VERIFY; a severity it cannot read
+  → unclear. A review round without real findings → VERIFY (a clean VERIFY writes no
   table: same caveat); a VERIFY round without real findings → SHIP (human). Any other `###`
   heading under `## Triage`, and anything else, is `unclear: <what is missing>`, never a stage.
   Records are read outside HTML comments and fenced blocks — a template comment is not a record.
@@ -111,13 +112,17 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   `.anew-dev/` changed after the last full line's `@<sha>`, committed or not (`docs/testing.md`,
   rule 6), or `<sha>` is not a commit here. **Changed after approval:** the spec's Intent,
   Requirements, User experience, Constraints and criterion texts, against the newest commit that
-  set a new `Approved by / on` value (a re-approval writes a new value and clears the warning); the
-  plan's Files, Ordered steps, Risks and Criterion ↔ test map, against the newer of that commit
-  and the newest one that added an `A-<n>` line (the `@<sha>` in the warning). Fenced blocks are
-  compared like any line. Status lines, ticked boxes, a criterion moved out per the template (a
-  wrapped one too), build evidence, triage and amendments are not changes; a plan change with a
-  new, uncommitted `A-<n>` line reads `amended (A-<n>)`, and a change after a committed amendment
-  warns again. A squash or rebase moves the approval commit. Without git, or with an approval not
+  set a new `Approved by / on` value (a re-approval writes a new value — same day: add
+  `re-approved` — and clears the warning); the plan's Files, Ordered steps, Risks and Criterion ↔
+  test map, against the newer of that commit and the newest one that added an `A-<n>` line while
+  those sections were unchanged just before it (the `@<sha>` in the warning). Fenced blocks are
+  compared like any line (known limit: a four-backtick fence ends on an inner three-backtick
+  line). Status lines, ticked boxes, a criterion moved out per the template (a wrapped one too;
+  a strike without the `→ moved to` tail is a change), build evidence, triage and amendments are
+  not changes; a plan change with a new, uncommitted `A-<n>` line reads `amended (A-<n>)`. An
+  amendment covers neither a later nor an earlier unrecorded change: those warn until recorded in
+  the same commit as an `A-<n>` line, or re-approved. A squash or rebase moves the approval
+  commit. Without git, or with an approval not
   yet committed, the row says the check could not run — never clean.
 - **When to use it:** at the start of a session, after a gate, whenever you wonder whose turn it is.
 - **Reads / writes:** reads `specs/` and git; writes nothing (not `.anew-dev/`, and not
@@ -132,8 +137,10 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Lite / Strict:** no difference.
 - **Refusal:** an unknown argument prints `usage: scripts/status [--json]` (exit 2).
 - **Common mistake:** reading `REVIEW` or `VERIFY` as "it has not run" — a clean review,
-  re-review or VERIFY writes no file, so status cannot tell; the next triage table moves the row
-  on, and after a clean VERIFY the row stays at VERIFY until SHIP.
+  re-review or VERIFY writes no table, so status cannot tell, and the row stays at REVIEW or
+  VERIFY until the next record. To move it on, record the clean round as its heading with no rows
+  (`### Review round 2 — <name>, <date> (clean)`); a clean review round reads VERIFY, a clean
+  VERIFY round reads SHIP.
 
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in

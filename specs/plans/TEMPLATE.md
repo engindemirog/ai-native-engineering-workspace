@@ -44,4 +44,5 @@
      VERIFY round, written at the gate:
      ### Review round <n> — <name>, <YYYY-MM-DD>     (a VERIFY round: ### VERIFY round <n> — …)
      | Finding | Verdict (real / noise / defer / investigate) | Note (fix commit, rationale, B-<n>, A-<n>) |
-     A real finding's Note names its fix as fix-<k> or a commit sha (scripts/status reads it). -->
+     A real finding's Note names its fix as fix-<k> or the fix commit's sha; a clean round is its
+     heading with no rows (scripts/status reads both). -->

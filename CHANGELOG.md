@@ -54,22 +54,25 @@ approval, and evidence cited after the code it proved had changed. No rule chang
   - rows from `specs/active/` and `specs/done/` (`NNNN-<name>.md`), plans paired by number;
     records are read outside HTML comments and fenced blocks;
   - the stage rules in order; the newest triage table (any case; another `###` heading under
-    `## Triage` is unclear): a `real` finding is closed by its own Note — `fix-<k>` with a
-    `[plan NNNN/fix-k]` commit, or a known sha — in any commit order; all closed with one Medium
-    or higher → REVIEW again, Low/Info only → VERIFY, an unreadable severity → unclear;
+    `## Triage` is unclear; a clean round is its heading with no rows): a `real` finding is
+    closed by its own Note — `fix-<k>` with a `[plan NNNN/fix-k]` commit, or the sha of such a
+    commit — in any commit order; all closed with one Medium or higher (id, or the first two
+    words) → REVIEW again, Low/Info only → VERIFY, an unreadable severity → unclear;
   - evidence age: the last `CHECK GREEN (full, …) @<sha>` in `## Build evidence` against
     `git diff --name-only <sha> HEAD` and `git status --porcelain` (no optional locks, paths
     unquoted), `specs/` and `.anew-dev/` excluded;
   - changed after approval: the spec against the newest commit that set a new `Approved by / on`
-    value, the plan against the newer of that and the newest commit that added an `A-<n>` line;
-    fenced blocks compared; status lines, ticks, moved-out criteria (wrapped too), evidence,
-    triage and amendments excluded;
+    value, the plan against the newer of that and the newest commit that added an `A-<n>` line
+    over unchanged sections (an amendment covers no earlier or later unrecorded change); fenced
+    blocks compared; status lines, ticks, moved-out criteria (wrapped too), evidence, triage and
+    amendments excluded;
   - exit 0 when it could read, 2 on an unknown argument; writes nothing; JSON control characters
     as `\u00XX`.
 
   Selftest: new `scripts/status` scenarios; copy `scripts/selftest` with it.
 - `specs/plans/TEMPLATE.md`: intent: the Triage comment shows the VERIFY round heading and that a
-  real finding's Note names its fix (`fix-<k>` or a sha).
+  real finding's Note names its fix (`fix-<k>` or the fix commit's sha); a clean round is its
+  heading with no rows.
 - `docs/commands.md`, `README.md`: intent: `scripts/status` documented, the `--json` shape stable
   within a minor version.
 - Full diff: `/compare/v1.24.1...v1.25`.
