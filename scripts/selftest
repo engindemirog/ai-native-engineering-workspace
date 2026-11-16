@@ -1054,6 +1054,21 @@ grep -q '^- Status: Draft$' "$W/specs/active/0002-demo.md" && [ "$(git -C "$W" s
 report $? "gate approve-spec: … the spec is Draft again and an unrelated staged file stays staged"
 rm -f "$W/.git/hooks/pre-commit"; git -C "$W" reset -q specs/notes.md; rm -f "$W/specs/notes.md"; gate ship 0001
 exits 0 "gate ship: after the hook is fixed the same ship goes through"
+# an interrupt: before the commit it restores and says so; after the commit landed it undoes nothing
+interrupt_hook() {  # interrupt_hook <hook> <exit>: the hook sends TERM to gate, then exits
+  printf '%s\n' '#!/bin/sh' "kill -TERM \"\$(cat '$TMP/gate.pid')\"" "sleep 1" "exit $2" > "$W/.git/hooks/$1"
+  chmod +x "$W/.git/hooks/$1"; }
+gate_bg() { sh "$W/scripts/gate" "$@" > "$TMP/gate.out" 2>&1 & echo $! > "$TMP/gate.pid"; wait $!; rc=$?; out=$(cat "$TMP/gate.out"); }
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "" "## Definition of Done" "- [ ] Docs"
+interrupt_hook pre-commit 1; c0=$(commits); gate_bg ship 0001
+exits 130 "gate ship: an interrupt before the commit"; has "gate: interrupted — nothing was written" "… says it restored"
+[ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ] && [ -f "$W/specs/active/0001-demo.md" ]
+report $? "… and the files, the move and the index are as before"
+rm -f "$W/.git/hooks/pre-commit"; interrupt_hook post-commit 0; gate_bg ship 0001
+exits 130 "gate ship: an interrupt after the commit landed"; has "interrupted after the commit landed" "… says the commit holds the decision"
+[ "$(commits)" -eq $((c0 + 1)) ] && [ -z "$(git -C "$W" status --porcelain)" ] && [ -f "$W/specs/done/0001-demo.md" ]
+report $? "… and undoes nothing: the tree matches the new commit"
+rm -f "$W/.git/hooks/post-commit"
 # approve-plan writes both lines or neither
 reset; mkspec 0001 Approved; put specs/plans/0001-plan.md "# Plan 0001 — demo" "" "- Spec: \`specs/active/0001-demo.md\`" \
   "- Status: Awaiting approval" "" "## Ordered steps" "1. x"; commit "plan without approval line"

@@ -115,7 +115,22 @@ set_line() {
 # writes nothing (Requirement 4, review round 1 L-1).
 T=$(mktemp -d "${TMPDIR:-/tmp}/anew-gate.XXXXXX") || refuse "mktemp failed"
 trap 'rm -rf "$T"' EXIT
-trap '[ -z "$snap" ] || rollback; rm -rf "$T"; exit 130' INT TERM   # an interrupt before the commit undoes the writes
+# An interrupt before the commit undoes the writes and says so; once the commit has landed (HEAD
+# moved) nothing is undone — the commit is the decision.
+head0=$(git -C "$ROOT" rev-parse HEAD)
+interrupted() {
+  if [ -n "$snap" ]; then
+    if [ "$(git -C "$ROOT" rev-parse HEAD)" = "$head0" ]; then
+      rollback
+      if [ -n "$lost" ]; then echo "gate: interrupted — and could not restore $lost: compare it with git status and git diff" >&2
+      else echo "gate: interrupted — nothing was written: $(printf '%s' "$snapped" | tr '\n' ' ')restored as before" >&2; fi
+    else
+      echo "gate: interrupted after the commit landed — @$(git -C "$ROOT" rev-parse --short HEAD) holds the decision; nothing was undone" >&2
+    fi
+  fi
+  rm -rf "$T"; exit 130
+}
+trap interrupted INT TERM
 # The targets' uncommitted edits, named before writing (Requirement 6).
 edits=""
 had_edits() { for p in "$@"; do [ -z "$(git -C "$ROOT" status --porcelain -- "$p")" ] || edits="$edits${edits:+, }$p"; done; }
