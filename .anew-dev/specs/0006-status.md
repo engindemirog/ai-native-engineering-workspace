@@ -43,11 +43,12 @@ Deliberately not done:
      then TRIAGE (human). REVIEW writes no file, so status says that it cannot tell whether the
      review has run (self-critique G-1);
    - the newest triage round holds a finding marked `real` whose Note cell names no fix (a
-     `fix-<k>` with a `[plan NNNN/fix-<k>]` commit, or a commit sha) → Developer: fix round. Each
-     finding is closed by its own note, whatever the order of the commits (A-1);
+     `fix-<k>` with a `[plan NNNN/fix-<k>]` commit, or the sha of a commit carrying
+     `[plan NNNN/fix-`) → Developer: fix round. Each finding is closed by its own note, whatever
+     the order of the commits (A-1, A-3);
    - every real finding of the newest round fixed, and one of them Medium or higher → REVIEW
-     again on the fix diff; all of them Low or Info → VERIFY, QA; a severity status cannot read →
-     "unclear" (A-1);
+     again on the fix diff; all of them Low or Info → VERIFY, QA; a severity status cannot read
+     from the id or the first two words of the Finding cell → "unclear" (A-1, A-3);
    - review triage done and no VERIFY round → VERIFY, QA;
    - the newest VERIFY round with no `real` finding → human: SHIP. A VERIFY round whose real
      findings are fixed goes back to VERIFY by the same rule as a review round (A-1);
@@ -70,8 +71,9 @@ Deliberately not done:
      `## Amendments`, and criteria moved out per the template (a wrapped criterion is read as one
      line). Fenced blocks are approved content and are compared (A-2).
    - For the plan, the baseline is the newer of the approval point and the newest commit that
-     added an `A-<n>` line. A change since then with a new uncommitted `A-<n>` line shows "amended
-     (A-<n>)"; any other change warns, so an amendment never covers later changes (A-2).
+     added an `A-<n>` line while the approved sections were unchanged just before it (A-3). A
+     change since then with a new uncommitted `A-<n>` line shows "amended (A-<n>)"; any other
+     change warns, so an amendment covers neither later nor earlier unrecorded changes (A-2, A-3).
 5. **Honest when it cannot tell** (invariant 8). These cases are named in the row, never shown as
    clean:
    - no git;
