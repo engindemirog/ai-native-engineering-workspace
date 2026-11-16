@@ -36,11 +36,15 @@
 
 ## Amendments
 <!-- Approved changes after the plan gate (review triage, R-07), never silent. One line each:
-     A-1 — <what changes: files, steps> — <why; source: review round n / R-07> — <name>, <YYYY-MM-DD> -->
+     A-1 — <what changes: files, steps> — <why; source: review round n / R-07> — <name>, <YYYY-MM-DD>
+     Write the line in the same commit as the plan edit it records: scripts/status reads a plan
+     change committed before or without its line as changed after approval. -->
 
 ## Triage
 <!-- The triage record (workflows/feature-development.md, step 7) — here, because in lite there is
      no PR yet at triage time; the PR description links this section. One table per review or
      VERIFY round, written at the gate:
-     ### Review round <n> — <name>, <YYYY-MM-DD>
-     | Finding | Verdict (real / noise / defer / investigate) | Note (fix commit, rationale, B-<n>, A-<n>) | -->
+     ### Review round <n> — <name>, <YYYY-MM-DD>     (a VERIFY round: ### VERIFY round <n> — …)
+     | Finding | Verdict (real / noise / defer / investigate) | Note (fix commit, rationale, B-<n>, A-<n>) |
+     A real finding's Note names its fix as fix-<k> or the fix commit's sha; a clean round is its
+     heading with no rows (scripts/status reads both). -->

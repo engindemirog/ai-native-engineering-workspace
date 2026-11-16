@@ -1,0 +1,356 @@
+#!/bin/sh
+# ANEW status — where every piece of work stands: one row per spec in specs/active/ and specs/done/,
+# with its stage, who acts next and the next step, in the words of workflows/segments.md.
+# Read-only: it writes no file and keeps no state; the files stay the only record.
+# Exit 0 = the workspace was read (warnings included), exit 2 = usage.
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+usage() { echo "usage: scripts/status [--json]" >&2; exit 2; }
+json=0
+[ $# -le 1 ] || usage
+case "${1:-}" in
+  "") ;;
+  --json) json=1 ;;
+  *) usage ;;
+esac
+
+if git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then has_git=1; else has_git=0; fi
+TAB=$(printf '\t')
+
+# The file as status reads its records: CR stripped, HTML comments and fenced blocks dropped — a
+# template comment holds example headings and evidence lines that are not records. "clean_in keep"
+# keeps fenced blocks verbatim: they are approved content. A fence opens on a line that is only
+# the fence and its info string, and closes on a line of backticks alone.
+clean() { clean_in < "$1"; }
+clean_in() {
+  tr -d '\r' | awk -v keep="${1:-}" '
+    !incom && !fence && /^[ \t]*```[^`]*$/ { fence = 1; if (keep != "") print; next }
+    fence { if ($0 ~ /^[ \t]*```+[ \t]*$/) fence = 0; if (keep != "") print; next }
+    { line = $0; out = ""
+      while (line != "") {
+        if (incom) { i = index(line, "-->"); if (!i) { line = ""; break }
+                     line = substr(line, i + 3); incom = 0; continue }
+        i = index(line, "<!--")
+        if (!i) { out = out line; break }
+        out = out substr(line, 1, i - 1); line = substr(line, i + 4); incom = 1
+      }
+      if (out ~ /^[ \t]*$/ && $0 !~ /^[ \t]*$/) next
+      print out }'
+}
+# field <file> <label>: the value of the first "- <label>: …" line, trimmed.
+field() { clean "$1" | sed -n "s|^- $2:[[:space:]]*||p" | head -n 1 | sed 's/[[:space:]]*$//'; }
+approved_value() { sed -n 's|^- Approved by / on:[[:space:]]*||p' | head -n 1 | sed 's/[[:space:]]*$//'; }
+# section <heading prefix>: the lines of the "## <prefix>…" section of a cleaned file on stdin.
+section() { awk -v h="## $1" 'index($0, "## ") == 1 { ins = (index($0, h) == 1); next } ins'; }
+
+# The newest triage round of a plan: a first line "<review|verify><TAB><heading>", then one
+# "<finding><TAB><note>" line per real finding. A "###" heading under ## Triage that is neither
+# form makes the first line "unknown<TAB><heading>" (spec 0006, A-1).
+newest_round() {
+  clean "$1" | section "Triage" | awk -F'|' '
+    /^### / { l = tolower($0)
+      if (l ~ /^### +review( |$)/) k = "review"
+      else if (l ~ /^### +verify( |$)/) k = "verify"
+      else { if (bad == "") bad = $0; k = ""; next }
+      lk = k; lh = $0; n = 0; row = 0; next }
+    k != "" && /^\|/ {
+      if ($0 ~ /^\|[-:| ]+$/) next
+      if (++row == 1) next
+      v = tolower($3); gsub(/^[ \t*]+|[ \t*]+$/, "", v)
+      if (v ~ /^real/) { f = $2; t = $4; gsub(/^[ \t]+|[ \t]+$/, "", f); gsub(/^[ \t]+|[ \t]+$/, "", t)
+                         r[++n] = f "\t" t }
+      next }
+    END { if (bad != "") { printf "unknown\t%s\n", bad; exit }
+          if (lk == "") exit
+          printf "%s\t%s\n", lk, lh
+          for (i = 1; i <= n; i++) print r[i] }'
+}
+# closed <note>: the Note cell names a fix — a fix-<k> with a [plan $n/fix-<k>] commit in $fixsubs,
+# or the sha of a commit labeled [plan $n/fix-…] (spec 0006, G-3, A-3); a sha cited as background
+# closes nothing. The order of the commits does not matter.
+closed() {
+  for tok in $(printf '%s\n' "$1" | tr -c 'A-Za-z0-9-' ' '); do
+    case "$tok" in
+      fix-[0-9]*)
+        k=${tok#fix-}
+        case "$k" in *[!0-9]*) continue ;; esac
+        printf '%s\n' "$fixsubs" | grep -qF "[plan $n/fix-$k]" && return 0 ;;
+      *)
+        [ ${#tok} -ge 7 ] && [ ${#tok} -le 40 ] || continue
+        case "$tok" in *[!0-9a-fA-F]*) continue ;; esac
+        git -C "$ROOT" log -1 --format=%s "$tok^{commit}" 2>/dev/null | grep -qF "[plan $n/fix-" && return 0 ;;
+    esac
+  done
+  return 1
+}
+# severity <finding cell>: high (Critical, High, Medium), low (Low, Info) or unknown — from the id
+# prefix (C-/H-/M-, L-/I-/Info-), else from the first two words — a severity word deeper in the
+# text ("the info banner …") is description, not severity (spec 0006, A-3).
+severity() {
+  printf '%s\n' "$1" | awk '{ s = tolower($0); sub(/^[ \t*]+/, "", s) }
+    s ~ /^(c|h|m)-[0-9]/ { print "high"; exit }
+    s ~ /^(l|i|info)-[0-9]/ { print "low"; exit }
+    { n = split(s, w, /[^a-z]+/); seen = 0
+      for (i = 1; i <= n && seen < 2; i++) {
+        if (w[i] == "") continue
+        seen++
+        if (w[i] ~ /^(critical|high|medium)$/) { print "high"; exit }
+        if (w[i] ~ /^(low|info)$/) { print "low"; exit } }
+      print "unknown" }'
+}
+
+# evidence_age <plan>: a warning when the last "CHECK GREEN (full, …) @<sha>" line no longer proves
+# the code — files outside specs/ and .anew-dev/ changed since <sha>, committed or not
+# (docs/testing.md, rule 6), or <sha> is not a commit here.
+evidence_age() {
+  line=$(clean "$1" | section "Build evidence" | grep -F 'CHECK GREEN (full,' | tail -n 1)
+  [ -n "$line" ] || return 0
+  sha=$(printf '%s\n' "$line" | sed -n 's/.*@\([0-9a-fA-F]\{7,40\}\).*/\1/p')
+  if [ -z "$sha" ]; then printf '%s\n' "the evidence line has no @<sha>: status cannot check its age"; return 0; fi
+  [ "$has_git" -eq 1 ] || return 0
+  if ! git -C "$ROOT" cat-file -e "$sha^{commit}" 2>/dev/null; then
+    printf '%s\n' "evidence @$sha is not a commit in this repository — re-run ./scripts/check and record it"; return 0
+  fi
+  # --no-optional-locks: git status would otherwise refresh .git/index — status writes nothing.
+  changed=$( { git -C "$ROOT" -c core.quotePath=false diff --name-only "$sha" HEAD -- . ':!specs' ':!.anew-dev'
+               git -C "$ROOT" --no-optional-locks -c core.quotePath=false status --porcelain -- . ':!specs' ':!.anew-dev' | cut -c4-; } 2>/dev/null | sort -u)
+  [ -n "$changed" ] || return 0
+  count=$(printf '%s\n' "$changed" | wc -l | tr -d ' ')
+  more=""; [ "$count" -gt 1 ] && more=" (+$((count - 1)) more)"
+  printf '%s\n' "evidence is older than the code: CHECK GREEN @$sha, then changed: $(printf '%s\n' "$changed" | head -n 1)$more — re-run ./scripts/check and record it"
+}
+
+# --- changed after approval (spec 0006, Requirement 4) ---
+# region <spec|plan>: the approved content of a file on stdin (comments dropped, fences kept), one
+# "<section><TAB><line>" per line. Later records are left out: status lines, build evidence,
+# triage, amendments. A criterion is joined with its continuation lines and keeps its text only:
+# box, and the strike-through with its "→ moved to …" tail, are cut (a strike without the tail is
+# a change: a criterion is moved out, never waived); runs of blanks read as one.
+region() {
+  awk -v kind="$1" '
+    function flush() { if (crit != "") { c = crit; sub(/^[ \t]*- \[[ xX]\][ \t]*/, "- ", c)
+                         if (c ~ /(→|->)[ \t]*moved to /) { gsub(/~~/, "", c); sub(/[ \t]*(→|->)[ \t]*moved to .*/, "", c) }
+                         gsub(/[ \t]+/, " ", c); print s "\t" c }
+                       crit = "" }
+    !fence && /^[ \t]*```[^`]*$/ { flush(); fence = 1; if (s != "") print s "\t" $0; next }
+    fence && /^[ \t]*```+[ \t]*$/ { fence = 0; if (s != "") print s "\t" $0; next }
+    !fence && /^## / { flush(); s = ""; h = substr($0, 4)
+      if (kind == "spec" && $0 ~ /^## (Intent|Requirements|User experience|Constraints|Acceptance criteria)/) s = h
+      if (kind == "plan" && $0 ~ /^## (Files to change|Ordered steps|Risks|Criterion)/) s = h
+      if (s != "") print s "\t"
+      next }
+    s == "" { next }
+    { line = $0; sub(/[ \t]+$/, "", line)
+      if (s ~ /^Acceptance criteria/ && !fence) {
+        if (line ~ /^[ \t]*- \[[ xX]\]/) { flush(); crit = line; next }
+        if (crit != "" && line ~ /^[ \t]+[^ \t]/ && line !~ /^[ \t]*[-*] /) { sub(/^[ \t]+/, " ", line); crit = crit line; next }
+        flush() }
+      print s "\t" line }
+    END { flush() }'
+}
+# changed_sections <old region> <new region>: the sections whose lines differ, comma-separated.
+changed_sections() {
+  { printf '%s\n' "$1" | awk '{ print "A\t" $0 }'; printf '%s\n' "$2" | awk '{ print "B\t" $0 }'; } | awk -F'\t' '
+    NF >= 2 { k = $2; t[$1, k] = t[$1, k] substr($0, length($1) + length($2) + 3) "\n"; ks[k] = 1 }
+    END { for (k in ks) if (t["A", k] != t["B", k]) print k }' | sort | awk '{ o = o (NR > 1 ? ", " : "") $0 } END { print o }'
+}
+amendment_ids() { section "Amendments" | sed -n 's/^[-* ]*\(A-[0-9][0-9]*\).*/\1/p' | sort -u; }
+# new_ids <old ids> <new ids>: the ids in the second list and not in the first, comma-separated.
+new_ids() {
+  o=""
+  for i in $2; do case " $(printf '%s' "$1" | tr '\n' ' ') " in *" $i "*) ;; *) o="$o${o:+, }$i" ;; esac; done
+  printf '%s' "$o"
+}
+# baselines <plan, repo-relative>: "<approval> <plan baseline>". The approval is the newest commit
+# that set a new Approved by / on value, so a re-approval is a new baseline; the plan baseline is
+# the newer of that and the newest later commit that added an A-<n> line while the approved
+# sections were unchanged just before it, so an amendment never covers an earlier unrecorded
+# change (spec 0006, A-2, A-3). Commits where the plan does not exist are skipped.
+baselines() {
+  git -C "$ROOT" log --format=%H --reverse -- "$1" 2>/dev/null | {
+    prev=""; pids=""; preg=""; a=""; p=""; preg_p=""
+    while IFS= read -r c; do
+      git -C "$ROOT" cat-file -e "$c:$1" 2>/dev/null || continue
+      txt=$(git -C "$ROOT" show "$c:$1" | tr -d '\r')
+      v=$(printf '%s\n' "$txt" | clean_in | approved_value)
+      ids=$(printf '%s\n' "$txt" | clean_in | amendment_ids)
+      reg=$(printf '%s\n' "$txt" | clean_in keep | region plan)
+      case "$v" in
+        ""|"-"|"—") ;;
+        *) if [ "$v" != "$prev" ]; then a=$c; p=$c; preg_p=$reg
+           elif [ -n "$a" ] && [ -n "$(new_ids "$pids" "$ids")" ] && [ "$preg" = "$preg_p" ]; then p=$c; preg_p=$reg; fi ;;
+      esac
+      prev=$v; pids=$ids; preg=$reg
+    done
+    [ -z "$a" ] || printf '%s %s\n' "$a" "$p"; }
+}
+# drift <spec> <spec, repo-relative> <plan> <plan, repo-relative>: adds to $warns and $infos.
+drift() {
+  if [ "$has_git" -eq 0 ]; then
+    infos="${infos}no git history: changes after approval cannot be checked
+"; return 0
+  fi
+  b=$(baselines "$4")
+  c=${b%% *}; pb=${b#* }
+  if [ -z "$b" ] || [ "$(clean "$3" | approved_value)" != "$(git -C "$ROOT" show "$c:$4" | clean_in | approved_value)" ]; then
+    infos="${infos}the plan approval is not committed yet: changes after approval cannot be checked
+"; return 0
+  fi
+  short=$(git -C "$ROOT" rev-parse --short "$c")
+  if git -C "$ROOT" cat-file -e "$c:$2" 2>/dev/null; then
+    d=$(changed_sections "$(git -C "$ROOT" show "$c:$2" | clean_in keep | region spec)" "$(clean_in keep < "$1" | region spec)")
+    [ -n "$d" ] && warns="${warns}the spec changed after approval (@$short): $d — get the plan re-approved (a new Approved by / on value in the plan; same day: add re-approved), or revert
+"
+  else
+    infos="${infos}the spec is not at $2 in the approval commit @$short: its changes cannot be checked
+"
+  fi
+  pshort=$(git -C "$ROOT" rev-parse --short "$pb")
+  d=$(changed_sections "$(git -C "$ROOT" show "$pb:$4" | clean_in keep | region plan)" "$(clean_in keep < "$3" | region plan)")
+  [ -n "$d" ] || return 0
+  # "amended" only for an A-<n> line not committed yet, over no committed unrecorded change: a
+  # committed one moved the baseline, or did not.
+  pbreg=$(git -C "$ROOT" show "$pb:$4" | clean_in keep | region plan)
+  new=""
+  if [ "$(git -C "$ROOT" show "HEAD:$4" 2>/dev/null | clean_in keep | region plan)" = "$pbreg" ]; then
+    new=$(new_ids "$(git -C "$ROOT" show "HEAD:$4" 2>/dev/null | clean_in | amendment_ids)" "$(clean "$3" | amendment_ids)")
+  fi
+  if [ -n "$new" ]; then infos="${infos}amended ($new): the plan's $d changed after approval (@$pshort)
+"
+  else warns="${warns}the plan changed after approval (@$pshort): $d — commit the change together with its A-<n> line (one committed after the change does not cover it), or get the plan re-approved (a new Approved by / on value)
+"
+  fi
+}
+
+# --- output: text, or JSON (shape in docs/commands.md) ---
+rows=0
+notes=""
+note() { notes="$notes$1
+"; }
+# jstr <text>: a JSON string; a multi-line text is one string with \n, other control characters
+# are \u00XX. jarr <lines>: an array of them.
+jstr() {
+  printf '%s' "$1" | awk '
+    BEGIN { for (i = 1; i < 32; i++) ctl = ctl sprintf("%c", i); printf "\"" }
+    { s = $0; o = ""
+      for (i = 1; i <= length(s); i++) { ch = substr(s, i, 1)
+        if (ch == "\\") o = o "\\\\"; else if (ch == "\"") o = o "\\\""; else if (ch == "\t") o = o "\\t"
+        else if ((j = index(ctl, ch)) > 0) o = o sprintf("\\u%04x", j); else o = o ch }
+      printf "%s%s", (NR > 1 ? "\\n" : ""), o }
+    END { printf "\"" }'
+}
+jarr() {
+  o=""
+  while IFS= read -r l; do [ -n "$l" ] && o="$o${o:+,}$(jstr "$l")"; done <<JARR
+$1
+JARR
+  printf '[%s]' "$o"
+}
+jrows=""
+emit() {  # emit <n> <name> <spec status> <plan status> <stage> <who> <next> <warnings> <notes> (one per line)
+  rows=$((rows + 1))
+  if [ "$json" -eq 1 ]; then
+    jrows="$jrows${jrows:+,}{\"spec\":$(jstr "$1"),\"name\":$(jstr "$2"),\"spec_status\":$(jstr "$3"),\"plan_status\":$(jstr "$4"),\"stage\":$(jstr "$5"),\"who\":$(jstr "$6"),\"next\":$(jstr "$7"),\"warnings\":$(jarr "$8"),\"notes\":$(jarr "${9:-}")}"
+    return 0
+  fi
+  if [ "$5" = "shipped" ]; then
+    printf '%s  %s  shipped\n' "$1" "$2"
+  else
+    printf '%s  %s  spec: %s · plan: %s  →  %s%s\n' "$1" "$2" "$3" "$4" "$5" "${6:+ ($6)}"
+    [ -n "$7" ] && printf '      next: %s\n' "$7"
+  fi
+  printf '%s' "$8" | while IFS= read -r w; do [ -n "$w" ] && printf '      WARN  %s\n' "$w"; done
+  printf '%s' "${9:-}" | while IFS= read -r w; do [ -n "$w" ] && printf '      note  %s\n' "$w"; done
+}
+
+[ "$has_git" -eq 1 ] || note "no git history: evidence age and changes after approval cannot be checked"
+
+[ "$json" -eq 1 ] || echo "== ANEW status =="
+for spec in "$ROOT/specs/active/"[0-9]*.md "$ROOT/specs/done/"[0-9]*.md; do
+  [ -f "$spec" ] || continue
+  b=$(basename "$spec" .md)
+  n=${b%%-*}
+  name=${b#*-}
+  plan="$ROOT/specs/plans/$n-plan.md"
+  planrel="specs/plans/$n-plan.md"
+  warns=""; infos=""
+  case "$spec" in
+    "$ROOT/specs/done/"*) emit "$n" "$name" "Shipped" "" "shipped" "" "" ""; continue ;;
+  esac
+  st=$(field "$spec" "Status")
+  if [ -f "$plan" ]; then
+    pst=$(field "$plan" "Status")
+    appr=$(field "$plan" "Approved by / on")
+    case "$appr" in ""|"-"|"—") approved=0 ;; *) approved=1 ;; esac
+  else
+    pst="—"; approved=0
+  fi
+  stage=""; who=""; next=""
+  case "$st" in
+    Draft)
+      if [ -f "$plan" ]; then stage="unclear: a plan exists but the spec is Draft"
+      else stage="ANALYZE"; who="human"; next="approve the spec (end of /analyze)"; fi ;;
+    Approved)
+      if [ ! -f "$plan" ]; then stage="PLAN"; who="Developer"; next="/plan — then the human approves the plan"
+      elif [ "$approved" -eq 0 ]; then stage="PLAN"; who="human"; next="approve the plan: Status: Approved + Approved by / on: <name>, <YYYY-MM-DD>"
+      else stage="BUILD"; who="Developer"; next="/build"; fi ;;
+    "In progress")
+      if [ ! -f "$plan" ]; then stage="unclear: the spec is In progress but has no plan"
+      elif [ "$approved" -eq 0 ]; then stage="unclear: build started but the plan has no Approved by / on"
+      elif ! clean "$plan" | section "Build evidence" | grep -qF 'CHECK GREEN (full,'; then
+        stage="BUILD"; who="Developer"; next="finish the plan's steps; record ./scripts/check (full) in ## Build evidence"
+      else
+        ew=$(evidence_age "$plan")
+        [ -n "$ew" ] && warns="$warns$ew
+"
+        round=$(newest_round "$plan")
+        kind=$(printf '%s\n' "$round" | head -n 1 | cut -f1)
+        head=$(printf '%s\n' "$round" | head -n 1 | cut -f2-); head=${head#\#\#\# }
+        reals=0; open=""; high=""; unread=""
+        if [ "$kind" = "review" ] || [ "$kind" = "verify" ]; then
+          fixsubs=""
+          [ "$has_git" -eq 1 ] && fixsubs=$(git -C "$ROOT" log --format=%s 2>/dev/null | grep -F "[plan $n/fix-")
+          while IFS="$TAB" read -r f t; do
+            [ -n "$f" ] || continue
+            reals=$((reals + 1))
+            id=${f%% *}
+            closed "$t" || open="$open${open:+, }$id"
+            case $(severity "$f") in high) high="$high${high:+, }$id" ;; unknown) unread="$unread${unread:+, }$id" ;; esac
+          done <<ROUND
+$(printf '%s\n' "$round" | sed 1d)
+ROUND
+          [ -n "$open" ] && [ "$has_git" -eq 0 ] && warns="${warns}no git history: status cannot see the fix commits
+"
+        fi
+        if [ -z "$round" ]; then
+          stage="REVIEW"; who="fresh session / read-only reviewer"
+          next="/review; then TRIAGE — human (a review writes no file: status cannot tell whether it ran)"
+        elif [ "$kind" = "unknown" ]; then
+          stage="unclear: '$head' under ## Triage is neither a review round nor a VERIFY round (### Review round <n> / ### VERIFY round <n>)"
+        elif [ -n "$open" ]; then
+          stage="FIX ROUND"; who="Developer"
+          next="fix the open real findings of '$head' ($open): commits labeled [plan $n/fix-k], each finding's Note names its fix-k or commit sha; then a Medium or higher round is re-reviewed, a Low/Info-only one goes on to VERIFY"
+        elif [ -n "$high" ]; then
+          stage="REVIEW"; who="fresh session / read-only reviewer"
+          next="re-review the fix diff of '$head' (real $high: Medium or higher; a fix round on documents only goes on to VERIFY); then TRIAGE — human (a clean re-review writes no file: status cannot tell whether it ran)"
+        elif [ -n "$unread" ]; then
+          stage="unclear: the severity of $unread in '$head' cannot be read — a round with a Medium or higher finding is re-reviewed, a Low/Info-only one goes on to VERIFY"
+        elif [ "$kind" = "review" ] || [ "$reals" -gt 0 ]; then
+          stage="VERIFY"; who="QA"
+          next="/verify in a fresh session (in a sensitive area, docs/domain.md, every fix round is re-reviewed first; a clean VERIFY writes no triage table: status cannot tell whether it ran)"
+        else
+          stage="SHIP"; who="human"
+          next="DoD, tick the proven criteria, move the spec to specs/done/ with Status: Shipped in the PR, merge; an unprovable criterion is moved out, never waived — R-08"
+        fi
+      fi ;;
+    *) stage="unclear: spec status '${st:-none}' is not Draft, Approved or In progress" ;;
+  esac
+  [ "$approved" -eq 1 ] && drift "$spec" "specs/active/$b.md" "$plan" "$planrel"
+  emit "$n" "$name" "${st:-—}" "${pst:-—}" "$stage" "$who" "$next" "$warns" "$infos"
+done
+if [ "$json" -eq 1 ]; then
+  printf '{"anew_status":1,"rows":[%s],"notes":%s}\n' "$jrows" "$(jarr "$notes")"
+  exit 0
+fi
+[ "$rows" -gt 0 ] || echo "no work yet — start with /new-feature or /analyze"
+printf '%s' "$notes" | while IFS= read -r l; do [ -n "$l" ] && printf 'note  %s\n' "$l"; done
+exit 0

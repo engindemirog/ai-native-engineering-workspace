@@ -29,7 +29,7 @@ Always available, outside the loop:
 
 | Group | Commands |
 |---|---|
-| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
+| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
 
@@ -89,6 +89,61 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Common mistake:** reading a local gate `WARN` (spec/plan consistency) as harmless — under
   `--strict`, in CI, it is a `FAIL`.
 
+### `scripts/status`
+- **What it does:** where every piece of work stands — one row per spec in `specs/active/` and
+  `specs/done/` with its spec and plan status, the stage, who acts next and the next step, in the
+  words of `workflows/segments.md` (status follows that page: a change there changes status). The
+  stage comes from the files, in this order: spec `Draft` → ANALYZE (human); `Approved` without
+  plan → PLAN (Developer); plan without `Approved by / on` → PLAN (human); approved plan, spec not
+  started → BUILD; `In progress` without a `CHECK GREEN (full, …)` line in `## Build evidence` →
+  BUILD; with it and no triage table → REVIEW (a review writes no file: status says it cannot tell
+  whether it ran); the newest `### Review round` / `### VERIFY round` table (any case) with a
+  `real` finding whose Note cell names no fix → FIX ROUND. A finding is closed by its own Note: a
+  `fix-<k>` with a `[plan NNNN/fix-k]` commit anywhere in the history, or the sha of a commit
+  labeled `[plan NNNN/fix-…]` (a sha cited as background closes nothing); other words read as
+  open, and the order of the commits does not matter. Every real finding closed: one of them
+  Medium or higher (a `C-`/`H-`/`M-` id, or a severity word among the first two words of the
+  Finding cell) → REVIEW again on the fix diff; Low/Info only → VERIFY; a severity it cannot read
+  → unclear. A review round without real findings → VERIFY (a clean VERIFY writes no
+  table: same caveat); a VERIFY round without real findings → SHIP (human). Any other `###`
+  heading under `## Triage`, and anything else, is `unclear: <what is missing>`, never a stage.
+  Records are read outside HTML comments and fenced blocks — a template comment is not a record.
+  Two warnings per active row. **Evidence older than the code:** files outside `specs/` and
+  `.anew-dev/` changed after the last full line's `@<sha>`, committed or not (`docs/testing.md`,
+  rule 6), or `<sha>` is not a commit here. **Changed after approval:** the spec's Intent,
+  Requirements, User experience, Constraints and criterion texts, against the newest commit that
+  set a new `Approved by / on` value (a re-approval writes a new value — same day: add
+  `re-approved` — and clears the warning); the plan's Files, Ordered steps, Risks and Criterion ↔
+  test map, against the newer of that commit and the newest one that added an `A-<n>` line while
+  those sections were unchanged just before it (the `@<sha>` in the warning). Fenced blocks are
+  compared like any line (known limit: a four-backtick fence ends on an inner three-backtick
+  line). Status lines, ticked boxes, a criterion moved out per the template (a wrapped one too;
+  a strike without the `→ moved to` tail is a change), build evidence, triage and amendments are
+  not changes; a plan change with a new, uncommitted `A-<n>` line reads `amended (A-<n>)`. An
+  amendment covers neither a later nor an earlier unrecorded change: commit a plan edit together
+  with its `A-<n>` line (one committed after the edit does not cover it); otherwise the warning
+  stays until the plan is re-approved. A spec change is cleared by a new `Approved by / on`
+  value in the plan. A squash or rebase moves the approval
+  commit. Without git, or with an approval not
+  yet committed, the row says the check could not run — never clean.
+- **When to use it:** at the start of a session, after a gate, whenever you wonder whose turn it is.
+- **Reads / writes:** reads `specs/` and git; writes nothing (not `.anew-dev/`, and not
+  `.git/index`: git runs without optional locks).
+- **Stops at:** the rows, `WARN` and `note` lines; `no work yet — start with /new-feature or
+  /analyze` when there is no spec. Exit 0 whenever it could read the workspace, warnings included.
+  `--json` prints one document, stable within a minor version:
+  `{"anew_status":1,"rows":[{"spec","name","spec_status","plan_status","stage","who","next",
+  "warnings":[…],"notes":[…]}],"notes":[…]}` — all values strings (control characters as
+  `\u00XX`); a shipped row has stage
+  `shipped` and empty who, next and plan status.
+- **Lite / Strict:** no difference.
+- **Refusal:** an unknown argument prints `usage: scripts/status [--json]` (exit 2).
+- **Common mistake:** reading `REVIEW` or `VERIFY` as "it has not run" — a clean review,
+  re-review or VERIFY writes no table, so status cannot tell, and the row stays at REVIEW or
+  VERIFY until the next record. To move it on, record the clean round as its heading with no rows
+  (`### Review round 2 — <name>, <date> (clean)`); a clean review round reads VERIFY, a clean
+  VERIFY round reads SHIP.
+
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in
   order, fail fast. `--fast` runs only the steps tagged `[fast]`. Before the first step it runs
@@ -127,8 +182,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   check.conf changes; or asking a human to idle the machine — attribution makes that unnecessary.
 
 ### `scripts/selftest`
-- **What it does:** proves that `scripts/check`, `scripts/doctor` and `scripts/residue` behave as
-  documented, scenario by scenario.
+- **What it does:** proves that `scripts/check`, `scripts/doctor`, `scripts/residue` and
+  `scripts/status` behave as documented, scenario by scenario.
 - **When to use it:** after changing any ANEW script; CI runs it after doctor.
 - **Reads / writes:** copies the ANEW core into a temp dir outside the repo; writes nothing in the repo.
 - **Stops at:** `== selftest: <n> passed, <m> failed ==` (exit 1 on any failure).

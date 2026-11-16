@@ -164,7 +164,8 @@ branch protection setting makes "no force-push" Enforced for every tool.
 | `scripts/check` | The single verification contract: humans, agents, hooks, and CI all run this one command. Stack-specific internals live in `check.conf`, written at bootstrap. `--fast` runs only the steps tagged `[fast]` for the inner loop; only the full run is evidence. Reports each step's duration and the total. |
 | `scripts/doctor` | Workspace health: structure, configuration state, adapter presence, spec/plan gate consistency (`--strict` in CI), evidence hygiene warnings. |
 | `scripts/residue` | The residue test (`docs/testing.md`, Resource hygiene): runs check twice and names every process check left running, judged by its parent chain (what others start meanwhile never counts; memory is reported, not judged). Bootstrap runs it for both profiles; BUILD reruns it whenever check.conf changes. |
-| `scripts/selftest` | Proves `scripts/check`, `scripts/doctor` and `scripts/residue` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
+| `scripts/status` | Where every piece of work stands: one row per spec with its stage, who acts next and the next step, read from the files. Warns when the build evidence is older than the code, or approved content changed after approval. Read-only; `--json` for tools. |
+| `scripts/selftest` | Proves `scripts/check`, `scripts/doctor`, `scripts/residue` and `scripts/status` behave as documented: every scenario in a throwaway copy outside the repo. Runs in CI. |
 | `scripts/init` | Installs an adapter; keeps existing files unless `--force`. |
 | `CHANGELOG.md` | What changed between versions of the workspace, for template users upgrading their copy. |
 | `.anew-version` | The ANEW version this workspace is based on — the starting point of every upgrade (CHANGELOG, "How to upgrade"). `scripts/doctor` prints it. |

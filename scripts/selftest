@@ -1,5 +1,6 @@
 #!/bin/sh
-# ANEW selftest — proves that scripts/check, scripts/doctor and scripts/residue behave as documented.
+# ANEW selftest — proves that scripts/check, scripts/doctor, scripts/residue and scripts/status
+# behave as documented.
 # Every scenario runs in a throwaway copy of this workspace in a temp dir OUTSIDE the repo
 # (docs/testing.md, Evidence policy), asserts on the real output and exit code, and is deleted.
 # Exit 0 = all scenarios pass, exit 1 = at least one failed. Runs in CI next to doctor.
@@ -636,6 +637,216 @@ fi
 
 reset; rm -f "$W/docs/testing.md"
 doctor;            exits 1 "core file missing"; has "FAIL  missing: docs/testing.md" "missing core file is a failure"
+
+# --- scripts/status: the same git-initialised copy, one fixture spec (and plan) per scenario ---
+status() { run sh "$W/scripts/status" "$@"; }
+mkspec() { put "specs/active/$1-demo.md" "# Spec $1 — demo" "" "- Status: $2" "- Mode: lite" \
+  "- Plan: \`specs/plans/$1-plan.md\`" "- Self-critique: done" "" "## Intent" "Demo intent." "" \
+  "## Requirements" "1. It works." "" "## Acceptance criteria" "- [ ] AC-1 — it works"; }
+mkplan() { n=$1; a=$2; shift 2; put "specs/plans/$n-plan.md" "# Plan $n — demo" "" \
+  "- Spec: \`specs/active/$n-demo.md\`" "- Status: Approved" "- Approved by / on: $a" "" \
+  "## Files to change or add" "- app.txt" "" "## Ordered steps" "1. Write app.txt." "" \
+  "## Build evidence" "$@"; }
+GREEN="- CHECK GREEN (full, 1 steps, 1 s) @$BASE"
+
+echo "== scripts/status =="
+reset; status
+exits 0 "status: empty workspace";                has "no work yet — start with /new-feature or /analyze" "status: empty state is named"
+reset; mkspec 0001 Draft; status
+has "0001  demo  spec: Draft · plan: —  →  ANALYZE (human)" "status: Draft → ANALYZE, human"
+reset; mkspec 0001 Approved; status
+has "→  PLAN (Developer)" "status: approved spec without plan → PLAN, Developer"
+mkplan 0001 "—"; status
+has "plan: Approved  →  PLAN (human)" "status: plan without approval → the human approves it"
+mkplan 0001 "selftest, 2026-01-01"; status
+has "→  BUILD (Developer)" "status: approved plan, spec not started → BUILD";  has "next: /build" "… next is /build"
+mkspec 0001 "In progress"; status
+has "finish the plan's steps" "status: in progress without evidence → BUILD continues"
+mkplan 0001 "selftest, 2026-01-01" '<!-- CHECK GREEN (full, 1 steps, 1 s) @abc1234 -->'; status
+has "finish the plan's steps" "status: an evidence line inside an HTML comment is not evidence"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN"; status
+has "→  REVIEW (fresh session / read-only reviewer)" "status: full evidence, no triage → REVIEW"
+has "a review writes no file" "… and says it cannot tell whether the review ran"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| M-1 Medium | real | fix-1 |" "| L-2 Low | noise | rationale |"
+commit "triage"; status
+has "→  FIX ROUND (Developer)" "status: a real finding with no fix commit after its round → FIX ROUND"
+has "[plan 0001/fix-k]" "… next names the fix commit label"
+put app.txt fixed; commit "fix: m-1 [plan 0001/fix-1]"; status
+has "→  REVIEW (fresh session / read-only reviewer)" "status: a fixed round with a real Medium finding → REVIEW again"
+has "re-review the fix diff of 'Review round 1" "… on the fix diff, as segments.md says"
+printf '%s\n' "" "### Review round 2 — selftest, 2026-01-02 (clean)" >> "$W/specs/plans/0001-plan.md"; status
+has "→  VERIFY (QA)" "status: a clean re-review recorded as a heading with no rows → VERIFY"
+git -C "$W" checkout -q -- specs/plans/0001-plan.md
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| M-1 Medium | real | fix-1 |" "| M-2 Medium | real | |"; status
+has "→  FIX ROUND (Developer)" "status: one fix commit does not close a second real finding"
+has "findings of 'Review round 1 — selftest, 2026-01-01' (M-2)" "… and the open one is named"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| M-1 Medium | real | fix-1 |" "| M-2 Medium | real | fix-2 |"; status
+has "(M-2): commits labeled" "status: a fix-<k> with no [plan NNNN/fix-<k>] commit stays open"
+reset; mkspec 0001 "In progress"; put app.txt fixed; commit "fix: l-1 [plan 0001/fix-1]"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-1 Low | real | fix-1 |"; status
+has "→  VERIFY (QA)" "status: a table written after its fix commits, Low only → VERIFY"
+commit "triage"; status
+has "→  VERIFY (QA)" "status: … and once that table is committed"
+reset; mkspec 0001 "In progress"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-1 Low | real | fix-1 |"
+put app.txt fixed; commit "fix: l-1 [plan 0001/fix-1], table in the same commit"; status
+has "→  VERIFY (QA)" "status: a table committed together with its fix"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-1 Low | real | fixed in $(git -C "$W" rev-parse --short HEAD) |" \
+  "| I-2 Info | real | done |"; status
+has "findings of 'Review round 1 — selftest, 2026-01-01' (I-2)" "status: a fix commit's sha closes a finding, other words do not"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-1 Low | real | introduced in $(git -C "$W" rev-parse --short "$BASE"); not fixed yet |"; status
+has "→  FIX ROUND (Developer)" "status: a sha cited as background (no [plan NNNN/fix- label) closes nothing"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| V-1 — the info banner hides Save; Medium | real | fix-1 |"; status
+has "unclear: the severity of V-1" "status: a severity word deep in the text is not read as the severity"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| 1 — the button is grey | real | fix-1 |"; status
+has "unclear: the severity of 1 in 'Review round 1" "status: a severity status cannot read is unclear"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
+  "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| F-1 Low | real | fix-1 |"; status
+has "→  VERIFY (QA)" "status: a VERIFY round with its Low findings fixed → VERIFY again"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
+  "### Verify round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| F-1 Low | real | |"; status
+has "→  FIX ROUND (Developer)" "status: triage headings are read in any case"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Notes from the call" "| Finding | Verdict | Note |"; status
+has "unclear: 'Notes from the call' under ## Triage is neither" "status: an unknown heading under Triage is unclear"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |"; status
+has "→  VERIFY (QA)" "status: a review round without real findings → VERIFY"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
+  "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |"; status
+has "→  SHIP (human)" "status: a VERIFY round without real findings → SHIP"
+# Evidence age: the last full line's @<sha> against later changes outside specs/ (rule 6).
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "evidence"; status
+hasnt "evidence is older" "status: a specs-only commit after the evidence warns nothing"
+put app.txt changed; status
+has "evidence is older than the code: CHECK GREEN @$BASE, then changed: app.txt" "status: an uncommitted code change makes the evidence old"
+commit "code"; status
+has "then changed: app.txt — re-run ./scripts/check" "status: a code commit after the evidence makes it old"
+mkplan 0001 "selftest, 2026-01-01" "- CHECK GREEN (full, 1 steps, 1 s) @deadbee"; status
+has "evidence @deadbee is not a commit in this repository" "status: an unknown evidence sha is named"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "- CHECK GREEN (full, 1 steps, 1 s) @$(git -C "$W" rev-parse HEAD)"; status
+hasnt "evidence is older" "status: the last evidence line is the one that counts"
+put "çalışma.txt" new; status
+has "then changed: çalışma.txt — re-run" "status: a path with non-ASCII letters is named as it is, not octal-quoted"
+# Changed after approval: the approval commit's spec and plan against the working files.
+edit() { sed "$2" "$W/$1" > "$W/.edit" && mv "$W/.edit" "$W/$1"; }
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; status
+has "note  the plan approval is not committed yet" "status: an uncommitted approval is named, never clean"
+commit "approved"; status
+hasnt "changed after approval" "status: no change since the approval warns nothing"
+edit specs/active/0001-demo.md 's/^- \[ \] AC-1/- [x] AC-1/'
+printf '%s\n' "- CHECK GREEN (full, 1 steps, 1 s) @$BASE" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-1 Low | noise | ok |" >> "$W/specs/plans/0001-plan.md"; status
+hasnt "changed after approval" "status: ticks, new evidence and a triage table are not changes after approval"
+edit specs/active/0001-demo.md 's/^- \[x\] AC-1 — it works$/- [ ] ~~AC-1 — it works~~ → moved to B-1 | selftest, 2026-01-02, why/'; status
+hasnt "changed after approval" "status: a criterion moved out per the template is not a change after approval"
+edit specs/plans/0001-plan.md 's/^1\. Write app\.txt\.$/1. Write app.txt twice./'; status
+has "WARN  the plan changed after approval (@" "status: a changed plan step after approval warns"
+has "Ordered steps — commit the change together with its A-<n> line" "… naming the section and what to do"
+printf '%s\n' "" "## Amendments" "A-1 — step 1 writes twice — review round 1 — selftest, 2026-01-02" >> "$W/specs/plans/0001-plan.md"; status
+has "note  amended (A-1): the plan's Ordered steps changed after approval" "status: the same change with a new A-<n> line reads amended"
+hasnt "WARN  the plan changed" "… and does not warn"
+edit specs/active/0001-demo.md 's/AC-1 — it works/AC-1 — it works fast/'; status
+has "WARN  the spec changed after approval (@" "status: a changed criterion text after approval warns"
+has "Acceptance criteria — get the plan re-approved" "… naming the section"
+rm -rf "$TMP/nogit"; cp -R "$W" "$TMP/nogit"; rm -rf "$TMP/nogit/.git"
+run sh "$TMP/nogit/scripts/status"
+has "note  no git history: changes after approval cannot be checked" "status: without git the row says the check could not run"
+has "note  no git history: evidence age" "… and a note says so for the whole run"
+rm -rf "$TMP/nogit"
+# A re-approval is the new baseline; a committed amendment moves the plan's baseline, never past it.
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "approved"
+edit specs/active/0001-demo.md 's/^Demo intent\.$/Demo intent, widened./'; status
+has "WARN  the spec changed after approval (@" "status: a changed Intent after approval warns"
+edit specs/plans/0001-plan.md 's/selftest, 2026-01-01/selftest, 2026-01-05/'; status
+has "note  the plan approval is not committed yet" "status: a re-approval not committed yet is named"
+commit "re-approved"; status
+hasnt "changed after approval" "status: a committed re-approval is the new baseline"
+hasnt "not committed yet" "… and is read as committed"
+edit specs/plans/0001-plan.md 's/^1\. Write app\.txt\.$/1. Write app.txt twice./'
+printf '%s\n' "" "## Amendments" "A-1 — step 1 writes twice — review round 1 — selftest, 2026-01-06" >> "$W/specs/plans/0001-plan.md"
+commit "A-1"; status
+hasnt "changed after approval" "status: a change committed with its amendment warns nothing"
+edit specs/plans/0001-plan.md 's/^1\. Write app\.txt twice\.$/1. Delete everything./'; status
+has "WARN  the plan changed after approval (@$(git -C "$W" rev-parse --short HEAD)): Ordered steps" "status: a change after a committed amendment warns again"
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "approved"; ap=$(git -C "$W" rev-parse --short HEAD)
+edit specs/plans/0001-plan.md 's/^- app\.txt$/- app.txt, lib.txt/'; commit "unrecorded change"
+printf '%s\n' "" "## Amendments" "A-1 — step wording — review round 1 — selftest, 2026-01-06" >> "$W/specs/plans/0001-plan.md"
+commit "A-1, unrelated"; status
+has "WARN  the plan changed after approval (@$ap): Files to change or add" "status: an amendment does not cover an earlier unrecorded change"
+has "(one committed after the change does not cover it), or get the plan re-approved (a new Approved by / on value)" "… and the warning names both ways out"
+printf '%s\n' "A-2 — Files gains lib.txt — review round 1 — selftest, 2026-01-07" >> "$W/specs/plans/0001-plan.md"; status
+has "WARN  the plan changed after approval (@$ap)" "status: an uncommitted amendment does not cover a committed unrecorded change"
+git -C "$W" checkout -q -- specs/plans/0001-plan.md
+rm "$W/specs/plans/0001-plan.md"; commit "plan removed"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN"; edit specs/plans/0001-plan.md 's/^- app\.txt$/- app.txt, lib.txt/'; commit "plan re-added"; status
+has "WARN  the plan changed after approval (@$ap)" "status: deleting and re-adding the plan does not reset its approval"
+# Approved content inside a fence is compared; an inline fence hides nothing.
+reset; mkspec 0001 "In progress"
+put specs/plans/0001-plan.md "# Plan 0001 — demo" "" "- Spec: \`specs/active/0001-demo.md\`" "- Status: Approved" \
+  "- Approved by / on: selftest, 2026-01-01" "" "## Files to change or add" "- app.txt" "" "## Ordered steps" \
+  "1. Clean:" '```sh' "rm -i build/" '```' '```make``` builds it' "" "## Build evidence" "$GREEN"
+commit "approved"; status
+has "→  REVIEW (fresh session" "status: a line with an inline fence does not hide the rest of the file"
+hasnt "changed after approval" "… and no change warns nothing"
+edit specs/plans/0001-plan.md 's/^rm -i build\/$/rm -rf build\//'; status
+has "WARN  the plan changed after approval (@" "status: a change inside a fenced block after approval warns"
+# Not drift: status lines, and a wrapped criterion moved out per the template.
+reset; put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: In progress" "" "## Intent" "Demo intent." "" \
+  "## Acceptance criteria" "- [ ] AC-1 — it works and it" "  wraps to a second line"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "approved"
+edit specs/active/0001-demo.md 's/^- Status: In progress$/- Status: Approved/'
+edit specs/plans/0001-plan.md 's/^- Status: Approved$/- Status: Superseded/'; status
+hasnt "changed after approval" "status: a spec or plan status change is not a change after approval"
+put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: In progress" "" "## Intent" "Demo intent." "" \
+  "## Acceptance criteria" "- [ ] ~~AC-1 — it works and it" "  wraps to a second line~~ → moved to B-1 | selftest, 2026-01-02, why"; status
+hasnt "changed after approval" "status: a wrapped criterion moved out per the template is not a change"
+edit specs/active/0001-demo.md 's/wraps to a second line~~/wraps to a third line~~/'; status
+has "WARN  the spec changed after approval (@" "status: a change on a criterion's continuation line warns"
+has "(a new Approved by / on value in the plan; same day: add re-approved)" "… and says how a same-day re-approval is written"
+put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: In progress" "" "## Intent" "Demo intent." "" \
+  "## Acceptance criteria" "- [ ] ~~AC-1 — it works and it" "  wraps to a second line~~"; status
+has "WARN  the spec changed after approval (@" "status: a struck criterion without a moved-to tail is a change (never waived)"
+
+reset; put specs/done/0001-demo.md "# Spec 0001 — demo" "" "- Status: Shipped"; status
+has "0001  demo  shipped" "status: a spec in specs/done/ is shipped"
+reset; mkspec 0001 "In progress"; status
+has "unclear: the spec is In progress but has no plan" "status: a state outside the rules is unclear, not a stage"
+reset; mkspec 0001 Draft; mkplan 0001 "—"; status
+has "unclear: a plan exists but the spec is Draft" "status: a plan for a Draft spec is unclear"
+# --json: the same rows for tools, in the shape docs/commands.md documents.
+reset; mkspec 0001 Draft; put specs/done/0002-demo.md "# Spec 0002 — demo" "" "- Status: Shipped"; status --json
+exits 0 "status --json: exit 0"
+has '{"anew_status":1,"rows":[{"spec":"0001","name":"demo","spec_status":"Draft","plan_status":"—","stage":"ANALYZE","who":"human","next":"approve the spec (end of /analyze)","warnings":[],"notes":[]},{"spec":"0002","name":"demo","spec_status":"Shipped","plan_status":"","stage":"shipped","who":"","next":"","warnings":[],"notes":[]}],"notes":[]}' "status --json: exact document for a two-row workspace"
+hasnt "== ANEW status ==" "status --json: no text header"
+reset; put specs/active/0001-demo.md "# Spec 0001 — demo" "" '- Status: Dr"aft\x	y'; status --json
+has '"stage":"unclear: spec status '"'"'Dr\"aft\\x\ty'"'"' is not Draft, Approved or In progress"' "status --json: quotes, backslashes and tabs are escaped"
+reset; put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: Dr$(printf '\001')aft$(printf '\033')[31m"; status --json
+has "Dr\\u0001aft\\u001b[31m" "status --json: other control characters are \\u00XX"
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "- CHECK GREEN (full, 1 steps, 1 s) @deadbee"; status --json
+has '"warnings":["evidence @deadbee is not a commit in this repository — re-run ./scripts/check and record it"],"notes":["the plan approval is not committed yet: changes after approval cannot be checked"]' "status --json: a row carries its warnings and notes"
+reset; status --json
+has '{"anew_status":1,"rows":[],"notes":[]}' "status --json: an empty workspace is an empty list"
+# Read-only: a run with every check active leaves the working tree as it was.
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "approved"
+put app.txt changed; edit specs/plans/0001-plan.md 's/^1\. Write app\.txt\.$/1. Changed./'
+before=$(git -C "$W" status --porcelain); status; status --json; after=$(git -C "$W" status --porcelain)
+[ "$before" = "$after" ]; report $? "status: a run changes no file (git status --porcelain unchanged)"
+touch -t 202001010000 "$W/README.md"; before=$(cksum < "$W/.git/index"); status; after=$(cksum < "$W/.git/index")
+[ "$before" = "$after" ]; report $? "status: a run does not refresh .git/index (no optional locks)"
+status --jsno
+exits 2 "status: unknown argument";               has "usage: scripts/status [--json]" "status: unknown argument prints the usage"
 
 echo "== selftest: $passed passed, $failed failed =="
 [ "$failed" -eq 0 ] || exit 1
