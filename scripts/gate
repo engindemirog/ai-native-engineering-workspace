@@ -91,10 +91,11 @@ case "$row" in *'"warnings":[]'*) warned=0 ;; *) warned=1 ;; esac
 case "$row" in *"the plan approval is not committed yet"*) uncommitted=1 ;; *) uncommitted=0 ;; esac
 at() { refuse "$n is at $stage${who:+ ($who)}; $cmd decides $1"; }
 
-# set_line <file> <label> <value>: the first "- <label>:" line outside comments and fences becomes
-# "- <label>: <value>"; a comment that opens on it and spans lines is dropped up to its "-->".
+# set_line <label> <value> (stdin → stdout): the first "- <label>:" line outside comments and fences
+# becomes "- <label>: <value>"; a comment that opens on it and spans lines is dropped up to its
+# "-->". Exit 3 when there is no such line.
 set_line() {
-  tr -d '\r' < "$1" | GATE_VAL="- $2: $3" awk -v lab="- $2:" '
+  tr -d '\r' | GATE_VAL="- $1: $2" awk -v lab="- $1:" '
     skip { if (index($0, "-->")) { skip = 0; r = substr($0, index($0, "-->") + 3)
                                                 if (r !~ /^[ \t]*$/) print r }
                         next }
@@ -110,31 +111,52 @@ set_line() {
         i = index(line, "<!--"); if (!i) break; line = substr(line, i + 4); incom = 1 } }
     END { if (!done) exit 3 }'
 }
-# write <file> <command…>: the command's output replaces the file (mode kept); a failure leaves it.
-tmp=""
-trap 'rm -f "$tmp"' EXIT
-write() {
-  f=$1; shift
-  tmp="$f.gate.$$"
-  "$@" > "$tmp" || { rm -f "$tmp"; refuse "could not write $f"; }
-  cat "$tmp" > "$f"; rm -f "$tmp"; tmp=""
-}
+# Every new content is prepared in $T before any target is touched; a refusal up to the commit
+# writes nothing (Requirement 4, review round 1 L-1).
+T=$(mktemp -d "${TMPDIR:-/tmp}/anew-gate.XXXXXX") || refuse "mktemp failed"
+trap 'rm -rf "$T"' EXIT
+trap 'rm -rf "$T"; exit 130' INT TERM
 # The targets' uncommitted edits, named before writing (Requirement 6).
 edits=""
 had_edits() { for p in "$@"; do [ -z "$(git -C "$ROOT" status --porcelain -- "$p")" ] || edits="$edits${edits:+, }$p"; done; }
+# snapshot <path>…: each path's working file and index entry, so a failed commit can put them back.
+snap=""
+snapshot() {
+  i=0
+  for p in "$@"; do
+    i=$((i + 1)); snap="$snap$p$NL"
+    [ ! -e "$ROOT/$p" ] || cp -p "$ROOT/$p" "$T/orig.$i"
+    git -C "$ROOT" ls-files -s -- "$p" > "$T/idx.$i"
+  done
+}
+rollback() {
+  i=0
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    i=$((i + 1))
+    if [ -s "$T/idx.$i" ]; then git -C "$ROOT" update-index --index-info < "$T/idx.$i"
+    else git -C "$ROOT" rm -q --cached --ignore-unmatch -- "$p" >/dev/null 2>&1; fi
+    if [ -e "$T/orig.$i" ]; then cat "$T/orig.$i" > "$ROOT/$p"; else rm -f "$ROOT/$p"; fi
+  done <<SNAP
+$snap
+SNAP
+}
+fail() { rollback; refuse "$1 — nothing was written: $(printf '%s' "$snap" | tr '\n' ' ')restored as before"; }
+put_file() { cat "$T/$1" > "$ROOT/$2" || fail "could not write $2"; }   # mode kept
 commit() {  # commit <message> <path>… — only these paths; the rest of the index stays as it is
   m=$1; shift
   # a path a move took away is not added: the pathspec commit records its removal
   (cd "$ROOT" && for p in "$@"; do [ ! -e "$p" ] || git add -- "$p" || exit 1; done &&
-    git commit -q -m "$m" -- "$@") || refuse "git commit failed"
+    git commit -q -m "$m" -- "$@") || fail "git commit failed"
   sha=$(git -C "$ROOT" rev-parse --short HEAD)
 }
 
 case "$cmd" in
   approve-spec)
     [ "$stage" = "ANALYZE" ] || at "ANALYZE (a Draft spec)"
-    had_edits "$specrel"
-    write "$spec" set_line "$spec" "Status" "Approved"
+    set_line "Status" "Approved" < "$spec" > "$T/spec" || refuse "$specrel has no '- Status:' line"
+    had_edits "$specrel"; snapshot "$specrel"
+    put_file spec "$specrel"
     commit "gate: approve-spec $n — Status: Approved" "$specrel"
     what="spec approved"; file=$specrel ;;
   approve-plan)
@@ -146,9 +168,10 @@ case "$cmd" in
       "$name, $today") val="$name, $today (re-approved)" ;;
       *) val="$name, $today" ;;
     esac
-    had_edits "$planrel"
-    write "$plan" set_line "$plan" "Status" "Approved"
-    write "$plan" set_line "$plan" "Approved by / on" "$val"
+    set_line "Status" "Approved" < "$plan" > "$T/p1" || refuse "$planrel has no '- Status:' line"
+    set_line "Approved by / on" "$val" < "$T/p1" > "$T/plan" || refuse "$planrel has no '- Approved by / on:' line"
+    had_edits "$planrel"; snapshot "$planrel"
+    put_file plan "$planrel"
     commit "gate: approve-plan $n — Approved by / on: $val" "$planrel"
     what="plan approved ($val)"; file=$planrel ;;
   triage)
@@ -163,7 +186,6 @@ case "$cmd" in
     head="### $label round $k — $name, $today"
     table="$head"
     [ "$nf" -gt 0 ] && table="$table$NL| Finding | Verdict (real / noise / defer / investigate) | Note (fix commit, rationale, B-<n>, A-<n>) |$NL|---|---|---|$NL${rows%"$NL"}"
-    had_edits "$planrel"
     append() {
       tr -d '\r' < "$plan" | GATE_T=$table awk '
         BEGIN { t = ENVIRON["GATE_T"] }
@@ -175,7 +197,9 @@ case "$cmd" in
         { print }
         END { if (ins && !put) out(); else if (!put) { print ""; print "## Triage"; print ""; print t } }'
     }
-    write "$plan" append
+    append > "$T/plan" || refuse "could not read $planrel"
+    had_edits "$planrel"; snapshot "$planrel"
+    put_file plan "$planrel"
     commit "gate: triage $n — $label round $k ($nf finding(s))" "$planrel"
     what="$label round $k, $nf finding(s)"; file=$planrel ;;
   ship)
@@ -185,19 +209,44 @@ case "$cmd" in
     git -C "$ROOT" ls-files --error-unmatch -- "$specrel" >/dev/null 2>&1 || refuse "$specrel is not committed"
     donerel="specs/done/$b"
     [ ! -e "$ROOT/$donerel" ] || refuse "$donerel already exists"
-    had_edits "$specrel" "$planrel"
-    tick() {
-      set_line "$spec" "Status" "Shipped" | awk '
-        index($0, "## ") == 1 { sec = $0 }
-        /^- \[ \] / && ((index(sec, "## Acceptance criteria") == 1 && $0 !~ /~~/) || index(sec, "## Definition of Done") == 1) {
-          sub(/^- \[ \] /, "- [x] ") }
-        { print }'
-    }
-    write "$spec" tick
-    write "$plan" awk -v a="$specrel" -v d="$donerel" '
-      !done && index($0, "- Spec:") == 1 && (i = index($0, a)) { $0 = substr($0, 1, i - 1) d substr($0, i + length(a)); done = 1 }
-      { print }' "$plan"
-    git -C "$ROOT" mv -- "$specrel" "$donerel" || refuse "git mv failed"
+    set_line "Status" "Shipped" < "$spec" > "$T/s1" || refuse "$specrel has no '- Status:' line"
+    # Criterion lines as doctor reads a new ship: the first checkbox followed by an AC-/CB-/PB- id,
+    # any bullet or section (a mini spec too). Moved out = a "→ moved to" / "-> moved to" target
+    # after the id (after its closing ~~ when the id is struck), outside backticks: left as is.
+    # A struck id without a target is refused; every other unticked criterion is ticked.
+    LC_ALL=C GATE_BAD="$T/bad" awk '
+      index($0, "## ") == 1 { sec = $0 }
+      match($0, /\[[ xX]?\][^A-Za-z0-9]*(AC|CB|PB)-[0-9]+/) {
+        s = RSTART; m = substr($0, s, RLENGTH); bl = index(m, "]")
+        if (substr(m, 1, bl) !~ /[xX]/) {
+          match(m, /(AC|CB|PB)-[0-9]+/); id = substr(m, RSTART, RLENGTH)
+          rest = substr($0, s + RSTART - 1 + RLENGTH)
+          struck = (index($0, "~~" id) || index($0, "~~ " id))
+          if (struck && (j = index(rest, "~~"))) rest = substr(rest, j + 2)
+          gsub(/`[^`]*`/, "", rest)
+          tgt = ""   # what follows the last marker, as doctor takes it
+          while (1) {
+            a = index(rest, "\342\206\222 moved to "); b = index(rest, "-> moved to ")
+            if (!a && !b) break
+            if (!a || (b && b < a)) rest = substr(rest, b + 12); else rest = substr(rest, a + 13)
+            tgt = rest }
+          if (tgt !~ /[^ \t]/) {
+            if (struck) { print id > ENVIRON["GATE_BAD"]; bad = 1 }
+            else $0 = substr($0, 1, s - 1) "[x]" substr($0, s + bl) } }
+        print; next }
+      index(sec, "## Definition of Done") == 1 { sub(/^- \[ \] /, "- [x] ") }
+      { print }
+      END { exit bad ? 4 : 0 }' < "$T/s1" > "$T/spec" \
+      || refuse "$specrel: $(tr '\n' ' ' < "$T/bad")is struck without a '→ moved to' target — write it (R-08) or unstrike it"
+    GATE_A=$specrel GATE_D=$donerel awk '
+      !done && index($0, "- Spec:") == 1 && (i = index($0, ENVIRON["GATE_A"])) {
+        $0 = substr($0, 1, i - 1) ENVIRON["GATE_D"] substr($0, i + length(ENVIRON["GATE_A"])); done = 1 }
+      { print }
+      END { if (!done) exit 3 }' < "$plan" > "$T/plan" \
+      || refuse "$planrel: no '- Spec:' line names $specrel — fix it by hand first"
+    had_edits "$specrel" "$planrel"; snapshot "$specrel" "$donerel" "$planrel"
+    put_file spec "$specrel"; put_file plan "$planrel"
+    git -C "$ROOT" mv -- "$specrel" "$donerel" || fail "git mv failed"
     commit "gate: ship $n — Status: Shipped, $specrel → $donerel" "$specrel" "$donerel" "$planrel"
     what="shipped; spec moved to $donerel"; file=$donerel ;;
 esac
