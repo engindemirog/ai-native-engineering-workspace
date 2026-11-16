@@ -29,7 +29,7 @@ Always available, outside the loop:
 
 | Group | Commands |
 |---|---|
-| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
+| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
 
@@ -104,7 +104,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   open, and the order of the commits does not matter. Every real finding closed: one of them
   Medium or higher (a `C-`/`H-`/`M-` id, or a severity word among the first two words of the
   Finding cell) → REVIEW again on the fix diff; Low/Info only → VERIFY; a severity it cannot read
-  → unclear. A review round without real findings → VERIFY (a clean VERIFY writes no
+  → unclear. A newest round holding an `investigate` verdict → `unclear: investigate open` (R-05:
+  QA investigates; a new round records the verdict), never VERIFY or SHIP. A review round without
+  real findings → VERIFY (a clean VERIFY writes no
   table: same caveat); a VERIFY round without real findings → SHIP (human). Any other `###`
   heading under `## Triage`, and anything else, is `unclear: <what is missing>`, never a stage.
   Records are read outside HTML comments and fenced blocks — a template comment is not a record.
@@ -143,6 +145,51 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   VERIFY until the next record. To move it on, record the clean round as its heading with no rows
   (`### Review round 2 — <name>, <date> (clean)`); a clean review round reads VERIFY, a clean
   VERIFY round reads SHIP.
+
+### `scripts/gate`
+- **What it does:** writes a human's decision in the form a hand edit takes, checks it first, and
+  commits it — one commit per decision, holding only the files it wrote (other staged changes
+  stay staged and out of it; uncommitted edits in a target file go in, and the output names
+  them: you approve the file as it is). The name is `git config user.name`, the date today.
+  - `approve-spec NNNN` (stage ANALYZE): the spec's `Status: Approved`.
+  - `approve-plan NNNN` (PLAN, human; the spec `Approved` or `In progress`): the plan's
+    `Status: Approved` and `Approved by / on: <name>, <date>` (the template's comment on that
+    line is dropped). On an approved plan it is a re-approval — the remedy for a
+    changed-after-approval warning: a new value, the same day with `(re-approved)`; a second one
+    the same day is refused.
+  - `triage NNNN --review|--verify [--finding "<text>" <verdict> "<note>"]…` (stage REVIEW, or
+    VERIFY; either at `unclear: investigate open`): appends `### Review round <n> — <name>,
+    <date>` (or `### VERIFY round <n>`) with its table at the end of `## Triage`; no finding
+    writes a clean round. Checked first: the verdict is real, noise, defer or investigate; noise
+    has a rationale; defer names a `B-<n>` that `specs/backlog.md` holds; no `|`, tab or line
+    break, no empty finding. A real finding's note names its fix later (`fix-<k>`, edited by
+    hand in the fix round).
+  - `ship NNNN` (stage SHIP, no status warning, the approval committed): ticks every criterion
+    as doctor reads a new ship — the first checkbox followed by an `AC-`/`CB-`/`PB-` id, any
+    bullet or section, so a mini spec too — unless it is moved out (a `→ moved to` / `-> moved
+    to` target after the id); ticks the Definition of Done, sets `Status: Shipped`, moves the
+    spec to `specs/done/` and points the plan's `Spec:` line there. A struck id without a target,
+    a move doctor would fail (a target that is not a `B-<n>` in the backlog or another spec in
+    `specs/active/`; any move in a sensitive-area spec), or a plan whose `Spec:` line does not
+    name the spec, refuses. The scorecard, the PR, the
+    merge and the tag stay with you.
+- **When to use it:** at a human gate, after reading the file it decides on — instead of the hand
+  edit, never on top of one. It records a human's decision: an agent never runs it on its own,
+  and nothing tells the two apart (`docs/roles/README.md`). Git identity is not a role check:
+  with agents every commit carries the human's name.
+- **Reads / writes:** reads `specs/`, git and `scripts/status --json`; writes the spec, the plan
+  (and the move to `specs/done/`), then commits.
+- **Stops at:** `<gate> NNNN: <what> — <file> @<sha>`; refusals name the stage found and the one
+  the gate decides.
+- **Lite / Strict:** no difference.
+- **Refusal:** exit 1 — the wrong stage, a status warning on ship, no git, an empty
+  `user.name`, no such spec or plan, a shipped spec; nothing is written. A failed commit (a hook,
+  signing) puts every file it wrote, the move and the index back, and says so (exit 1); so does
+  an interrupt before the commit (exit 130). An interrupt after the commit landed undoes nothing
+  and names the commit. A path it could not restore is named. Exit 2 — bad input or an unknown
+  argument, with the usage; nothing is written.
+- **Common mistake:** running it before reading the file. The commit is the record that you
+  decided; read the plan, the review report or the evidence table first.
 
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in

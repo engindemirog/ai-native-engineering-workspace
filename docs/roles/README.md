@@ -40,6 +40,8 @@ Roles produce and verify; the human decides. These are never delegated to an age
 spec approval (light in lite) · plan approval, recorded in the plan file · finding triage
 (real / noise / defer / investigate) · ship · the change-request triage verdict · the
 trivial-change policy and the operating mode (set at bootstrap).
+`scripts/gate` writes the first four in the hand edit's form; it records a human's decision, and
+an agent never runs it on its own — nothing in the files tells the two apart.
 
 ## Shared rules (all roles)
 

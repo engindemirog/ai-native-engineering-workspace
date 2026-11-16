@@ -1,5 +1,5 @@
 #!/bin/sh
-# ANEW selftest — proves that scripts/check, scripts/doctor, scripts/residue and scripts/status
+# ANEW selftest — proves that scripts/check, scripts/doctor, scripts/residue, scripts/status and scripts/gate
 # behave as documented.
 # Every scenario runs in a throwaway copy of this workspace in a temp dir OUTSIDE the repo
 # (docs/testing.md, Evidence policy), asserts on the real output and exit code, and is deleted.
@@ -726,6 +726,15 @@ mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 �
   "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
   "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |"; status
 has "→  SHIP (human)" "status: a VERIFY round without real findings → SHIP"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
+  "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |" \
+  "| I-2 Info — flaky on Windows? | investigate | QA |"; status
+has "unclear: investigate open — I-2 in 'VERIFY round 1" "status: an open investigate in a VERIFY round is unclear, not SHIP"
+hasnt "SHIP (human)" "… and never reads SHIP"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| M-1 Medium | real | |" "| L-2 Low | investigate | |"; status
+has "unclear: investigate open — L-2" "status: an investigate beside an open real finding is unclear"
 # Evidence age: the last full line's @<sha> against later changes outside specs/ (rule 6).
 reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "evidence"; status
 hasnt "evidence is older" "status: a specs-only commit after the evidence warns nothing"
@@ -847,6 +856,241 @@ touch -t 202001010000 "$W/README.md"; before=$(cksum < "$W/.git/index"); status;
 [ "$before" = "$after" ]; report $? "status: a run does not refresh .git/index (no optional locks)"
 status --jsno
 exits 2 "status: unknown argument";               has "usage: scripts/status [--json]" "status: unknown argument prints the usage"
+
+# --- scripts/gate: the same copy; gate commits as the fixture's git user ---
+gate() { run sh "$W/scripts/gate" "$@"; }
+TODAY=$(date +%Y-%m-%d)
+git -C "$W" config user.name selftest; git -C "$W" config user.email selftest@example.invalid
+plan_file() { cat "$W/specs/plans/0001-plan.md"; }
+commits() { git -C "$W" rev-list --count HEAD; }
+echo "== scripts/gate =="
+reset; mkspec 0001 Draft; commit "draft"; c0=$(commits); gate approve-spec 0001
+exits 0 "gate approve-spec: a Draft spec is approved"
+has "approve-spec 0001: spec approved — specs/active/0001-demo.md @" "gate approve-spec: names what, where and the commit"
+grep -q '^- Status: Approved$' "$W/specs/active/0001-demo.md"; report $? "gate approve-spec: the spec reads Status: Approved"
+[ "$(commits)" -eq $((c0 + 1)) ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "gate approve-spec: one commit, nothing left uncommitted"
+status; has "→  PLAN (Developer)" "gate approve-spec: status moves on to PLAN"
+gate approve-spec 0001
+exits 1 "gate approve-spec: refused on an approved spec";   has "0001 is at PLAN (Developer); approve-spec decides ANALYZE" "… naming the stage it found"
+gate approve-plan 0001
+exits 1 "gate approve-plan: refused without a plan";        has "no plan specs/plans/0001-plan.md" "… and says so"
+# approve-plan on the template's own approval line (a comment spanning two lines)
+put specs/plans/0001-plan.md "# Plan 0001 — demo" "" "- Spec: \`specs/active/0001-demo.md\`" "- Status: Awaiting approval" \
+  "- Approved by / on: — <!-- This line IS the plan gate record: \"<name>, <YYYY-MM-DD>\", written" \
+  "  at the end of /plan on human approval. While it is empty (\"—\"), /build refuses to start. -->" "" \
+  "## Files to change or add" "- app.txt" "" "## Ordered steps" "1. Write app.txt." "" "## Build evidence"
+c0=$(commits); gate approve-plan 0001
+exits 0 "gate approve-plan: the template's approval line is filled"
+grep -q "^- Approved by / on: selftest, $TODAY\$" "$W/specs/plans/0001-plan.md" && grep -q '^- Status: Approved$' "$W/specs/plans/0001-plan.md" \
+  && ! grep -q 'refuses to start' "$W/specs/plans/0001-plan.md"; report $? "gate approve-plan: Status and Approved by / on written, the spanning comment dropped"
+has "committed with your uncommitted edits to specs/plans/0001-plan.md" "gate approve-plan: an uncommitted plan is committed as it is, and named"
+[ "$(commits)" -eq $((c0 + 1)) ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "gate approve-plan: one commit"
+status; has "→  BUILD (Developer)" "gate approve-plan: status reads BUILD"
+hasnt "not committed yet" "gate approve-plan: status reads the approval as committed"
+# re-approval clears a spec drift warning
+mkspec 0001 "In progress"; edit specs/active/0001-demo.md 's/^1\. It works\.$/1. It works well./'; commit "spec change"; status
+has "the spec changed after approval" "gate approve-plan: (a spec change after approval warns)"
+gate approve-plan 0001
+exits 0 "gate approve-plan: a re-approval is written"
+grep -q "^- Approved by / on: selftest, $TODAY (re-approved)\$" "$W/specs/plans/0001-plan.md"; report $? "gate approve-plan: the same day adds (re-approved)"
+status; hasnt "changed after approval" "gate approve-plan: the re-approval clears the drift warning"
+gate approve-plan 0001
+exits 1 "gate approve-plan: a second re-approval the same day is refused"
+reset; mkspec 0001 Draft; mkplan 0001 "—"; commit "x"; gate approve-plan 0001
+exits 1 "gate approve-plan: refused while the spec is Draft"; has "the spec is Draft" "… naming the spec status"
+# triage
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "" "## Amendments"; commit "evidence"
+gate triage 0001 --verify
+exits 1 "gate triage: a VERIFY round is refused at REVIEW"
+gate triage 0001 --review --finding "M-1 Medium — wrong total" real "" --finding "L-2 Low — naming" noise "matches the domain word"
+exits 0 "gate triage: a review round is written"
+plan_file | grep -q "^### Review round 1 — selftest, $TODAY\$"; report $? "gate triage: the heading follows the template, round 1"
+plan_file | awk '/^## Triage/{t=1} /^## Amendments/{if (t && seen) ok=1; t=0} t && /^\| L-2 Low/{seen=1} END{exit !ok}'; report $? "gate triage: the table sits inside ## Triage, before the next section"
+status; has "→  FIX ROUND (Developer)" "gate triage: status reads the written round (FIX ROUND for an open real finding)"
+put app.txt fixed; commit "fix: m-1 [plan 0001/fix-1]"
+sed "s/^| M-1 Medium — wrong total | real |  |\$/| M-1 Medium — wrong total | real | fix-1 |/" "$W/specs/plans/0001-plan.md" > "$TMP/p" && cat "$TMP/p" > "$W/specs/plans/0001-plan.md"; commit "note"
+gate triage 0001 --review
+exits 0 "gate triage: a clean re-review is written"
+plan_file | grep -q "^### Review round 2 — selftest, $TODAY\$"; report $? "gate triage: the next round number"
+status; has "→  VERIFY (QA)" "gate triage: a clean review round → status reads VERIFY"
+c0=$(commits); before=$(cksum < "$W/specs/plans/0001-plan.md"); ib=$(git -C "$W" diff --cached --stat)
+gate triage 0001 --verify --finding "F-1 Low" maybe "x"
+exits 2 "gate triage: an unknown verdict";                 has "verdict 'maybe'" "… is named"
+gate triage 0001 --verify --finding "F-1 Low" noise "  "
+exits 2 "gate triage: a noise verdict without a rationale"
+gate triage 0001 --verify --finding "F-1 Low" defer "later"
+exits 2 "gate triage: a defer without a B-<n>"
+gate triage 0001 --verify --finding "F-1 Low" defer "B-7"
+exits 2 "gate triage: a defer whose B-<n> the backlog does not hold"; has "B-7 is not in specs/backlog.md" "… is named"
+gate triage 0001 --verify --finding "F-1 | Low" real "x"
+exits 2 "gate triage: a '|' in a finding"
+gate triage 0001 --verify --finding "" real "x"
+exits 2 "gate triage: an empty finding";                   has "usage: scripts/gate" "… prints the usage"
+gate triage 0001 --verify --finding "F-1 Low" real
+exits 2 "gate triage: a --finding with two values"
+gate triage 0001 --verify --finding "F-1 Low
+second line" real "x"
+exits 2 "gate triage: a line break in a finding";          has "a tab or a line break" "… is named"
+gate triage 0001 --verify --finding "F-1 Low" noise "a	tab"
+exits 2 "gate triage: a tab in a note"
+[ "$(commits)" -eq "$c0" ] && [ "$(cksum < "$W/specs/plans/0001-plan.md")" = "$before" ] && [ "$(git -C "$W" diff --cached --stat)" = "$ib" ]
+report $? "gate triage: bad input leaves the plan, the index and the history unchanged"
+put specs/backlog.md "# Backlog" "" "- **B-7** — later"; commit "backlog"
+gate triage 0001 --verify --finding "F-1 Low — slow" defer "B-7" --finding "I-2 Info — flaky?" investigate "QA"
+exits 0 "gate triage: a defer naming a backlog entry is written"
+status; has "unclear: investigate open — I-2" "gate triage: status reads the investigate"
+gate triage 0001 --verify --finding "I-2 Info — flaky?" noise "QA: one-off runner timeout"
+exits 0 "gate triage: an investigate is answered by a new round"
+plan_file | grep -q "^### VERIFY round 2 — selftest, $TODAY\$"; report $? "gate triage: VERIFY rounds are numbered apart from review rounds"
+status; has "→  SHIP (human)" "gate triage: a VERIFY round with no real finding → SHIP"
+# ship
+put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: In progress" "- Mode: lite" "- Plan: \`specs/plans/0001-plan.md\`" \
+  "- Self-critique: done" "" "## Intent" "Demo intent." "" "## Requirements" "1. It works well." "" "## Acceptance criteria" \
+  "- [ ] AC-1 — it works" "- [ ] ~~AC-2 — it flies~~ → moved to B-7 — selftest, 2026-01-01, later" "" "## Definition of Done" "- [ ] Docs updated"
+sed "s/@$BASE\$/@$(git -C "$W" rev-parse HEAD)/" "$W/specs/plans/0001-plan.md" > "$TMP/p" && cat "$TMP/p" > "$W/specs/plans/0001-plan.md"
+commit "spec ready, evidence after the fix"; gate approve-plan 0001 >/dev/null 2>&1
+put specs/notes.md staged; git -C "$W" add specs/notes.md; c0=$(commits); gate ship 0001
+exits 0 "gate ship: a spec at SHIP is shipped"
+[ -f "$W/specs/done/0001-demo.md" ] && [ ! -e "$W/specs/active/0001-demo.md" ]; report $? "gate ship: the spec moved to specs/done/"
+d="$W/specs/done/0001-demo.md"
+grep -q '^- Status: Shipped$' "$d" && grep -q '^- \[x\] AC-1 — it works$' "$d" && grep -q '^- \[ \] ~~AC-2' "$d" && grep -q '^- \[x\] Docs updated$' "$d"
+report $? "gate ship: Shipped, the criterion ticked, the struck one left, the DoD ticked"
+plan_file | grep -q '^- Spec: `specs/done/0001-demo.md`$'; report $? "gate ship: the plan's Spec line points at the new path"
+[ "$(commits)" -eq $((c0 + 1)) ] && git -C "$W" show --stat --format= HEAD | grep -q 'specs/{active => done}/0001-demo.md'
+report $? "gate ship: one commit that records the move"
+[ "$(git -C "$W" status --porcelain)" = "A  specs/notes.md" ]; report $? "gate ship: an unrelated staged file stays staged and out of the commit"
+git -C "$W" reset -q specs/notes.md; rm -f "$W/specs/notes.md"
+ship_doctor() { run sh -c 'unset GITHUB_BASE_REF GITHUB_EVENT_PATH; ANEW_BASE_REF=HEAD~1; export ANEW_BASE_REF; exec sh "$0" --strict' "$W/scripts/doctor"; }
+ship_doctor; exits 0 "gate ship: doctor --strict is green on the result (base: before the ship)"; hasnt "new ship" "… no new-ship finding"
+hasnt "moved criterion" "… the moved-out criterion included";  hasnt "is not marked 'Status: Shipped'" "… and the status check"
+sed 's/^- \[x\] AC-1/- [ ] AC-1/' "$d" > "$TMP/p" && cat "$TMP/p" > "$d"; ship_doctor
+has "unchecked criterion in a new ship: specs/done/0001-demo.md AC-1" "… (doctor does judge this ship: an unticked criterion fails it)"
+git -C "$W" checkout -q -- specs/done/0001-demo.md
+status; has "0001  demo  shipped" "gate ship: status reads shipped"
+gate ship 0001
+exits 1 "gate ship: a shipped spec is refused";            has "0001 is shipped" "… and says so"
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "evidence"; gate ship 0001
+exits 1 "gate ship: refused at REVIEW";                    has "ship decides SHIP" "… naming the stage it decides"
+reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### VERIFY round 1 — selftest, 2026-01-02"
+commit "verify"; put app.txt changed; commit "code after the evidence"; gate ship 0001
+exits 1 "gate ship: refused with a status warning";        has "has a status warning" "… and says so"
+# a spec at SHIP: <spec lines…>; the plan's evidence @BASE, a clean VERIFY round, B-7 in the backlog
+shipfx() { reset; put specs/active/0001-demo.md "$@"; put specs/backlog.md "# Backlog" "" "- **B-7** — later"
+  mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### VERIFY round 1 — selftest, 2026-01-02"; commit "at ship"; }
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "- Mode: lite" "- Plan: \`specs/plans/0001-plan.md\`" "- Source: T-1" "" \
+  "## Intent" "Demo." "" "## Changed behavior" "- [ ] CB-1 — a" "- [ ] CB-2 — b" "" "## Preserved behavior" "- [ ] PB-1 — c" "" \
+  "## Definition of Done" "- [ ] Spec moved to \`specs/done/\`"
+gate ship 0001
+exits 0 "gate ship: a mini spec is shipped"
+d="$W/specs/done/0001-demo.md"
+grep -q '^- \[x\] CB-1' "$d" && grep -q '^- \[x\] CB-2' "$d" && grep -q '^- \[x\] PB-1' "$d"; report $? "gate ship: a mini spec's CB-/PB- criteria are ticked"
+ship_doctor; exits 0 "gate ship: doctor --strict is green on a shipped mini spec"; hasnt "unchecked criterion" "… no unchecked criterion"
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — the ~~old~~ new total" \
+  "* [ ] AC-2 — a star bullet" "- [ ] ~~AC-3 — gone~~ -> moved to B-7 — selftest, 2026-01-01, later" \
+  "- [ ] AC-4 — the quoted \`→ moved to B-7\` marker" "" "## Definition of Done" "- [ ] Docs"
+gate ship 0001
+exits 0 "gate ship: criterion forms doctor reads are shipped"
+grep -q '^- \[x\] AC-1 — the ~~old~~ new total$' "$d" && grep -q '^\* \[x\] AC-2' "$d" && grep -q '^- \[ \] ~~AC-3' "$d"
+report $? "gate ship: a strike in the prose and a star bullet are ticked; an ASCII -> move is left"
+grep -q '^- \[x\] AC-4 — the quoted' "$d"; report $? "gate ship: a marker inside backticks is quoted text, so the criterion is ticked"
+ship_doctor; exits 0 "gate ship: doctor --strict is green on those forms"
+# a moved-out criterion doctor would fail is refused before anything is written
+for mv in "→ moved to nowhere|is neither B-<n> nor spec <NNNN>" "→ moved to B-99 — later|B-99: no such entry" \
+  "→ moved to spec 0001 — itself|cannot move to its own spec" "→ moved to spec 0042 — later|spec 0042: no such spec"; do
+  shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "- [ ] ~~AC-2 — gone~~ ${mv%%|*}" \
+    "" "## Definition of Done" "- [ ] Docs"
+  c0=$(commits); gate ship 0001
+  exits 1 "gate ship: refused for '${mv%%|*}'";           has "${mv#*|}" "… naming why"
+  [ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "… and nothing is written"
+done
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "- Sensitive area: payments" "" "## Acceptance criteria" "- [ ] AC-1 — ok" \
+  "- [ ] ~~AC-2 — gone~~ → moved to B-7 — later" "" "## Definition of Done" "- [ ] Docs"
+c0=$(commits); gate ship 0001
+exits 1 "gate ship: a move in a sensitive-area spec is refused"; has "is in a sensitive area: AC-2" "… naming it"
+[ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "… and nothing is written"
+sed 's/^- Sensitive area: payments$/- Sensitive area: none/' "$W/specs/active/0001-demo.md" > "$TMP/p" && cat "$TMP/p" > "$W/specs/active/0001-demo.md"
+commit "not sensitive"; gate ship 0001
+exits 0 "gate ship: 'Sensitive area: none' allows the move, as doctor reads it"
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "- [ ] ~~AC-2 — gone~~" \
+  "" "## Definition of Done" "- [ ] Docs"
+c0=$(commits); before=$(cksum < "$W/specs/active/0001-demo.md"); gate ship 0001
+exits 1 "gate ship: a struck criterion without a target is refused"; has "AC-2 is struck without a '→ moved to' target" "… naming it"
+[ "$(commits)" -eq "$c0" ] && [ "$(cksum < "$W/specs/active/0001-demo.md")" = "$before" ] && [ -z "$(git -C "$W" status --porcelain)" ]
+report $? "gate ship: … and nothing is written"
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "" "## Definition of Done" "- [ ] Docs"
+sed 's|^- Spec: .*|- Spec: elsewhere|' "$W/specs/plans/0001-plan.md" > "$TMP/p" && cat "$TMP/p" > "$W/specs/plans/0001-plan.md"; commit "spec line"
+gate ship 0001
+exits 1 "gate ship: a plan whose Spec line does not name the spec is refused"; has "no '- Spec:' line names specs/active/0001-demo.md" "… and says so"
+[ -f "$W/specs/active/0001-demo.md" ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "gate ship: … and nothing is written"
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "" "## Definition of Done" "- [ ] Docs"
+sed 's|^- Approved by / on: .*|- Approved by / on: someone, 2026-01-03|' "$W/specs/plans/0001-plan.md" > "$TMP/p" && cat "$TMP/p" > "$W/specs/plans/0001-plan.md"
+gate ship 0001
+exits 1 "gate ship: refused while the approval is not committed"; has "approval is not committed yet" "… and says so"
+git -C "$W" checkout -q -- specs/plans/0001-plan.md
+printf '%s\n' "- [ ] Scorecard filled" >> "$W/specs/active/0001-demo.md"; gate ship 0001
+exits 0 "gate ship: uncommitted spec edits are shipped with it"
+has "committed with your uncommitted edits to specs/active/0001-demo.md" "gate ship: … and named"
+grep -q '^- \[x\] Scorecard filled$' "$d"; report $? "gate ship: … ticked as part of the DoD"
+# a failed commit (a hook) puts every file and the index back
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "" "## Definition of Done" "- [ ] Docs"
+printf '%s\n' '#!/bin/sh' 'exit 1' > "$W/.git/hooks/pre-commit"; chmod +x "$W/.git/hooks/pre-commit"
+# a staged and an unstaged edit in both targets: the rollback must keep each where it was
+printf '%s\n' "- [ ] Staged item" >> "$W/specs/active/0001-demo.md"; printf '%s\n' "- staged note" >> "$W/specs/plans/0001-plan.md"
+git -C "$W" add specs/active/0001-demo.md specs/plans/0001-plan.md
+printf '%s\n' "- [ ] Unstaged item" >> "$W/specs/active/0001-demo.md"; printf '%s\n' "- unstaged note" >> "$W/specs/plans/0001-plan.md"
+st0=$(git -C "$W" status --porcelain); dc0=$(git -C "$W" diff --cached); dw0=$(git -C "$W" diff)
+c0=$(commits); before=$(cksum < "$W/specs/active/0001-demo.md"); pb=$(cksum < "$W/specs/plans/0001-plan.md"); gate ship 0001
+exits 1 "gate ship: a failed commit is refused";           has "git commit failed — nothing was written" "… and says nothing was written"
+[ "$(commits)" -eq "$c0" ] && [ "$(git -C "$W" status --porcelain)" = "$st0" ] && [ ! -e "$W/specs/done/0001-demo.md" ] \
+  && [ "$(cksum < "$W/specs/active/0001-demo.md")" = "$before" ] && [ "$(cksum < "$W/specs/plans/0001-plan.md")" = "$pb" ]
+report $? "gate ship: … the move, the spec, the plan and the index are as before"
+[ "$(git -C "$W" diff --cached)" = "$dc0" ] && [ "$(git -C "$W" diff)" = "$dw0" ]
+report $? "gate ship: … staged edits stay staged and unstaged ones unstaged"
+git -C "$W" reset -q --hard HEAD
+mkspec 0002 Draft; git -C "$W" add specs/active/0002-demo.md; git -C "$W" commit -qn -m draft2
+put specs/notes.md staged; git -C "$W" add specs/notes.md; gate approve-spec 0002
+exits 1 "gate approve-spec: a failed commit is refused"
+grep -q '^- Status: Draft$' "$W/specs/active/0002-demo.md" && [ "$(git -C "$W" status --porcelain)" = "A  specs/notes.md" ]
+report $? "gate approve-spec: … the spec is Draft again and an unrelated staged file stays staged"
+rm -f "$W/.git/hooks/pre-commit"; git -C "$W" reset -q specs/notes.md; rm -f "$W/specs/notes.md"; gate ship 0001
+exits 0 "gate ship: after the hook is fixed the same ship goes through"
+# an interrupt: before the commit it restores and says so; after the commit landed it undoes nothing
+interrupt_hook() {  # interrupt_hook <hook> <exit>: the hook sends TERM to gate, then exits
+  printf '%s\n' '#!/bin/sh' "kill -TERM \"\$(cat '$TMP/gate.pid')\"" "sleep 1" "exit $2" > "$W/.git/hooks/$1"
+  chmod +x "$W/.git/hooks/$1"; }
+gate_bg() { sh "$W/scripts/gate" "$@" > "$TMP/gate.out" 2>&1 & echo $! > "$TMP/gate.pid"; wait $!; rc=$?; out=$(cat "$TMP/gate.out"); }
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "" "## Definition of Done" "- [ ] Docs"
+interrupt_hook pre-commit 1; c0=$(commits); gate_bg ship 0001
+exits 130 "gate ship: an interrupt before the commit"; has "gate: interrupted — nothing was written" "… says it restored"
+[ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ] && [ -f "$W/specs/active/0001-demo.md" ]
+report $? "… and the files, the move and the index are as before"
+rm -f "$W/.git/hooks/pre-commit"; interrupt_hook post-commit 0; gate_bg ship 0001
+exits 130 "gate ship: an interrupt after the commit landed"; has "interrupted after the commit landed" "… says the commit holds the decision"
+[ "$(commits)" -eq $((c0 + 1)) ] && [ -z "$(git -C "$W" status --porcelain)" ] && [ -f "$W/specs/done/0001-demo.md" ]
+report $? "… and undoes nothing: the tree matches the new commit"
+rm -f "$W/.git/hooks/post-commit"
+# approve-plan writes both lines or neither
+reset; mkspec 0001 Approved; put specs/plans/0001-plan.md "# Plan 0001 — demo" "" "- Spec: \`specs/active/0001-demo.md\`" \
+  "- Status: Awaiting approval" "" "## Ordered steps" "1. x"; commit "plan without approval line"
+before=$(cksum < "$W/specs/plans/0001-plan.md"); gate approve-plan 0001
+exits 1 "gate approve-plan: a plan without an Approved by / on line is refused"
+[ "$(cksum < "$W/specs/plans/0001-plan.md")" = "$before" ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "gate approve-plan: … and nothing is written"
+# state and arguments
+reset; mkspec 0001 Draft; commit "draft"; git -C "$W" config user.name ""; gate approve-spec 0001
+exits 1 "gate: refused without a git user name";           has "user.name is empty" "… and says so"
+git -C "$W" config user.name selftest
+gate approve-spec 0002
+exits 1 "gate: refused for an unknown spec";               has "no spec 0002 in specs/active/" "… and says so"
+gate approve-spec 1
+exits 2 "gate: a spec number that is not four digits"
+gate approve 0001
+exits 2 "gate: an unknown gate";                           has "usage: scripts/gate" "… prints the usage"
+gate approve-spec 0001 --now
+exits 2 "gate: an unknown argument"
+rm -rf "$TMP/ng"; mkdir -p "$TMP/ng"; cp -R "$W/scripts" "$W/specs" "$TMP/ng/"
+run sh "$TMP/ng/scripts/gate" approve-spec 0001
+exits 1 "gate: refused without git";                       has "no git history" "… and says so"
+grep -q '^- Status: Draft$' "$TMP/ng/specs/active/0001-demo.md"; report $? "gate: without git nothing is written"
 
 echo "== selftest: $passed passed, $failed failed =="
 [ "$failed" -eq 0 ] || exit 1
