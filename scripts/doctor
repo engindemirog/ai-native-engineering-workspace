@@ -216,8 +216,9 @@ for p in "$ROOT/specs/plans/"[0-9]*-plan.md; do
     Approved|"In progress"|Shipped) ;;
     *) gate "plan exists for unapproved spec $n (spec status: ${status:-unknown})" ;;
   esac
-  # approval line, HTML comments stripped; empty, "-" or "—" means not recorded
-  approval=$(grep -m1 '^- Approved by / on:' "$p" | sed 's/<!--.*-->//g; s/^- Approved by \/ on:[[:space:]]*//; s/[[:space:]]*$//')
+  # approval line, HTML comments stripped — one closed on the line, and one that opens there and
+  # closes on a later line (the template's own line, spec 0008); empty, "-" or "—" means not recorded
+  approval=$(grep -m1 '^- Approved by / on:' "$p" | sed 's/<!--.*-->//g; s/<!--.*$//; s/^- Approved by \/ on:[[:space:]]*//; s/[[:space:]]*$//')
   case "$approval" in
     ""|"-"|"—") approved=0 ;;
     *) approved=1 ;;
