@@ -159,10 +159,13 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
     has a rationale; defer names a `B-<n>` that `specs/backlog.md` holds; no `|`, tab or line
     break, no empty finding. A real finding's note names its fix later (`fix-<k>`, edited by
     hand in the fix round).
-  - `ship NNNN` (stage SHIP, no status warning, the approval committed): ticks every criterion not
-    moved out and the Definition of Done, sets `Status: Shipped`, moves the spec to
-    `specs/done/` and points the plan's `Spec:` line there. The scorecard, the PR, the merge and
-    the tag stay with you.
+  - `ship NNNN` (stage SHIP, no status warning, the approval committed): ticks every criterion
+    as doctor reads a new ship — the first checkbox followed by an `AC-`/`CB-`/`PB-` id, any
+    bullet or section, so a mini spec too — unless it is moved out (a `→ moved to` / `-> moved
+    to` target after the id); ticks the Definition of Done, sets `Status: Shipped`, moves the
+    spec to `specs/done/` and points the plan's `Spec:` line there. A struck id without a target,
+    or a plan whose `Spec:` line does not name the spec, refuses. The scorecard, the PR, the
+    merge and the tag stay with you.
 - **When to use it:** at a human gate, after reading the file it decides on — instead of the hand
   edit, never on top of one. It records a human's decision: an agent never runs it on its own,
   and nothing tells the two apart (`docs/roles/README.md`). Git identity is not a role check:
@@ -173,8 +176,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   the gate decides.
 - **Lite / Strict:** no difference.
 - **Refusal:** exit 1 — the wrong stage, a status warning on ship, no git, an empty
-  `user.name`, no such spec or plan, a shipped spec; nothing is written. Exit 2 — bad input or an
-  unknown argument, with the usage; nothing is written.
+  `user.name`, no such spec or plan, a shipped spec; nothing is written. A failed commit (a hook,
+  signing) puts every file it wrote, the move and the index back, and says so (exit 1). Exit 2 —
+  bad input or an unknown argument, with the usage; nothing is written.
 - **Common mistake:** running it before reading the file. The commit is the record that you
   decided; read the plan, the review report or the evidence table first.
 - **Common mistake:** reading `REVIEW` or `VERIFY` as "it has not run" — a clean review,

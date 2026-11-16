@@ -54,10 +54,13 @@ No rule changes: the record is the one a hand edit makes.
     PLAN (human) or on an approved plan (re-approval; the same day adds `(re-approved)`, a second
     is refused), triage `--review` at REVIEW and `--verify` at VERIFY (either at an open
     investigate), ship at SHIP with no warning and the approval committed;
+  - ship ticks criteria as doctor reads a new ship (`AC-`/`CB-`/`PB-` after the first box, any
+    bullet; mini specs too) unless moved out (a `→`/`->` `moved to` target after the id); a
+    struck id without a target, or a `Spec:` line that does not name the spec, refuses;
   - input checked before any write (exit 2): verdict, noise rationale, defer's `B-<n>` in
     `specs/backlog.md`, no `|`, tab or line break;
   - one commit per decision, pathspec only: other staged changes stay out; edits in a target are
-    committed with it and named.
+    committed with it and named; a failed commit restores the files, the move and the index.
 - `scripts/status`: behavior: an `investigate` row in the newest round → `unclear: investigate
   open — <ids>`, checked before FIX ROUND.
 
