@@ -34,6 +34,22 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.26.1 — doctor: the template's untouched approval line is no approval
+
+A fix (not a new rule). doctor stripped HTML comments one line at a time, so the plan template's
+own approval line — `- Approved by / on: — <!-- …` with a comment that closes on the next line —
+read as recorded, and a spec moved to `In progress` on an untouched plan passed the gate "build
+started without recorded plan approval" silently. scripts/status and scripts/gate were not
+affected.
+
+### Upgrading
+
+- `scripts/doctor`: behavior: on the `Approved by / on` line, a comment that opens and does not
+  close on the line is dropped to the end of the line, as one closed on it already was. Copy it,
+  or apply that to your copy. Selftest: three new approval-line scenarios; copy
+  `scripts/selftest` with it.
+- Full diff: `/compare/v1.26...v1.26.1`.
+
 ## v1.26 — scripts/gate: the human's decisions, written for them
 
 A current release (not in `1.24.x`). The four human gates were hand edits: a wrong approval form,
