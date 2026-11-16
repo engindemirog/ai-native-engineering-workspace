@@ -34,6 +34,42 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.26 — scripts/gate: the human's decisions, written for them
+
+A current release (not in `1.24.x`). The four human gates were hand edits: a wrong approval form,
+a misspelled verdict or a ship that forgot to move the spec was caught late, by doctor or status.
+No rule changes: the record is the one a hand edit makes.
+
+- **`scripts/gate`** writes `approve-spec`, `approve-plan` (a re-approval too), `triage` and
+  `ship` in the hand edit's form, checks the input first, and commits only the files it wrote.
+  Each runs only at its stage, read from `scripts/status`; ship refuses while status warns.
+- **`scripts/status`**: a newest round holding an `investigate` verdict reads
+  `unclear: investigate open`, never VERIFY or SHIP (R-05).
+
+### Upgrading
+
+- `scripts/gate` (new): copy it. Behavior list in `docs/commands.md`, `scripts/gate`:
+  - the name from `git config user.name`, the date today; no git or no name refuses (exit 1);
+  - the stage from the row of `scripts/status --json`: approve-spec at ANALYZE, approve-plan at
+    PLAN (human) or on an approved plan (re-approval; the same day adds `(re-approved)`, a second
+    is refused), triage `--review` at REVIEW and `--verify` at VERIFY (either at an open
+    investigate), ship at SHIP with no warning and the approval committed;
+  - input checked before any write (exit 2): verdict, noise rationale, defer's `B-<n>` in
+    `specs/backlog.md`, no `|`, tab or line break;
+  - one commit per decision, pathspec only: other staged changes stay out; edits in a target are
+    committed with it and named.
+- `scripts/status`: behavior: an `investigate` row in the newest round → `unclear: investigate
+  open — <ids>`, checked before FIX ROUND.
+
+  Selftest: new `scripts/gate` scenarios and two status scenarios; copy `scripts/selftest` with
+  them.
+- `docs/roles/README.md`, The human's gates: intent: gate writes those decisions; an agent never
+  runs it on its own.
+- `workflows/feature-development.md`: intent: steps 2, 4, 7 and 10 can be written with gate.
+- `specs/plans/TEMPLATE.md`: intent: the approval comment names `./scripts/gate approve-plan`.
+- `docs/commands.md`, `README.md`: intent: `scripts/gate` documented; status's investigate rule.
+- Full diff: `/compare/v1.25...v1.26`.
+
 ## v1.25 — scripts/status: where every piece of work stands
 
 The first current release after the LTS line (not in `1.24.x`). Finding out whose turn it is

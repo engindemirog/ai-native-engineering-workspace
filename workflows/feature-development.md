@@ -7,6 +7,9 @@
 INTENT → CLARIFY → SPEC → PLAN → [APPROVAL] → BUILD → REVIEW → [TRIAGE] → VERIFY → SHIP
 ```
 
+Steps 2, 4, 7 and 10 can be written with `scripts/gate` (`docs/commands.md`): the same record as
+the hand edit, checked and committed.
+
 The steps below group into five **segments** (`segments.md`), each with an entry check and a
 handoff that always stops: ANALYZE (1–2) · PLAN (3–4) · BUILD (5) · REVIEW (6) · VERIFY (9).
 Steps 7 and 10 are human decisions; step 8 is the Developer applying triage. Adapters expose the
