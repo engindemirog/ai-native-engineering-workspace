@@ -42,5 +42,6 @@
 <!-- The triage record (workflows/feature-development.md, step 7) — here, because in lite there is
      no PR yet at triage time; the PR description links this section. One table per review or
      VERIFY round, written at the gate:
-     ### Review round <n> — <name>, <YYYY-MM-DD>
-     | Finding | Verdict (real / noise / defer / investigate) | Note (fix commit, rationale, B-<n>, A-<n>) | -->
+     ### Review round <n> — <name>, <YYYY-MM-DD>     (a VERIFY round: ### VERIFY round <n> — …)
+     | Finding | Verdict (real / noise / defer / investigate) | Note (fix commit, rationale, B-<n>, A-<n>) |
+     A real finding's Note names its fix as fix-<k> or a commit sha (scripts/status reads it). -->
