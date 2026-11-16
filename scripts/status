@@ -198,7 +198,7 @@ drift() {
   short=$(git -C "$ROOT" rev-parse --short "$c")
   if git -C "$ROOT" cat-file -e "$c:$2" 2>/dev/null; then
     d=$(changed_sections "$(git -C "$ROOT" show "$c:$2" | clean_in keep | region spec)" "$(clean_in keep < "$1" | region spec)")
-    [ -n "$d" ] && warns="${warns}the spec changed after approval (@$short): $d — get it re-approved (a new Approved by / on value; same day: add re-approved), or revert
+    [ -n "$d" ] && warns="${warns}the spec changed after approval (@$short): $d — get the plan re-approved (a new Approved by / on value in the plan; same day: add re-approved), or revert
 "
   else
     infos="${infos}the spec is not at $2 in the approval commit @$short: its changes cannot be checked
@@ -216,7 +216,7 @@ drift() {
   fi
   if [ -n "$new" ]; then infos="${infos}amended ($new): the plan's $d changed after approval (@$pshort)
 "
-  else warns="${warns}the plan changed after approval (@$pshort): $d — record an amendment (A-<n>) or get it re-approved (a new Approved by / on value)
+  else warns="${warns}the plan changed after approval (@$pshort): $d — commit the change together with its A-<n> line (one committed after the change does not cover it), or get the plan re-approved (a new Approved by / on value)
 "
   fi
 }

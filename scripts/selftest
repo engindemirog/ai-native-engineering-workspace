@@ -753,13 +753,13 @@ edit specs/active/0001-demo.md 's/^- \[x\] AC-1 — it works$/- [ ] ~~AC-1 — i
 hasnt "changed after approval" "status: a criterion moved out per the template is not a change after approval"
 edit specs/plans/0001-plan.md 's/^1\. Write app\.txt\.$/1. Write app.txt twice./'; status
 has "WARN  the plan changed after approval (@" "status: a changed plan step after approval warns"
-has "Ordered steps — record an amendment" "… naming the section and what to do"
+has "Ordered steps — commit the change together with its A-<n> line" "… naming the section and what to do"
 printf '%s\n' "" "## Amendments" "A-1 — step 1 writes twice — review round 1 — selftest, 2026-01-02" >> "$W/specs/plans/0001-plan.md"; status
 has "note  amended (A-1): the plan's Ordered steps changed after approval" "status: the same change with a new A-<n> line reads amended"
 hasnt "WARN  the plan changed" "… and does not warn"
 edit specs/active/0001-demo.md 's/AC-1 — it works/AC-1 — it works fast/'; status
 has "WARN  the spec changed after approval (@" "status: a changed criterion text after approval warns"
-has "Acceptance criteria — get it re-approved" "… naming the section"
+has "Acceptance criteria — get the plan re-approved" "… naming the section"
 rm -rf "$TMP/nogit"; cp -R "$W" "$TMP/nogit"; rm -rf "$TMP/nogit/.git"
 run sh "$TMP/nogit/scripts/status"
 has "note  no git history: changes after approval cannot be checked" "status: without git the row says the check could not run"
@@ -785,7 +785,7 @@ edit specs/plans/0001-plan.md 's/^- app\.txt$/- app.txt, lib.txt/'; commit "unre
 printf '%s\n' "" "## Amendments" "A-1 — step wording — review round 1 — selftest, 2026-01-06" >> "$W/specs/plans/0001-plan.md"
 commit "A-1, unrelated"; status
 has "WARN  the plan changed after approval (@$ap): Files to change or add" "status: an amendment does not cover an earlier unrecorded change"
-has "or get it re-approved (a new Approved by / on value)" "… and the warning says how a re-approval is written"
+has "(one committed after the change does not cover it), or get the plan re-approved (a new Approved by / on value)" "… and the warning names both ways out"
 printf '%s\n' "A-2 — Files gains lib.txt — review round 1 — selftest, 2026-01-07" >> "$W/specs/plans/0001-plan.md"; status
 has "WARN  the plan changed after approval (@$ap)" "status: an uncommitted amendment does not cover a committed unrecorded change"
 git -C "$W" checkout -q -- specs/plans/0001-plan.md
@@ -814,7 +814,7 @@ put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: In progress" 
 hasnt "changed after approval" "status: a wrapped criterion moved out per the template is not a change"
 edit specs/active/0001-demo.md 's/wraps to a second line~~/wraps to a third line~~/'; status
 has "WARN  the spec changed after approval (@" "status: a change on a criterion's continuation line warns"
-has "same day: add re-approved" "… and says how a same-day re-approval is written"
+has "(a new Approved by / on value in the plan; same day: add re-approved)" "… and says how a same-day re-approval is written"
 put specs/active/0001-demo.md "# Spec 0001 — demo" "" "- Status: In progress" "" "## Intent" "Demo intent." "" \
   "## Acceptance criteria" "- [ ] ~~AC-1 — it works and it" "  wraps to a second line~~"; status
 has "WARN  the spec changed after approval (@" "status: a struck criterion without a moved-to tail is a change (never waived)"
