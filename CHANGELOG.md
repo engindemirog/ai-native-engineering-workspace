@@ -72,7 +72,8 @@ approval, and evidence cited after the code it proved had changed. No rule chang
   Selftest: new `scripts/status` scenarios; copy `scripts/selftest` with it.
 - `specs/plans/TEMPLATE.md`: intent: the Triage comment shows the VERIFY round heading and that a
   real finding's Note names its fix (`fix-<k>` or the fix commit's sha); a clean round is its
-  heading with no rows.
+  heading with no rows. The Amendments comment: an `A-<n>` line is committed with the plan edit
+  it records.
 - `docs/commands.md`, `README.md`: intent: `scripts/status` documented, the `--json` shape stable
   within a minor version.
 - Full diff: `/compare/v1.24.1...v1.25`.

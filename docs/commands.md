@@ -120,8 +120,10 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   line). Status lines, ticked boxes, a criterion moved out per the template (a wrapped one too;
   a strike without the `→ moved to` tail is a change), build evidence, triage and amendments are
   not changes; a plan change with a new, uncommitted `A-<n>` line reads `amended (A-<n>)`. An
-  amendment covers neither a later nor an earlier unrecorded change: those warn until recorded in
-  the same commit as an `A-<n>` line, or re-approved. A squash or rebase moves the approval
+  amendment covers neither a later nor an earlier unrecorded change: commit a plan edit together
+  with its `A-<n>` line (one committed after the edit does not cover it); otherwise the warning
+  stays until the plan is re-approved. A spec change is cleared by a new `Approved by / on`
+  value in the plan. A squash or rebase moves the approval
   commit. Without git, or with an approval not
   yet committed, the row says the check could not run — never clean.
 - **When to use it:** at the start of a session, after a gate, whenever you wonder whose turn it is.

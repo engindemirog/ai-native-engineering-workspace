@@ -36,7 +36,9 @@
 
 ## Amendments
 <!-- Approved changes after the plan gate (review triage, R-07), never silent. One line each:
-     A-1 — <what changes: files, steps> — <why; source: review round n / R-07> — <name>, <YYYY-MM-DD> -->
+     A-1 — <what changes: files, steps> — <why; source: review round n / R-07> — <name>, <YYYY-MM-DD>
+     Write the line in the same commit as the plan edit it records: scripts/status reads a plan
+     change committed before or without its line as changed after approval. -->
 
 ## Triage
 <!-- The triage record (workflows/feature-development.md, step 7) — here, because in lite there is
