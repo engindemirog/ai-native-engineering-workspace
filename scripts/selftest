@@ -986,12 +986,31 @@ d="$W/specs/done/0001-demo.md"
 grep -q '^- \[x\] CB-1' "$d" && grep -q '^- \[x\] CB-2' "$d" && grep -q '^- \[x\] PB-1' "$d"; report $? "gate ship: a mini spec's CB-/PB- criteria are ticked"
 ship_doctor; exits 0 "gate ship: doctor --strict is green on a shipped mini spec"; hasnt "unchecked criterion" "… no unchecked criterion"
 shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — the ~~old~~ new total" \
-  "* [ ] AC-2 — a star bullet" "- [ ] ~~AC-3 — gone~~ -> moved to B-7 — selftest, 2026-01-01, later" "" "## Definition of Done" "- [ ] Docs"
+  "* [ ] AC-2 — a star bullet" "- [ ] ~~AC-3 — gone~~ -> moved to B-7 — selftest, 2026-01-01, later" \
+  "- [ ] AC-4 — the quoted \`→ moved to B-7\` marker" "" "## Definition of Done" "- [ ] Docs"
 gate ship 0001
 exits 0 "gate ship: criterion forms doctor reads are shipped"
 grep -q '^- \[x\] AC-1 — the ~~old~~ new total$' "$d" && grep -q '^\* \[x\] AC-2' "$d" && grep -q '^- \[ \] ~~AC-3' "$d"
 report $? "gate ship: a strike in the prose and a star bullet are ticked; an ASCII -> move is left"
+grep -q '^- \[x\] AC-4 — the quoted' "$d"; report $? "gate ship: a marker inside backticks is quoted text, so the criterion is ticked"
 ship_doctor; exits 0 "gate ship: doctor --strict is green on those forms"
+# a moved-out criterion doctor would fail is refused before anything is written
+for mv in "→ moved to nowhere|is neither B-<n> nor spec <NNNN>" "→ moved to B-99 — later|B-99: no such entry" \
+  "→ moved to spec 0001 — itself|cannot move to its own spec" "→ moved to spec 0042 — later|spec 0042: no such spec"; do
+  shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "- [ ] ~~AC-2 — gone~~ ${mv%%|*}" \
+    "" "## Definition of Done" "- [ ] Docs"
+  c0=$(commits); gate ship 0001
+  exits 1 "gate ship: refused for '${mv%%|*}'";           has "${mv#*|}" "… naming why"
+  [ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "… and nothing is written"
+done
+shipfx "# Spec 0001 — demo" "" "- Status: In progress" "- Sensitive area: payments" "" "## Acceptance criteria" "- [ ] AC-1 — ok" \
+  "- [ ] ~~AC-2 — gone~~ → moved to B-7 — later" "" "## Definition of Done" "- [ ] Docs"
+c0=$(commits); gate ship 0001
+exits 1 "gate ship: a move in a sensitive-area spec is refused"; has "is in a sensitive area: AC-2" "… naming it"
+[ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ]; report $? "… and nothing is written"
+sed 's/^- Sensitive area: payments$/- Sensitive area: none/' "$W/specs/active/0001-demo.md" > "$TMP/p" && cat "$TMP/p" > "$W/specs/active/0001-demo.md"
+commit "not sensitive"; gate ship 0001
+exits 0 "gate ship: 'Sensitive area: none' allows the move, as doctor reads it"
 shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "- [ ] ~~AC-2 — gone~~" \
   "" "## Definition of Done" "- [ ] Docs"
 c0=$(commits); before=$(cksum < "$W/specs/active/0001-demo.md"); gate ship 0001
@@ -1015,11 +1034,19 @@ grep -q '^- \[x\] Scorecard filled$' "$d"; report $? "gate ship: … ticked as p
 # a failed commit (a hook) puts every file and the index back
 shipfx "# Spec 0001 — demo" "" "- Status: In progress" "" "## Acceptance criteria" "- [ ] AC-1 — ok" "" "## Definition of Done" "- [ ] Docs"
 printf '%s\n' '#!/bin/sh' 'exit 1' > "$W/.git/hooks/pre-commit"; chmod +x "$W/.git/hooks/pre-commit"
+# a staged and an unstaged edit in both targets: the rollback must keep each where it was
+printf '%s\n' "- [ ] Staged item" >> "$W/specs/active/0001-demo.md"; printf '%s\n' "- staged note" >> "$W/specs/plans/0001-plan.md"
+git -C "$W" add specs/active/0001-demo.md specs/plans/0001-plan.md
+printf '%s\n' "- [ ] Unstaged item" >> "$W/specs/active/0001-demo.md"; printf '%s\n' "- unstaged note" >> "$W/specs/plans/0001-plan.md"
+st0=$(git -C "$W" status --porcelain); dc0=$(git -C "$W" diff --cached); dw0=$(git -C "$W" diff)
 c0=$(commits); before=$(cksum < "$W/specs/active/0001-demo.md"); pb=$(cksum < "$W/specs/plans/0001-plan.md"); gate ship 0001
 exits 1 "gate ship: a failed commit is refused";           has "git commit failed — nothing was written" "… and says nothing was written"
-[ "$(commits)" -eq "$c0" ] && [ -z "$(git -C "$W" status --porcelain)" ] && [ ! -e "$W/specs/done/0001-demo.md" ] \
+[ "$(commits)" -eq "$c0" ] && [ "$(git -C "$W" status --porcelain)" = "$st0" ] && [ ! -e "$W/specs/done/0001-demo.md" ] \
   && [ "$(cksum < "$W/specs/active/0001-demo.md")" = "$before" ] && [ "$(cksum < "$W/specs/plans/0001-plan.md")" = "$pb" ]
 report $? "gate ship: … the move, the spec, the plan and the index are as before"
+[ "$(git -C "$W" diff --cached)" = "$dc0" ] && [ "$(git -C "$W" diff)" = "$dw0" ]
+report $? "gate ship: … staged edits stay staged and unstaged ones unstaged"
+git -C "$W" reset -q --hard HEAD
 mkspec 0002 Draft; git -C "$W" add specs/active/0002-demo.md; git -C "$W" commit -qn -m draft2
 put specs/notes.md staged; git -C "$W" add specs/notes.md; gate approve-spec 0002
 exits 1 "gate approve-spec: a failed commit is refused"

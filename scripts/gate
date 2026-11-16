@@ -115,39 +115,47 @@ set_line() {
 # writes nothing (Requirement 4, review round 1 L-1).
 T=$(mktemp -d "${TMPDIR:-/tmp}/anew-gate.XXXXXX") || refuse "mktemp failed"
 trap 'rm -rf "$T"' EXIT
-trap 'rm -rf "$T"; exit 130' INT TERM
+trap '[ -z "$snap" ] || rollback; rm -rf "$T"; exit 130' INT TERM   # an interrupt before the commit undoes the writes
 # The targets' uncommitted edits, named before writing (Requirement 6).
 edits=""
 had_edits() { for p in "$@"; do [ -z "$(git -C "$ROOT" status --porcelain -- "$p")" ] || edits="$edits${edits:+, }$p"; done; }
 # snapshot <path>…: each path's working file and index entry, so a failed commit can put them back.
-snap=""
+snap=""; snapped=""
 snapshot() {
   i=0
   for p in "$@"; do
-    i=$((i + 1)); snap="$snap$p$NL"
+    i=$((i + 1)); snap="$snap$p$NL"; snapped=$snap
     [ ! -e "$ROOT/$p" ] || cp -p "$ROOT/$p" "$T/orig.$i"
     git -C "$ROOT" ls-files -s -- "$p" > "$T/idx.$i"
   done
 }
+lost=""   # the paths a rollback could not put back
 rollback() {
   i=0
   while IFS= read -r p; do
     [ -n "$p" ] || continue
-    i=$((i + 1))
-    if [ -s "$T/idx.$i" ]; then git -C "$ROOT" update-index --index-info < "$T/idx.$i"
-    else git -C "$ROOT" rm -q --cached --ignore-unmatch -- "$p" >/dev/null 2>&1; fi
-    if [ -e "$T/orig.$i" ]; then cat "$T/orig.$i" > "$ROOT/$p"; else rm -f "$ROOT/$p"; fi
+    i=$((i + 1)); ok=1
+    if [ -s "$T/idx.$i" ]; then git -C "$ROOT" update-index --index-info < "$T/idx.$i" || ok=0
+    else git -C "$ROOT" rm -q --cached --ignore-unmatch -- "$p" >/dev/null 2>&1 || ok=0; fi
+    if [ -e "$T/orig.$i" ]; then cat "$T/orig.$i" > "$ROOT/$p" || ok=0; else rm -f "$ROOT/$p" || ok=0; fi
+    [ "$ok" -eq 1 ] || lost="$lost${lost:+, }$p"
   done <<SNAP
 $snap
 SNAP
+  snap=""
 }
-fail() { rollback; refuse "$1 — nothing was written: $(printf '%s' "$snap" | tr '\n' ' ')restored as before"; }
+fail() {
+  rollback
+  [ -z "$lost" ] || refuse "$1 — and could not restore $lost: compare it with git status and git diff"
+  refuse "$1 — nothing was written: $(printf '%s' "$snapped" | tr '\n' ' ')restored as before"
+}
 put_file() { cat "$T/$1" > "$ROOT/$2" || fail "could not write $2"; }   # mode kept
 commit() {  # commit <message> <path>… — only these paths; the rest of the index stays as it is
   m=$1; shift
   # a path a move took away is not added: the pathspec commit records its removal
   (cd "$ROOT" && for p in "$@"; do [ ! -e "$p" ] || git add -- "$p" || exit 1; done &&
     git commit -q -m "$m" -- "$@") || fail "git commit failed"
+  snap=""   # committed: nothing to undo any more
   sha=$(git -C "$ROOT" rev-parse --short HEAD)
 }
 
@@ -213,8 +221,9 @@ case "$cmd" in
     # Criterion lines as doctor reads a new ship: the first checkbox followed by an AC-/CB-/PB- id,
     # any bullet or section (a mini spec too). Moved out = a "→ moved to" / "-> moved to" target
     # after the id (after its closing ~~ when the id is struck), outside backticks: left as is.
-    # A struck id without a target is refused; every other unticked criterion is ticked.
-    LC_ALL=C GATE_BAD="$T/bad" awk '
+    # A struck id without a target is refused; every other unticked criterion is ticked. Moved-out
+    # ones go to $T/moved ("<id><TAB><target>") for doctor's target checks below.
+    LC_ALL=C GATE_BAD="$T/bad" GATE_MOVED="$T/moved" awk '
       index($0, "## ") == 1 { sec = $0 }
       match($0, /\[[ xX]?\][^A-Za-z0-9]*(AC|CB|PB)-[0-9]+/) {
         s = RSTART; m = substr($0, s, RLENGTH); bl = index(m, "]")
@@ -232,12 +241,42 @@ case "$cmd" in
             tgt = rest }
           if (tgt !~ /[^ \t]/) {
             if (struck) { print id > ENVIRON["GATE_BAD"]; bad = 1 }
-            else $0 = substr($0, 1, s - 1) "[x]" substr($0, s + bl) } }
+            else $0 = substr($0, 1, s - 1) "[x]" substr($0, s + bl) }
+          else print id "\t" tgt > ENVIRON["GATE_MOVED"] }
         print; next }
       index(sec, "## Definition of Done") == 1 { sub(/^- \[ \] /, "- [x] ") }
       { print }
       END { exit bad ? 4 : 0 }' < "$T/s1" > "$T/spec" \
       || refuse "$specrel: $(tr '\n' ' ' < "$T/bad")is struck without a '→ moved to' target — write it (R-08) or unstrike it"
+    # A moved-out criterion passes doctor's new-ship checks or the ship is refused: no move in a
+    # sensitive-area spec (doctor's reading of the declaration), and a target that is a B-<n> in
+    # the backlog or another open spec in specs/active/.
+    if [ -s "$T/moved" ]; then
+      if LC_ALL=C awk '{ l = tolower($0)
+             if (l !~ /^[ \t]*([-*+]|[0-9]+[.)])?[ \t]*[*_]*sensitive area/) next
+             r = substr(l, index(l, "sensitive area") + 14)
+             sub(/^(\(s\)|s)/, "", r); sub(/^[*_ \t]*/, "", r)
+             if (r !~ /^(:|—|–|-)/) next
+             sub(/^(:|—|–|-)/, "", r); gsub(/<!--.*-->/, "", r); sub(/^[*_ \t`"'"'"'(\[]*/, "", r)
+             if (r ~ /^(none|n\/a)([^a-z]|$)/) next
+             found = 1 }
+           END { exit found ? 0 : 1 }' "$spec"; then
+        refuse "$specrel is in a sensitive area: $(cut -f1 "$T/moved" | tr '\n' ' ')cannot be moved out (R-08)"
+      fi
+      while IFS="$TAB" read -r id tgt; do
+        case "$tgt" in
+          B-[0-9]*)
+            bn=$(printf '%s' "$tgt" | sed -E 's/^(B-[0-9]+).*/\1/')
+            grep -qF "**$bn**" "$ROOT/specs/backlog.md" 2>/dev/null || refuse "$specrel $id → $bn: no such entry in specs/backlog.md" ;;
+          spec\ [0-9]*)
+            sn=$(printf '%s' "$tgt" | sed -E 's/^spec ([0-9]+).*/\1/')
+            [ "$sn" != "$n" ] || refuse "$specrel $id → spec $sn: a criterion cannot move to its own spec"
+            set -- "$ROOT/specs/active/$sn-"*.md
+            [ -f "$1" ] || refuse "$specrel $id → spec $sn: no such spec in specs/active/" ;;
+          *) refuse "$specrel $id: the target '$tgt' is neither B-<n> nor spec <NNNN>" ;;
+        esac
+      done < "$T/moved"
+    fi
     GATE_A=$specrel GATE_D=$donerel awk '
       !done && index($0, "- Spec:") == 1 && (i = index($0, ENVIRON["GATE_A"])) {
         $0 = substr($0, 1, i - 1) ENVIRON["GATE_D"] substr($0, i + length(ENVIRON["GATE_A"])); done = 1 }
