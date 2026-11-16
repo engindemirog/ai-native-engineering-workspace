@@ -34,6 +34,21 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.24.2 — doctor: the template's untouched approval line is no approval
+
+A fix on the LTS line (from `main` v1.26.1). doctor stripped HTML comments one line at a time, so
+the plan template's own approval line — `- Approved by / on: — <!-- …` with a comment that closes
+on the next line — read as recorded, and a spec moved to `In progress` on an untouched plan passed
+the gate "build started without recorded plan approval" silently.
+
+### Upgrading
+
+- `scripts/doctor`: behavior: on the `Approved by / on` line, a comment that opens and does not
+  close on the line is dropped to the end of the line, as one closed on it already was. Copy it,
+  or apply that to your copy. Selftest: three new approval-line scenarios; copy
+  `scripts/selftest` with it.
+- Full diff: `/compare/v1.24.1...v1.24.2`.
+
 ## v1.24.1 — v1.24 is the first LTS line
 
 Organizations adopting ANEW need one version to train on and build on while new work continues.
