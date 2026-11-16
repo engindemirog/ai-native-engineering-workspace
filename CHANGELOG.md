@@ -61,7 +61,8 @@ No rule changes: the record is the one a hand edit makes.
   - input checked before any write (exit 2): verdict, noise rationale, defer's `B-<n>` in
     `specs/backlog.md`, no `|`, tab or line break;
   - one commit per decision, pathspec only: other staged changes stay out; edits in a target are
-    committed with it and named; a failed commit or an interrupt restores the files, the move and the index.
+    committed with it and named; a failed commit or an interrupt before it restores the files,
+    the move and the index and says so; an interrupt after the commit landed undoes nothing.
 - `scripts/status`: behavior: an `investigate` row in the newest round → `unclear: investigate
   open — <ids>`, checked before FIX ROUND.
 

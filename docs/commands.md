@@ -140,6 +140,11 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   `shipped` and empty who, next and plan status.
 - **Lite / Strict:** no difference.
 - **Refusal:** an unknown argument prints `usage: scripts/status [--json]` (exit 2).
+- **Common mistake:** reading `REVIEW` or `VERIFY` as "it has not run" — a clean review,
+  re-review or VERIFY writes no table, so status cannot tell, and the row stays at REVIEW or
+  VERIFY until the next record. To move it on, record the clean round as its heading with no rows
+  (`### Review round 2 — <name>, <date> (clean)`); a clean review round reads VERIFY, a clean
+  VERIFY round reads SHIP.
 
 ### `scripts/gate`
 - **What it does:** writes a human's decision in the form a hand edit takes, checks it first, and
@@ -179,16 +184,12 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Lite / Strict:** no difference.
 - **Refusal:** exit 1 — the wrong stage, a status warning on ship, no git, an empty
   `user.name`, no such spec or plan, a shipped spec; nothing is written. A failed commit (a hook,
-  signing) or an interrupt puts every file it wrote, the move and the index back, and says so
-  (exit 1; a path it could not restore is named). Exit 2 —
-  bad input or an unknown argument, with the usage; nothing is written.
+  signing) puts every file it wrote, the move and the index back, and says so (exit 1); so does
+  an interrupt before the commit (exit 130). An interrupt after the commit landed undoes nothing
+  and names the commit. A path it could not restore is named. Exit 2 — bad input or an unknown
+  argument, with the usage; nothing is written.
 - **Common mistake:** running it before reading the file. The commit is the record that you
   decided; read the plan, the review report or the evidence table first.
-- **Common mistake:** reading `REVIEW` or `VERIFY` as "it has not run" — a clean review,
-  re-review or VERIFY writes no table, so status cannot tell, and the row stays at REVIEW or
-  VERIFY until the next record. To move it on, record the clean round as its heading with no rows
-  (`### Review round 2 — <name>, <date> (clean)`); a clean review round reads VERIFY, a clean
-  VERIFY round reads SHIP.
 
 ### `scripts/check`
 - **What it does:** the single verification contract — runs the steps in `scripts/check.conf` in
