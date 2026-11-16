@@ -65,7 +65,8 @@ newest_round() {
           for (i = 1; i <= n; i++) print r[i] }'
 }
 # closed <note>: the Note cell names a fix — a fix-<k> with a [plan $n/fix-<k>] commit in $fixsubs,
-# or a commit sha this repository knows (spec 0006, G-3). The order of the commits does not matter.
+# or the sha of a commit labeled [plan $n/fix-…] (spec 0006, G-3, A-3); a sha cited as background
+# closes nothing. The order of the commits does not matter.
 closed() {
   for tok in $(printf '%s\n' "$1" | tr -c 'A-Za-z0-9-' ' '); do
     case "$tok" in
@@ -76,19 +77,22 @@ closed() {
       *)
         [ ${#tok} -ge 7 ] && [ ${#tok} -le 40 ] || continue
         case "$tok" in *[!0-9a-fA-F]*) continue ;; esac
-        git -C "$ROOT" cat-file -e "$tok^{commit}" 2>/dev/null && return 0 ;;
+        git -C "$ROOT" log -1 --format=%s "$tok^{commit}" 2>/dev/null | grep -qF "[plan $n/fix-" && return 0 ;;
     esac
   done
   return 1
 }
 # severity <finding cell>: high (Critical, High, Medium), low (Low, Info) or unknown — from the id
-# prefix (C-/H-/M-, L-/I-/Info-), else from the first severity word.
+# prefix (C-/H-/M-, L-/I-/Info-), else from the first two words — a severity word deeper in the
+# text ("the info banner …") is description, not severity (spec 0006, A-3).
 severity() {
   printf '%s\n' "$1" | awk '{ s = tolower($0); sub(/^[ \t*]+/, "", s) }
     s ~ /^(c|h|m)-[0-9]/ { print "high"; exit }
     s ~ /^(l|i|info)-[0-9]/ { print "low"; exit }
-    { n = split(s, w, /[^a-z]+/)
-      for (i = 1; i <= n; i++) {
+    { n = split(s, w, /[^a-z]+/); seen = 0
+      for (i = 1; i <= n && seen < 2; i++) {
+        if (w[i] == "") continue
+        seen++
         if (w[i] ~ /^(critical|high|medium)$/) { print "high"; exit }
         if (w[i] ~ /^(low|info)$/) { print "low"; exit } }
       print "unknown" }'
@@ -119,11 +123,13 @@ evidence_age() {
 # region <spec|plan>: the approved content of a file on stdin (comments dropped, fences kept), one
 # "<section><TAB><line>" per line. Later records are left out: status lines, build evidence,
 # triage, amendments. A criterion is joined with its continuation lines and keeps its text only:
-# box, strike-through and a "→ moved to …" tail are cut, runs of blanks read as one.
+# box, and the strike-through with its "→ moved to …" tail, are cut (a strike without the tail is
+# a change: a criterion is moved out, never waived); runs of blanks read as one.
 region() {
   awk -v kind="$1" '
-    function flush() { if (crit != "") { c = crit; sub(/^[ \t]*- \[[ xX]\][ \t]*/, "- ", c); gsub(/~~/, "", c)
-                         sub(/[ \t]*(→|->)[ \t]*moved to .*/, "", c); gsub(/[ \t]+/, " ", c); print s "\t" c }
+    function flush() { if (crit != "") { c = crit; sub(/^[ \t]*- \[[ xX]\][ \t]*/, "- ", c)
+                         if (c ~ /(→|->)[ \t]*moved to /) { gsub(/~~/, "", c); sub(/[ \t]*(→|->)[ \t]*moved to .*/, "", c) }
+                         gsub(/[ \t]+/, " ", c); print s "\t" c }
                        crit = "" }
     !fence && /^[ \t]*```[^`]*$/ { flush(); fence = 1; if (s != "") print s "\t" $0; next }
     fence && /^[ \t]*```+[ \t]*$/ { fence = 0; if (s != "") print s "\t" $0; next }
@@ -156,20 +162,24 @@ new_ids() {
 }
 # baselines <plan, repo-relative>: "<approval> <plan baseline>". The approval is the newest commit
 # that set a new Approved by / on value, so a re-approval is a new baseline; the plan baseline is
-# the newer of that and the newest later commit that added an A-<n> line (spec 0006, A-2).
+# the newer of that and the newest later commit that added an A-<n> line while the approved
+# sections were unchanged just before it, so an amendment never covers an earlier unrecorded
+# change (spec 0006, A-2, A-3). Commits where the plan does not exist are skipped.
 baselines() {
   git -C "$ROOT" log --format=%H --reverse -- "$1" 2>/dev/null | {
-    prev=""; pids=""; a=""; p=""
+    prev=""; pids=""; preg=""; a=""; p=""; preg_p=""
     while IFS= read -r c; do
-      txt=$(git -C "$ROOT" show "$c:$1" 2>/dev/null | clean_in)
-      v=$(printf '%s\n' "$txt" | approved_value)
-      ids=$(printf '%s\n' "$txt" | amendment_ids)
+      git -C "$ROOT" cat-file -e "$c:$1" 2>/dev/null || continue
+      txt=$(git -C "$ROOT" show "$c:$1" | tr -d '\r')
+      v=$(printf '%s\n' "$txt" | clean_in | approved_value)
+      ids=$(printf '%s\n' "$txt" | clean_in | amendment_ids)
+      reg=$(printf '%s\n' "$txt" | clean_in keep | region plan)
       case "$v" in
         ""|"-"|"—") ;;
-        *) if [ "$v" != "$prev" ]; then a=$c; p=$c
-           elif [ -n "$a" ] && [ -n "$(new_ids "$pids" "$ids")" ]; then p=$c; fi ;;
+        *) if [ "$v" != "$prev" ]; then a=$c; p=$c; preg_p=$reg
+           elif [ -n "$a" ] && [ -n "$(new_ids "$pids" "$ids")" ] && [ "$preg" = "$preg_p" ]; then p=$c; preg_p=$reg; fi ;;
       esac
-      prev=$v; pids=$ids
+      prev=$v; pids=$ids; preg=$reg
     done
     [ -z "$a" ] || printf '%s %s\n' "$a" "$p"; }
 }
@@ -188,7 +198,7 @@ drift() {
   short=$(git -C "$ROOT" rev-parse --short "$c")
   if git -C "$ROOT" cat-file -e "$c:$2" 2>/dev/null; then
     d=$(changed_sections "$(git -C "$ROOT" show "$c:$2" | clean_in keep | region spec)" "$(clean_in keep < "$1" | region spec)")
-    [ -n "$d" ] && warns="${warns}the spec changed after approval (@$short): $d — get it re-approved, or revert
+    [ -n "$d" ] && warns="${warns}the spec changed after approval (@$short): $d — get it re-approved (a new Approved by / on value; same day: add re-approved), or revert
 "
   else
     infos="${infos}the spec is not at $2 in the approval commit @$short: its changes cannot be checked
@@ -197,10 +207,16 @@ drift() {
   pshort=$(git -C "$ROOT" rev-parse --short "$pb")
   d=$(changed_sections "$(git -C "$ROOT" show "$pb:$4" | clean_in keep | region plan)" "$(clean_in keep < "$3" | region plan)")
   [ -n "$d" ] || return 0
-  new=$(new_ids "$(git -C "$ROOT" show "$pb:$4" | clean_in | amendment_ids)" "$(clean "$3" | amendment_ids)")
+  # "amended" only for an A-<n> line not committed yet, over no committed unrecorded change: a
+  # committed one moved the baseline, or did not.
+  pbreg=$(git -C "$ROOT" show "$pb:$4" | clean_in keep | region plan)
+  new=""
+  if [ "$(git -C "$ROOT" show "HEAD:$4" 2>/dev/null | clean_in keep | region plan)" = "$pbreg" ]; then
+    new=$(new_ids "$(git -C "$ROOT" show "HEAD:$4" 2>/dev/null | clean_in | amendment_ids)" "$(clean "$3" | amendment_ids)")
+  fi
   if [ -n "$new" ]; then infos="${infos}amended ($new): the plan's $d changed after approval (@$pshort)
 "
-  else warns="${warns}the plan changed after approval (@$pshort): $d — record an amendment (A-<n>) or get it re-approved
+  else warns="${warns}the plan changed after approval (@$pshort): $d — record an amendment (A-<n>) or get it re-approved (a new Approved by / on value)
 "
   fi
 }
