@@ -1,6 +1,6 @@
 # Spec 0008 — doctor reads the untouched template approval line as not approved (mini)
 
-- Status: Draft
+- Status: In progress
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0008-plan.md`
 - Self-critique: done (no gaps: one line of doctor, the behavior named by B-8)
