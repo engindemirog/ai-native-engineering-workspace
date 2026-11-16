@@ -36,10 +36,10 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
 
 ## v1.26.1 — doctor: the template's untouched approval line is no approval
 
-A fix (not a new rule). doctor stripped HTML comments one line at a time, so the plan template's
-own approval line — `- Approved by / on: — <!-- …` with a comment that closes on the next line —
-read as recorded, and a spec moved to `In progress` on an untouched plan passed the gate "build
-started without recorded plan approval" silently. scripts/status and scripts/gate were not
+A fix (not a new rule; also in v1.24.2). doctor stripped HTML comments one line at a time, so the
+plan template's own approval line — `- Approved by / on: — <!-- …` with a comment that closes on the
+next line — read as recorded, and a spec moved to `In progress` on an untouched plan passed the gate
+"build started without recorded plan approval" silently. scripts/status and scripts/gate were not
 affected.
 
 ### Upgrading
