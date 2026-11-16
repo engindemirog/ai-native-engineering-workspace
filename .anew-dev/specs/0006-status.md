@@ -42,25 +42,36 @@ Deliberately not done:
    - full evidence and no review triage table → REVIEW (fresh session or read-only reviewer),
      then TRIAGE (human). REVIEW writes no file, so status says that it cannot tell whether the
      review has run (self-critique G-1);
-   - the newest triage round holds a finding marked `real` with no fix commit noted after it →
-     Developer: fix round;
+   - the newest triage round holds a finding marked `real` whose Note cell names no fix (a
+     `fix-<k>` with a `[plan NNNN/fix-<k>]` commit, or a commit sha) → Developer: fix round. Each
+     finding is closed by its own note, whatever the order of the commits (A-1);
+   - every real finding of the newest round fixed, and one of them Medium or higher → REVIEW
+     again on the fix diff; all of them Low or Info → VERIFY, QA; a severity status cannot read →
+     "unclear" (A-1);
    - review triage done and no VERIFY round → VERIFY, QA;
-   - the newest VERIFY round with no open `real` → human: SHIP;
+   - the newest VERIFY round with no `real` finding → human: SHIP. A VERIFY round whose real
+     findings are fixed goes back to VERIFY by the same rule as a review round (A-1);
+   - a `###` heading under `## Triage` that is neither a review nor a VERIFY round → "unclear"
+     (A-1);
    - a state that fits none of these is reported as "unclear: <what is missing>", never as a
      stage.
 3. **Evidence older than the code.** The proving line is the last `CHECK GREEN (full, …) @<sha>`
    line in `## Build evidence`. If files outside `specs/` and `.anew-dev/` changed between `<sha>`
    and HEAD, the row warns "evidence is older than the code". This applies the rule of
-   `docs/testing.md` rule 6. An unknown or unreachable `<sha>` gets its own warning.
+   `docs/testing.md` rule 6. A `<sha>` that is not a commit in this repository gets its own
+   warning (A-2: it need not be an ancestor of HEAD, as rule 6 allows).
 4. **Approved content changed after approval.**
-   - The approval point is the commit that first recorded the plan's `Approved by / on` line.
+   - The approval point is the newest commit that set a new `Approved by / on` value, so a
+     re-approval is a new baseline (A-2).
    - A later change to the spec's Intent, Requirements, User experience, Constraints or
      acceptance criterion text warns "changed after approval". So does a later change to the
      plan's Files, Ordered steps, Risks or Criterion ↔ test map.
    - These changes are not drift: status lines, ticked boxes, `## Build evidence`, `## Triage`,
-     `## Amendments`, and criteria moved out per the template.
-   - A changed plan section while the plan has a new `A-<n>` line since approval shows "amended
-     (A-<n>)" instead of the warning.
+     `## Amendments`, and criteria moved out per the template (a wrapped criterion is read as one
+     line). Fenced blocks are approved content and are compared (A-2).
+   - For the plan, the baseline is the newer of the approval point and the newest commit that
+     added an `A-<n>` line. A change since then with a new uncommitted `A-<n>` line shows "amended
+     (A-<n>)"; any other change warns, so an amendment never covers later changes (A-2).
 5. **Honest when it cannot tell** (invariant 8). These cases are named in the row, never shown as
    clean:
    - no git;
