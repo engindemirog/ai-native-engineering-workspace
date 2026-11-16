@@ -726,6 +726,15 @@ mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 �
   "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
   "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |"; status
 has "→  SHIP (human)" "status: a VERIFY round without real findings → SHIP"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| L-2 Low | noise | rationale |" "" \
+  "### VERIFY round 1 — selftest, 2026-01-02" "| Finding | Verdict | Note |" "|---|---|---|" "| 1 Info | noise | ok |" \
+  "| I-2 Info — flaky on Windows? | investigate | QA |"; status
+has "unclear: investigate open — I-2 in 'VERIFY round 1" "status: an open investigate in a VERIFY round is unclear, not SHIP"
+hasnt "SHIP (human)" "… and never reads SHIP"
+mkplan 0001 "selftest, 2026-01-01" "$GREEN" "" "## Triage" "### Review round 1 — selftest, 2026-01-01" \
+  "| Finding | Verdict | Note |" "|---|---|---|" "| M-1 Medium | real | |" "| L-2 Low | investigate | |"; status
+has "unclear: investigate open — L-2" "status: an investigate beside an open real finding is unclear"
 # Evidence age: the last full line's @<sha> against later changes outside specs/ (rule 6).
 reset; mkspec 0001 "In progress"; mkplan 0001 "selftest, 2026-01-01" "$GREEN"; commit "evidence"; status
 hasnt "evidence is older" "status: a specs-only commit after the evidence warns nothing"
