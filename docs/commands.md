@@ -164,7 +164,9 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
     bullet or section, so a mini spec too — unless it is moved out (a `→ moved to` / `-> moved
     to` target after the id); ticks the Definition of Done, sets `Status: Shipped`, moves the
     spec to `specs/done/` and points the plan's `Spec:` line there. A struck id without a target,
-    or a plan whose `Spec:` line does not name the spec, refuses. The scorecard, the PR, the
+    a move doctor would fail (a target that is not a `B-<n>` in the backlog or another spec in
+    `specs/active/`; any move in a sensitive-area spec), or a plan whose `Spec:` line does not
+    name the spec, refuses. The scorecard, the PR, the
     merge and the tag stay with you.
 - **When to use it:** at a human gate, after reading the file it decides on — instead of the hand
   edit, never on top of one. It records a human's decision: an agent never runs it on its own,
@@ -177,7 +179,8 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **Lite / Strict:** no difference.
 - **Refusal:** exit 1 — the wrong stage, a status warning on ship, no git, an empty
   `user.name`, no such spec or plan, a shipped spec; nothing is written. A failed commit (a hook,
-  signing) puts every file it wrote, the move and the index back, and says so (exit 1). Exit 2 —
+  signing) or an interrupt puts every file it wrote, the move and the index back, and says so
+  (exit 1; a path it could not restore is named). Exit 2 —
   bad input or an unknown argument, with the usage; nothing is written.
 - **Common mistake:** running it before reading the file. The commit is the record that you
   decided; read the plan, the review report or the evidence table first.
