@@ -1,6 +1,6 @@
 # Spec 0006 — scripts/status: where every piece of work stands
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0006-plan.md`
 - Self-critique: done (G-1–G-4 accepted, 2026-11-14)
@@ -109,34 +109,34 @@ Deliberately not done:
   extension, and `.anew-dev/`.
 
 ## Acceptance criteria
-- [ ] AC-1 — With no spec in `specs/active/` or `specs/done/`, status prints the empty-state line
+- [x] AC-1 — With no spec in `specs/active/` or `specs/done/`, status prints the empty-state line
   and exits 0.
-- [ ] AC-2 — Each stage rule of Requirement 2 has a fixture that yields its stage, who acts and
+- [x] AC-2 — Each stage rule of Requirement 2 has a fixture that yields its stage, who acts and
   the next step: Draft, approved with no plan, plan awaiting approval, approved but not started,
   in progress without evidence, review pending, fix round, VERIFY, ship, shipped.
-- [ ] AC-3 — A state outside the rules is reported as "unclear: …" with what is missing, never as
+- [x] AC-3 — A state outside the rules is reported as "unclear: …" with what is missing, never as
   a stage.
-- [ ] AC-4 — A commit that touches a file outside `specs/` after the proving `@<sha>` warns that
+- [x] AC-4 — A commit that touches a file outside `specs/` after the proving `@<sha>` warns that
   the evidence is older than the code. A commit that touches only `specs/` does not. An unknown
   `<sha>` gets its own warning.
-- [ ] AC-5 — Changing a plan's Ordered steps, or a spec's criterion text, after the approval
+- [x] AC-5 — Changing a plan's Ordered steps, or a spec's criterion text, after the approval
   commit warns "changed after approval". The same change with a new `A-<n>` line shows "amended".
   Ticking boxes, a status change, new build evidence or a new triage table warn nothing.
-- [ ] AC-6 — With no git, or with an approval that is not yet committed, the row says that the
+- [x] AC-6 — With no git, or with an approval that is not yet committed, the row says that the
   check could not run. It never shows clean.
-- [ ] AC-7 — `--json` carries the same rows and warnings as the table, in the documented shape. An
+- [x] AC-7 — `--json` carries the same rows and warnings as the table, in the documented shape. An
   unknown argument exits 2 with the usage.
-- [ ] AC-8 — A run leaves `git status --porcelain` unchanged.
-- [ ] AC-9 — `./scripts/selftest` and `./scripts/doctor --strict` are green. `docs/commands.md`
+- [x] AC-8 — A run leaves `git status --porcelain` unchanged.
+- [x] AC-9 — `./scripts/selftest` and `./scripts/doctor --strict` are green. `docs/commands.md`
   documents status, so doctor's coverage check passes. The CHANGELOG has a v1.25 entry and
   `.anew-version` is v1.25.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest, as for 0004/0005)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (`docs/commands.md`, README script list, CHANGELOG)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest, as for 0004/0005)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (`docs/commands.md`, README script list, CHANGELOG)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-14)
 - **G-1 — REVIEW leaves no trace.** Between full evidence and the first triage table, status
