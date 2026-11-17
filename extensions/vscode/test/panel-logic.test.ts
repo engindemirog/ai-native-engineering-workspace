@@ -52,7 +52,7 @@ test('triage, ship and agent stages offer no write', () => {
     assert.equal(o.approve, false, r.stage);
     assert.equal(o.requestChanges, false, r.stage);
   }
-  assert.match(offer({ row: row('SHIP', 'human'), opened: true, shell: true, running: null }).hint, /comes with spec 0010/);
+  assert.match(offer({ row: row('SHIP', 'human'), opened: true, shell: true, running: null }).hint, /open the row from the sidebar for its screen/);
 });
 
 test('opening the spec does not open the plan approval that follows it (the panel stays open)', () => {

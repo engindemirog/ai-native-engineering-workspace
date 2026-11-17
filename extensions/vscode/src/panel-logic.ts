@@ -23,7 +23,7 @@ export function offer(s: PanelState): Offer {
   const write = writeFor(s.row);
   if (write === null) {
     const hint = s.row.who === 'human'
-      ? `${s.row.stage}: this decision's screen comes with spec 0010 — open the file, or use scripts/gate in a terminal.`
+      ? `${s.row.stage}: open the row from the sidebar for its screen, or use scripts/gate in a terminal.`
       : s.row.stage === 'shipped' ? 'Shipped.' : `${s.row.stage}: waiting for ${s.row.who || 'a decision status cannot read'}.`;
     return { write, open: true, approve: false, requestChanges: false, hint };
   }

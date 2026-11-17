@@ -1,8 +1,8 @@
 {
   "name": "anew",
   "displayName": "ANEW",
-  "description": "Where every piece of work stands, and the human's approvals — a screen over scripts/status and scripts/gate.",
-  "version": "0.1.0",
+  "description": "The whole ANEW process on a screen — start work, approve, triage, ship — over scripts/status and scripts/gate.",
+  "version": "0.2.0",
   "publisher": "anew",
   "license": "MIT",
   "type": "module",
