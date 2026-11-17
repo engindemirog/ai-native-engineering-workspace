@@ -1,9 +1,9 @@
 # Spec 0010 — the VS Code extension, part 2: the whole process on the screen
 
-- Status: Draft
+- Status: Approved
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0010-plan.md`
-- Self-critique: done (G-1–G-6 below, for the human's decision)
+- Self-critique: done (G-1–G-6 accepted as recommended, Engin Demiroğ, 2026-11-17)
 - Source: spec 0009 G-6 (the split); B-14–B-20 (`.anew-dev/backlog.md`); the human at 0009's SHIP:
   "tüm süreç mockup gibi olsun. gerekirse iş bile başlatılabilsin"
 
@@ -111,7 +111,7 @@ Deliberately not done:
 - [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
 - [ ] Spec moved to `.anew-dev/done/`
 
-## Self-critique (for the human's decision)
+## Self-critique (approved 2026-11-17)
 - **G-1 — triage reads a pasted report.** Reports live in the chat; no file holds them (0009 G-2).
   Recommendation: paste and split, with hand entry as the fallback — no protocol change. The
   alternative, `/review` and `/verify` writing their report to a file, changes the template for
