@@ -120,9 +120,13 @@ test('the severity is chosen on the card; the report textarea is named; the save
   assert.ok(h.includes('<select name="sev-0" aria-label="X-1 severity"'));
   assert.ok(h.includes('<option value="" selected>severity?</option>'));
   assert.ok(h.includes('<textarea name="report" aria-label="The Review report"'));
-  assert.ok(h.includes('<p class="hint" role="status">Decide every finding first: X-1: the finding has no text; X-1: choose its severity; X-1: no decision yet.</p>'));
+  assert.ok(h.includes('<p id="save-hint" class="hint" role="status">Decide every finding first: X-1: the finding has no text; X-1: choose its severity; X-1: no decision yet.</p>'));
 });
 
 test('F-4: the High/Critical pill carries dark text in every theme', () => {
   assert.match(html(view()), /\.sev\.hi \{[^}]*color: #1b1c20/);
+});
+
+test('N-2: the High/Critical pill is a fixed pair, AA in every theme (5.1:1), not the theme\'s error colour', () => {
+  assert.match(html(view()), /\.sev\.hi \{ background: #f85149; color: #1b1c20;/);
 });

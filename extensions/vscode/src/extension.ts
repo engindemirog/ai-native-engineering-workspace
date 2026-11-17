@@ -357,14 +357,17 @@ class Triage {
       this.web.webview.html = notice(`${this.spec} is not in scripts/status now.`, randomBytes(16).toString('hex'), this.web.webview.cspSource);
       return;
     }
-    const problems = this.decisions ? triage.problems(this.decisions) : [];
     const kinds = triageKinds(row);
     this.web.title = `ANEW · ${row.spec} triage`;
     this.web.webview.html = triage.html({
       row, plan: `specs/plans/${row.spec}-plan.md`, kind: this.kind, kinds: kinds.length ? kinds : [this.kind],
-      report: this.report, decisions: this.decisions, preview: this.decisions && !problems.length ? triage.write(this.decisions, this.context()) : null,
-      problems, shell: this.shell() !== null, running: this.running, result: this.result, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      report: this.report, decisions: this.decisions, ...this.state(), result: this.result, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
+  }
+
+  private state(): { preview: triage.Write | null; problems: string[]; shell: boolean; running: boolean } {
+    const problems = this.decisions ? triage.problems(this.decisions) : [];
+    return { preview: this.decisions && !problems.length ? triage.write(this.decisions, this.context()) : null, problems, shell: this.shell() !== null, running: this.running };
   }
 
   private async on(type: string, form: Record<string, string>): Promise<void> {
@@ -376,7 +379,8 @@ class Triage {
       const sev = form[`sev-${i}`];
       if (sev !== undefined && ['', 'Critical', 'High', 'Medium', 'Low', 'Info'].includes(sev)) d.finding.severity = sev as Finding['severity'];
     });
-    if (type === 'input') return; // kept as typed; no redraw under the cursor
+    // kept as typed; no redraw under the cursor — the preview and Save follow in place
+    if (type === 'input') return void this.web.webview.postMessage({ type: 'update', ...triage.parts(this.state()) });
     const row = this.row();
     const v = /^v-(\d+)-(real|noise|defer|investigate)$/.exec(type);
     const rm = /^rm-(\d+)$/.exec(type);

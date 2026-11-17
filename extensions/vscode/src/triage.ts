@@ -162,7 +162,15 @@ export interface TriageView {
   cspSource: string;
 }
 
-const SEV_CLASS: Record<string, string> = { Critical: 'hi', High: 'hi', Medium: 'mid', Low: 'low', Info: 'info', '': 'info' };
+// The parts of the screen that follow the typed text — the preview, Save and its hint — sent to the
+// page in place while the human types (screens.ts: a text field never redraws the page).
+export function parts(v: Pick<TriageView, 'preview' | 'problems' | 'shell' | 'running'>): { html: Record<'triage-preview' | 'save-hint', string>; disabled: { save: boolean } } {
+  const preview = v.preview ? `<div class="card"><span class="label">Written to the plan</span><pre class="out">${esc(v.preview.preview)}</pre>${v.preview.entries.length ? `<span class="label">Appended to specs/backlog.md first</span><pre class="out">${esc(v.preview.entries.join('\n'))}</pre>` : ''}</div>` : '';
+  const hint = esc(!v.shell ? 'No POSIX shell found: set anew.shell. Nothing can be written.' : v.running ? 'Running ./scripts/gate triage…' : v.problems.length ? `Decide every finding first: ${v.problems.join('; ')}.` : 'The table is written to the plan and committed.');
+  return { html: { 'triage-preview': preview, 'save-hint': hint }, disabled: { save: v.problems.length > 0 || !v.shell || v.running } };
+}
+
+const SEV_CLASS: Record<string, string> ={ Critical: 'hi', High: 'hi', Medium: 'mid', Low: 'low', Info: 'info', '': 'info' };
 
 export function html(v: TriageView): string {
   const label = v.kind === 'review' ? 'Review' : 'VERIFY';
@@ -185,10 +193,11 @@ export function html(v: TriageView): string {
   <div class="row" role="group" aria-label="${esc(d.finding.id)} decision">${VERDICTS.map((x) => `<button id="v-${i}-${x}" class="secondary" data-keep="1" aria-pressed="${d.verdict === x}">${x}</button>`).join('')}</div>
   <input name="note-${i}" aria-label="${esc(d.finding.id)} note" placeholder="${d.verdict === 'noise' ? 'why it is noise (required)' : d.verdict === 'defer' ? 'why later (a B-<n> entry is written for it)' : d.verdict === 'real' ? 'note (the fix round names its commit later)' : 'note'}" value="${esc(d.note)}">
 </div>`).join('');
-  const preview = v.preview ? `<div class="card"><span class="label">Written to the plan</span><pre class="out">${esc(v.preview.preview)}</pre>${v.preview.entries.length ? `<span class="label">Appended to specs/backlog.md first</span><pre class="out">${esc(v.preview.entries.join('\n'))}</pre>` : ''}</div>` : '';
+  const p = parts(v);
+  const preview = `<div id="triage-preview" class="part">${p.html['triage-preview']}</div>`;
   const save = ds === null || v.result?.written ? '' : `<div class="decide">
-  <div class="row"><button id="save" class="primary"${v.problems.length || !v.shell || v.running ? ' disabled' : ''}>Save triage</button></div>
-  <p class="hint" role="status">${esc(!v.shell ? 'No POSIX shell found: set anew.shell. Nothing can be written.' : v.running ? 'Running ./scripts/gate triage…' : v.problems.length ? `Decide every finding first: ${v.problems.join('; ')}.` : 'The table is written to the plan and committed.')}</p>
+  <div class="row"><button id="save" class="primary"${p.disabled.save ? ' disabled' : ''}>Save triage</button></div>
+  <p id="save-hint" class="hint" role="status">${p.html['save-hint']}</p>
   <p class="foot">Written by <code>./scripts/gate triage ${esc(v.row.spec)} --${v.kind}</code>.</p>
 </div>`;
   return page({ title, nonce: v.nonce, cspSource: v.cspSource }, `
@@ -204,7 +213,8 @@ ${v.result ? answerBox(v.result, 'Triage saved — written and committed') : ''}
 .finding { gap: 10px; }
 .tag { font-weight: 700; font-family: var(--mono); }
 .sev { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--line); }
-.sev.hi { background: var(--bad); color: #1b1c20; border-color: transparent; }
+.sev.hi { background: #f85149; color: #1b1c20; border-color: transparent; }
+.part { display: contents; }
 .sev.mid { background: var(--you); color: #1b1c20; border-color: transparent; }
 .grow { flex: 1 1 260px; min-width: 0; }
 .small { font-size: 12.5px; margin: 0; }

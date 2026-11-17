@@ -35,19 +35,27 @@ const key = (e) => (e && e.id ? '#' + e.id : e && e.name ? '[name="' + e.name + 
 const keep = () => vscode.setState({ focus: key(document.activeElement) });
 const back = (vscode.getState() || {}).focus;
 if (back) { const el = document.querySelector(back); if (el) el.focus(); vscode.setState({}); }
-const send = (type) => { keep(); vscode.postMessage({ type, form: form() }); };
+let typing;
+const send = (type) => { clearTimeout(typing); keep(); vscode.postMessage({ type, form: form() }); };
 for (const b of document.querySelectorAll('button[id]')) {
   b.addEventListener('click', () => { if (!b.dataset.keep) b.disabled = true; send(b.id); });
 }
-// a choice in a list, or a field left, takes effect at once (a severity or a rationale can unlock Save)
-for (const s of document.querySelectorAll('select[name], input[name], textarea[name]')) {
+// a choice in a list takes effect at once (a severity can unlock Save)
+for (const s of document.querySelectorAll('select[name]')) {
   s.addEventListener('change', () => send('sync'));
 }
-// typing is kept by the extension as it goes, so a redraw or a hidden tab loses nothing
-let typing;
+// typing is kept by the extension as it goes, so a redraw or a hidden tab loses nothing. A text
+// field never redraws the page (a redraw would take the focus and a click on the way): the
+// extension answers with an update of the parts that follow the text, in place.
 for (const s of document.querySelectorAll('input[name], textarea[name]')) {
   s.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => vscode.postMessage({ type: 'input', form: form() }), 300); });
 }
+window.addEventListener('message', (e) => {
+  const m = e.data;
+  if (!m || m.type !== 'update') return;
+  for (const [id, h] of Object.entries(m.html || {})) { const el = document.getElementById(id); if (el) el.innerHTML = h; }
+  for (const [id, d] of Object.entries(m.disabled || {})) { const el = document.getElementById(id); if (el) el.disabled = d; }
+});
 </script>
 </body>
 </html>`;
