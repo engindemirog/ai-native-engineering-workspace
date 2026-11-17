@@ -1,0 +1,92 @@
+{
+  "name": "anew",
+  "displayName": "ANEW",
+  "description": "Where every piece of work stands, and the human's approvals — a screen over scripts/status and scripts/gate.",
+  "version": "0.1.0",
+  "publisher": "anew",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/engindemirog/ai-native-engineering-workspace"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:scripts/status"
+  ],
+  "main": "./out/extension.cjs",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "anew",
+          "title": "ANEW",
+          "icon": "media/anew.svg"
+        }
+      ]
+    },
+    "views": {
+      "anew": [
+        {
+          "id": "anew.work",
+          "name": "Work",
+          "when": "anew.active"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "anew.refresh",
+        "title": "ANEW: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "anew.open",
+        "title": "ANEW: Open"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "anew.refresh",
+          "when": "view == anew.work",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "anew.open",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ANEW",
+      "properties": {
+        "anew.shell": {
+          "type": "string",
+          "default": "",
+          "description": "The POSIX shell that runs scripts/status and scripts/gate. Empty: sh on Linux and macOS, Git for Windows' bash.exe on Windows."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=out/extension.cjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && node --test \"test/*.test.ts\"",
+    "package": "npm run build && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^4.1.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

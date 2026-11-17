@@ -14,3 +14,8 @@ Thumbs.db
 
 # Claude Code personal settings (shared settings.json IS committed after init)
 .claude/settings.local.json
+
+# VS Code extension build output (extensions/vscode)
+extensions/vscode/node_modules/
+extensions/vscode/out/
+extensions/vscode/*.vsix
