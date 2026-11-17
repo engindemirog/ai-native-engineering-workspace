@@ -223,3 +223,19 @@ test('setup: what init writes for each adapter is what the confirmation lists, a
     assert.deepEqual(installed(exists), [a.id]);
   }
 });
+
+test('install: the screen\'s init call leaves what the terminal call leaves; an existing file is kept and named', { skip }, async () => {
+  const a = initFixture('install-a');
+  const b = initFixture('install-b');
+  for (const dir of [a, b]) {
+    fs.mkdirSync(path.join(dir, '.cursor', 'rules'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.cursor', 'rules', 'anew.mdc'), 'our own rule\n');
+  }
+  const r = await runScript(shell as string, a, 'init', initArgs('cursor'));
+  terminal(b, './scripts/init cursor');
+  assert.equal(r.code, 0, r.stderr);
+  const tree = (dir: string) => files(dir).sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]);
+  assert.deepEqual(tree(a), tree(b));
+  assert.equal(fs.readFileSync(path.join(a, '.cursor', 'rules', 'anew.mdc'), 'utf8'), 'our own rule\n');
+  assert.match(r.stdout, /^kept {3}\.cursor\/rules\/anew\.mdc \(exists — use --force to overwrite\)$/m);
+});

@@ -3,6 +3,7 @@
 // session with the command, or hands the command over to copy (spec 0010, G-2).
 import * as path from 'node:path';
 import { esc, page } from './screens.ts';
+import { ADAPTERS, adapter, forAgent, type Tool } from './setup.ts';
 
 export type Kind = 'feature' | 'change' | 'fix' | 'refactor';
 export type Mode = 'lite' | 'strict' | 'unset';
@@ -27,15 +28,18 @@ export function mode(agents: string): Mode {
   return m ? (m[1].toLowerCase() as Mode) : 'unset';
 }
 
-// The agent command: the kind's command and the description on one line. In strict mode a new
-// feature starts with its first segment, /analyze (the chainer refuses there). null until there
-// is a description.
-export function command(kind: Kind, description: string, m: Mode): string | null {
+// The agent command: the kind's command and the description on one line, in the form the agent
+// runs it (Codex: `$new-feature`, spec 0011 G-3). In strict mode a new feature starts with its
+// first segment, /analyze (the chainer refuses there). null until there is a description.
+export function command(kind: Kind, description: string, m: Mode, agent: Tool = 'claude-code'): string | null {
   const d = description.replace(/\s+/g, ' ').trim();
   if (d === '') return null;
   const k = KINDS.find((x) => x.id === kind) ?? KINDS[0];
-  return `${kind === 'feature' && m === 'strict' ? '/analyze' : k.cmd} ${d}`;
+  return forAgent(`${kind === 'feature' && m === 'strict' ? '/analyze' : k.cmd} ${d}`, agent);
 }
+
+// Before bootstrap the one piece of work is setting the project up (spec 0011, R4).
+export const bootstrap = (agent: Tool) => forAgent('/bootstrap', agent);
 
 // The number the agent will most likely give the spec: the highest in specs/active, specs/done
 // and specs/plans, plus one. Information only — the agent assigns it.
@@ -77,42 +81,66 @@ export interface StartView {
   description: string;
   mode: Mode;
   number: string;
-  claude: boolean; // Start in Claude Code is offered
+  claude: boolean; // claude was found on PATH
   started: string | null; // the command a session was opened with
+  agent: Tool; // the agent the command is built for (the human's pick)
+  have: Tool[]; // installed adapters
+  installable: Tool[]; // adapters scripts/init can install here
+  bootstrapped: boolean;
+  shell: boolean;
+  installing: Tool | null;
+  installed: { tool: Tool; written: boolean; code: number; text: string } | null; // init's answer
   nonce: string;
   cspSource: string;
 }
 
+// The agent card: each adapter installed or not, the pick, Install for a missing one (spec 0011).
+function agents(v: StartView): string {
+  const rows = ADAPTERS.map((a) => {
+    const on = v.have.includes(a.id);
+    const state = on ? '<span class="ok">✓ installed</span>' : '<span class="missing">not installed</span>';
+    const install = on ? ''
+      : !v.installable.includes(a.id) ? `<span class="muted small">no adapters/${esc(a.id)}/ here: run ./scripts/init from a template copy</span>`
+      : `<button id="install-${a.id}" class="secondary small"${!v.shell || v.installing ? ' disabled' : ''}>${v.installing === a.id ? 'Installing…' : 'Install'}</button>`;
+    return `<li class="agent"><button id="agent-${a.id}" class="secondary small" data-keep="1" aria-pressed="${a.id === v.agent}">${esc(a.label)}</button>${state}${install}</li>`;
+  }).join('');
+  const picked = adapter(v.agent);
+  const warn = v.have.includes(v.agent) ? '' : `<p class="missing small" role="note">${esc(picked.label)} is not installed here: it does not know the ANEW commands until it is.</p>`;
+  const r = v.installed;
+  const answer = r ? `<div class="result ${r.written ? 'ok' : 'refused'}" role="${r.written ? 'status' : 'alert'}"><strong>${r.written
+    ? `✓ ${esc(adapter(r.tool).label)} installed — the files are new and not committed; the commit is yours.`
+    : `Refused (exit ${r.code}) — nothing else was written.`}</strong><pre class="out">${esc(r.text)}</pre></div>` : '';
+  return `<section class="card" aria-label="Your agent"><span class="label">Your agent</span>
+<ul class="agents">${rows}</ul>
+${warn}
+<p class="foot">Install runs <code>./scripts/init &lt;tool&gt;</code>; files that exist are kept. To refresh an installed adapter, run <code>./scripts/init --force &lt;tool&gt;</code> in a terminal — it overwrites files you customized. Any other tool: paste AGENTS.md at the start of a session (<button id="generic" class="link" data-keep="1">adapters/generic/README.md</button>).</p>
+${v.shell ? '' : '<p class="hint" role="status">No POSIX shell found: set anew.shell. Nothing can be installed.</p>'}
+${answer}
+</section>`;
+}
+
 export function html(v: StartView): string {
-  const cmd = command(v.kind, v.description, v.mode);
-  const base = (command(v.kind, 'x', v.mode) as string).slice(0, -2);
+  const setup = !v.bootstrapped;
+  const cmd = setup ? bootstrap(v.agent) : command(v.kind, v.description, v.mode, v.agent);
+  const base = setup ? '' : (command(v.kind, 'x', v.mode, v.agent) as string).slice(0, -2);
   const kinds = KINDS.map((k) => `<button id="kind-${k.id}" class="kind" aria-pressed="${k.id === v.kind}" data-keep="1">
-  <strong>${esc(k.label)}</strong><span>${esc(k.hint)}</span><code>${esc(k.id === 'feature' && v.mode === 'strict' ? '/analyze' : k.cmd)}</code>
+  <strong>${esc(k.label)}</strong><span>${esc(k.hint)}</span><code>${esc(forAgent(k.id === 'feature' && v.mode === 'strict' ? '/analyze' : k.cmd, v.agent))}</code>
 </button>`).join('\n');
   const modeLine = v.mode === 'strict' ? 'Mode: strict — one segment per role; it stops at its handoff'
-    : v.mode === 'lite' ? 'Mode: lite — it stops at every gate' : 'Mode: unset — run /bootstrap first';
-  const start = v.claude
-    ? `<button id="start" class="primary"${cmd ? '' : ' disabled'}>Start in Claude Code</button>`
-    : '';
-  return page({ title: 'ANEW · new work', nonce: v.nonce, cspSource: v.cspSource }, `
-<header>
-  <span class="path">ANEW · new work</span>
-  <h1>Start new work</h1>
-</header>
-<p class="muted">This screen does not run the agent: it describes the work, builds the command and opens a fresh session with it.</p>
-<section aria-label="Kind"><span class="label">Kind of work</span><div class="kinds">${kinds}</div></section>
+    : v.mode === 'lite' ? 'Mode: lite — it stops at every gate' : 'Mode: unset — bootstrap sets it';
+  const canStart = v.claude && v.agent === 'claude-code';
+  const start = canStart ? `<button id="start" class="primary"${cmd ? '' : ' disabled'}>Start in Claude Code</button>` : '';
+  const foot = canStart ? 'Copilot, Cursor, Codex: pick it above, then copy the command into its chat.'
+    : v.agent === 'claude-code' ? 'Claude Code was not found on PATH: copy the command into your agent\'s chat.'
+    : `Copy the command into ${adapter(v.agent).label}'s chat.`;
+  const work = setup
+    ? `<section class="card" aria-label="Set up the project"><span class="label">Set up the project</span>
+<p class="prose"><strong>The project is not set up yet</strong> (AGENTS.md is not configured, or names no mode). Bootstrap is the first work: the agent reads the project, asks what it cannot see, and writes AGENTS.md, the docs and <code>scripts/check.conf</code>, stopping for your approval. The kinds of work appear once it has set the mode.</p></section>`
+    : `<section aria-label="Kind"><span class="label">Kind of work</span><div class="kinds">${kinds}</div></section>
 <label class="field"><span class="label">What do you want?</span>
 <textarea name="description" placeholder="${esc(PROMPT[v.kind])}">${esc(v.description)}</textarea></label>
-<p class="foot">You need not write the acceptance criteria: the agent proposes them in the spec draft, and you approve it. Its number will most likely be ${esc(v.number)}; the agent assigns it.</p>
-<div class="decide">
-  <span class="label">Goes to the agent</span>
-  <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : EMPTY}</pre>
-  <ul class="facts"><li>A new session — no context carried over</li><li>${esc(modeLine)}</li><li>First stop: the spec approval is yours</li></ul>
-  <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${cmd ? '' : ' disabled'}>Copy command</button></div>
-  <p class="foot">${v.claude ? 'Copilot, Cursor, Codex: copy the command and paste it into their chat.' : 'Claude Code was not found on PATH: copy the command into your agent\'s chat.'}</p>
-</div>
-${v.started ? `<div class="result ok" role="status"><strong>✓ A session opened in a new terminal with the command.</strong><p class="prose">When the spec draft is written, it appears under “Your turn” in the sidebar.</p></div>` : ''}
-<script nonce="${v.nonce}">
+<p class="foot">You need not write the acceptance criteria: the agent proposes them in the spec draft, and you approve it. Its number will most likely be ${esc(v.number)}; the agent assigns it.</p>`;
+  const script = setup ? '' : `<script nonce="${v.nonce}">
 // the preview follows the typing; the extension builds the command again from the text it receives
 const ta = document.querySelector('textarea[name=description]');
 const pre = document.getElementById('preview');
@@ -122,7 +150,24 @@ ta.addEventListener('input', () => {
   pre.textContent = d ? pre.dataset.cmd + ' ' + d : ${JSON.stringify(EMPTY)};
   for (const b of live) b.disabled = !d;
 });
-</script>
+</script>`;
+  return page({ title: 'ANEW · new work', nonce: v.nonce, cspSource: v.cspSource }, `
+<header>
+  <span class="path">ANEW · new work</span>
+  <h1>${setup ? 'Set up the project' : 'Start new work'}</h1>
+</header>
+<p class="muted">This screen does not run the agent: it describes the work, builds the command and opens a fresh session with it.</p>
+${agents(v)}
+${work}
+<div class="decide">
+  <span class="label">Goes to the agent</span>
+  <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : EMPTY}</pre>
+  <ul class="facts"><li>A new session — no context carried over</li><li>${esc(modeLine)}</li><li>${setup ? 'It stops for your approval of what bootstrap writes' : 'First stop: the spec approval is yours'}</li></ul>
+  <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${cmd ? '' : ' disabled'}>Copy command</button></div>
+  <p class="foot">${esc(foot)}</p>
+</div>
+${v.started ? `<div class="result ok" role="status"><strong>✓ A session opened in a new terminal with the command.</strong><p class="prose">${setup ? 'When bootstrap has set the mode, the kinds of work appear here.' : 'When the spec draft is written, it appears under “Your turn” in the sidebar.'}</p></div>` : ''}
+${script}
 <style nonce="${v.nonce}">
 .kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 .kind { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 12px 14px; min-height: 0; background: var(--card); color: var(--fg); border: 1px solid var(--line); font-weight: 400; }
@@ -130,5 +175,11 @@ ta.addEventListener('input', () => {
 .kind[aria-pressed="true"] span, .kind[aria-pressed="true"] code { color: inherit; }
 .field { display: flex; flex-direction: column; gap: 8px; }
 .facts { font-size: 12.5px; color: var(--muted); }
+.agents { gap: 8px; }
+.agent { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.agent > button:first-child { min-width: 150px; }
+.small { font-size: 12.5px; }
+button.small { min-height: 30px; padding: 0 10px; }
+button.link { min-height: 0; padding: 0; border: 0; background: none; color: var(--vscode-textLink-foreground); font-weight: 400; text-decoration: underline; }
 </style>`);
 }
