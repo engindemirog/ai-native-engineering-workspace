@@ -29,7 +29,9 @@ From the GitHub release: download `anew-<version>.vsix`, then in VS Code: Extens
 
 The scripts are POSIX sh. On Linux and macOS the extension uses `sh`; on Windows, Git for
 Windows' `bash.exe`, found next to the `git` on `PATH`. The setting `anew.shell` names another
-one. Without a shell, the view says so and nothing is read or written.
+one; it is read from user or machine settings only, never from a workspace's own settings. In
+Restricted Mode (an untrusted workspace) the extension stays off. Without a shell, the view says so
+and nothing is read or written.
 
 ## Building it
 

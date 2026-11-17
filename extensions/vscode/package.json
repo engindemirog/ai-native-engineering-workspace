@@ -20,6 +20,12 @@
     "workspaceContains:scripts/status"
   ],
   "main": "./out/extension.cjs",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "ANEW runs the workspace's own scripts/status and scripts/gate."
+    }
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -60,6 +66,10 @@
       ],
       "commandPalette": [
         {
+          "command": "anew.refresh",
+          "when": "anew.active"
+        },
+        {
           "command": "anew.open",
           "when": "false"
         }
@@ -71,6 +81,7 @@
         "anew.shell": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "The POSIX shell that runs scripts/status and scripts/gate. Empty: sh on Linux and macOS, Git for Windows' bash.exe on Windows."
         }
       }

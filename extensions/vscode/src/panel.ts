@@ -9,7 +9,7 @@ export interface View {
   file: string; // workspace-relative path of the file the decision is on
   sections: Section[];
   offer: Offer;
-  result: { written: boolean; code: number; text: string } | null;
+  result: { written: boolean; code: number; text: string; next: string } | null;
   nonce: string;
   cspSource: string;
 }
@@ -24,7 +24,7 @@ export function html(v: View): string {
     : '<p class="muted">No summary in this file — open the file.</p>';
   const warnings = v.row.warnings.map((w) => `<li>${esc(w)}</li>`).join('');
   const result = v.result === null ? '' : v.result.written
-    ? `<div class="result ok" role="status"><strong>Written.</strong><pre>${esc(v.result.text)}</pre><p>Next: ${esc(nextAfter(v.offer.write))}</p></div>`
+    ? `<div class="result ok" role="status"><strong>Written.</strong><pre>${esc(v.result.text)}</pre><p>Next: ${esc(v.result.next)}</p></div>`
     : `<div class="result refused" role="alert"><strong>Refused (exit ${v.result.code}) — nothing was written.</strong><pre>${esc(v.result.text)}</pre></div>`;
   const approve = v.offer.approve ? `<button id="approve" class="primary">Approve the ${what}</button>` : '';
   const changes = v.offer.requestChanges ? '<button id="changes" class="secondary">Request changes…</button>' : '';
@@ -83,8 +83,4 @@ for (const id of ['open', 'approve', 'changes']) {
 </script>
 </body>
 </html>`;
-}
-
-function nextAfter(write: Offer['write']): string {
-  return write === 'approve-spec' ? '/plan in your agent' : write === 'approve-plan' ? '/build in your agent' : 'see the work list';
 }

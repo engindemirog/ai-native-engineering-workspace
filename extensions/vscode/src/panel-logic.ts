@@ -2,6 +2,7 @@
 // tests share it.
 import type { Row, Write } from './status.ts';
 import { writeFor } from './status.ts';
+import type { Answer } from './gate.ts';
 
 export interface PanelState {
   row: Row;
@@ -29,4 +30,26 @@ export function offer(s: PanelState): Offer {
   if (s.running) return { write, approve: false, requestChanges: false, hint: 'running gate…' };
   if (!s.opened) return { write, approve: false, requestChanges: true, hint: 'Open the full file first: the approval is given on the file, not on this summary.' };
   return { write, approve: true, requestChanges: true, hint: `Approve runs ./scripts/gate ${write} ${s.row.spec}.` };
+}
+
+// The decision the panel is on: one spec, one write, one file. Opening the file belongs to it, so
+// the plan approval that follows a spec approval starts closed even while the panel stays open.
+export function decision(row: Row, file: string | null): string {
+  return `${row.spec} ${writeFor(row) ?? row.stage} ${file ?? ''}`;
+}
+
+// gate's answer, with the decision it was given on and the step it leads to.
+export interface Done extends Answer {
+  decision: string;
+  next: string;
+}
+
+export function done(a: Answer, decision: string, write: NonNullable<Write>): Done {
+  const next = !a.written ? '' : write === 'approve-spec' ? '/plan in your agent' : '/build in your agent';
+  return { ...a, decision, next };
+}
+
+// The answer stays on screen while the agent works on the row, and goes once a new decision is up.
+export function shown(d: Done | null, decision: string, write: Write): Done | null {
+  return d !== null && (d.decision === decision || write === null) ? d : null;
 }
