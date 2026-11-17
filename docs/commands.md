@@ -32,6 +32,7 @@ Always available, outside the loop:
 | Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
+| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status` and `scripts/gate` |
 
 ## How to read this page
 
@@ -401,6 +402,24 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Lite / Strict:** no difference.
 - **Refusal:** none — no match is treated as R-10 (ambiguity).
 - **Common mistake:** improvising a fix instead of naming the ramp.
+
+## F — Editor: the VS Code extension
+
+### The VS Code extension (`extensions/vscode/`)
+- **What it does:** a screen over two scripts: the work list (your turn · in progress · shipped)
+  and a status bar count from `scripts/status --json`; for a spec at ANALYZE or a plan at PLAN
+  (human), a panel with the file's summary and an Approve button that runs
+  `scripts/gate approve-spec|approve-plan NNNN` and shows gate's answer as it is. Triage, ship and
+  starting new work come in a later version; until then those rows open the file.
+- **When to use it:** when you follow the work in VS Code rather than the terminal.
+- **Reads / writes:** reads what `scripts/status` and the spec and plan files say; writes nothing
+  itself — every decision is one `scripts/gate` call. No state of its own.
+- **Stops at:** Approve appears only after "Open the full file" has opened the file: the decision
+  is on the file, not the summary.
+- **Lite / Strict:** no difference (gate's own rules apply).
+- **Refusal:** gate's message, unchanged; without a POSIX shell (Git for Windows' `bash.exe`, or
+  the setting `anew.shell`) it reads and writes nothing and says so.
+- **Common mistake:** expecting it to run the agent — it shows the next step; you run it.
 
 ## Recovery ramps
 
