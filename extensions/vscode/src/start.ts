@@ -86,6 +86,7 @@ export interface StartView {
   agent: Tool; // the agent the command is built for (the human's pick)
   have: Tool[]; // installed adapters
   installable: Tool[]; // adapters scripts/init can install here
+  why: Partial<Record<Tool, string>>; // why Install is not offered (setup.whyNot)
   bootstrapped: boolean;
   shell: boolean;
   installing: Tool | null;
@@ -100,16 +101,16 @@ function agents(v: StartView): string {
     const on = v.have.includes(a.id);
     const state = on ? '<span class="ok">✓ installed</span>' : '<span class="missing">not installed</span>';
     const install = on ? ''
-      : !v.installable.includes(a.id) ? `<span class="muted small">no adapters/${esc(a.id)}/ here: run ./scripts/init from a template copy</span>`
+      : !v.installable.includes(a.id) ? `<span class="muted small">${esc(v.why[a.id] || 'not installable here')}: run ./scripts/init from a template copy</span>`
       : `<button id="install-${a.id}" class="secondary small"${!v.shell || v.installing ? ' disabled' : ''}>${v.installing === a.id ? 'Installing…' : 'Install'}</button>`;
-    return `<li class="agent"><button id="agent-${a.id}" class="secondary small" data-keep="1" aria-pressed="${a.id === v.agent}">${esc(a.label)}</button>${state}${install}</li>`;
+    return `<li class="agent"><button id="agent-${a.id}" class="secondary small" data-keep="1" aria-pressed="${a.id === v.agent}"${v.installing ? ' disabled' : ''}>${esc(a.label)}</button>${state}${install}</li>`;
   }).join('');
   const picked = adapter(v.agent);
   const warn = v.have.includes(v.agent) ? '' : `<p class="missing small" role="note">${esc(picked.label)} is not installed here: it does not know the ANEW commands until it is.</p>`;
   const r = v.installed;
   const answer = r ? `<div class="result ${r.written ? 'ok' : 'refused'}" role="${r.written ? 'status' : 'alert'}"><strong>${r.written
     ? `✓ ${esc(adapter(r.tool).label)} installed — the files are new and not committed; the commit is yours.`
-    : `Refused (exit ${r.code}) — nothing else was written.`}</strong><pre class="out">${esc(r.text)}</pre></div>` : '';
+    : `scripts/init exited ${r.code} — see its output.`}</strong><pre class="out">${esc(r.text)}</pre></div>` : '';
   return `<section class="card" aria-label="Your agent"><span class="label">Your agent</span>
 <ul class="agents">${rows}</ul>
 ${warn}
@@ -129,7 +130,9 @@ export function html(v: StartView): string {
   const modeLine = v.mode === 'strict' ? 'Mode: strict — one segment per role; it stops at its handoff'
     : v.mode === 'lite' ? 'Mode: lite — it stops at every gate' : 'Mode: unset — bootstrap sets it';
   const canStart = v.claude && v.agent === 'claude-code';
-  const start = canStart ? `<button id="start" class="primary"${cmd ? '' : ' disabled'}>Start in Claude Code</button>` : '';
+  // a session whose agent lacks the adapter does not know the command: Start waits for Install (L-1)
+  const ready = v.have.includes(v.agent);
+  const start = canStart ? `<button id="start" class="primary"${canStart && (!ready || v.installing !== null) ? ' data-hold="1"' : ''}${cmd && ready && !v.installing ? '' : ' disabled'}>Start in Claude Code</button>` : '';
   const foot = canStart ? 'Copilot, Cursor, Codex: pick it above, then copy the command into its chat.'
     : v.agent === 'claude-code' ? 'Claude Code was not found on PATH: copy the command into your agent\'s chat.'
     : `Copy the command into ${adapter(v.agent).label}'s chat.`;
@@ -144,7 +147,7 @@ export function html(v: StartView): string {
 // the preview follows the typing; the extension builds the command again from the text it receives
 const ta = document.querySelector('textarea[name=description]');
 const pre = document.getElementById('preview');
-const live = ['start', 'copy'].map((id) => document.getElementById(id)).filter(Boolean);
+const live = ['start', 'copy'].map((id) => document.getElementById(id)).filter((b) => b && !b.dataset.hold);
 ta.addEventListener('input', () => {
   const d = ta.value.replace(/\\s+/g, ' ').trim();
   pre.textContent = d ? pre.dataset.cmd + ' ' + d : ${JSON.stringify(EMPTY)};
@@ -163,8 +166,8 @@ ${work}
   <span class="label">Goes to the agent</span>
   <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : EMPTY}</pre>
   <ul class="facts"><li>A new session — no context carried over</li><li>${esc(modeLine)}</li><li>${setup ? 'It stops for your approval of what bootstrap writes' : 'First stop: the spec approval is yours'}</li></ul>
-  <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${cmd ? '' : ' disabled'}>Copy command</button></div>
-  <p class="foot">${esc(foot)}</p>
+  <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${cmd && !v.installing ? '' : ' disabled'}>Copy command</button></div>
+  <p class="foot">${esc(canStart && !ready ? 'Start waits for the Claude Code adapter: install it above, or copy the command.' : foot)}</p>
 </div>
 ${v.started ? `<div class="result ok" role="status"><strong>✓ A session opened in a new terminal with the command.</strong><p class="prose">${setup ? 'When bootstrap has set the mode, the kinds of work appear here.' : 'When the spec draft is written, it appears under “Your turn” in the sidebar.'}</p></div>` : ''}
 ${script}

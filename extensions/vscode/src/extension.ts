@@ -34,8 +34,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   let side: vscode.WebviewView | null = null;
   const drawSide = () => {
     if (side === null) return;
-    const exists = (rel: string) => fs.existsSync(path.join(root, rel));
-    const m = sidebar.model(status, problem, meta(), setup.needs(setup.installed(exists), read('AGENTS.md')));
+    const m = sidebar.model(status, problem, meta(), setup.needs(setup.installed(existsIn(root)), read('AGENTS.md')));
     side.webview.html = sidebar.html(m, randomBytes(16).toString('hex'), side.webview.cspSource);
     side.badge = m.waiting ? { value: m.waiting, tooltip: `${m.waiting} decision(s) wait for you` } : undefined;
   };
@@ -80,7 +79,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     panel?.render();
     triager?.render();
     shipper?.render();
-    starter?.render();
+    starter?.refreshed();
   }
 
   let timer: NodeJS.Timeout | undefined;
@@ -88,7 +87,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'specs/**'));
   watcher.onDidChange(soon); watcher.onDidCreate(soon); watcher.onDidDelete(soon);
   // the setup follows an install or a bootstrap: AGENTS.md and the files doctor's adapter check names
-  const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github/copilot-instructions.md,.cursor/rules/**,.agents/skills/analyze/SKILL.md}'));
+  const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github,.github/copilot-instructions.md,.cursor,.cursor/rules/**,.agents,.agents/skills/analyze/SKILL.md}'));
   setupWatcher.onDidChange(soon); setupWatcher.onDidCreate(soon); setupWatcher.onDidDelete(soon);
   ctx.subscriptions.push(setupWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
@@ -123,6 +122,17 @@ export function activate(ctx: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {}
+
+// A workspace-relative path that exists: a trailing / asks for a folder, else a file — as doctor's
+// -d and -f (spec 0011, G-6).
+function existsIn(root: string): setup.Exists {
+  return (rel) => {
+    try {
+      const st = fs.statSync(path.join(root, rel));
+      return rel.endsWith('/') ? st.isDirectory() : st.isFile();
+    } catch { return false; }
+  };
+}
 
 // One panel, reused for whichever row was opened last.
 class Approval {
@@ -270,19 +280,31 @@ class Start {
 
   // Read again on every draw: installed or not is never cached (spec 0011, Constraints).
   private setup() {
-    const exists = (rel: string) => fs.existsSync(path.join(this.root, rel));
+    const exists = existsIn(this.root);
     const have = setup.installed(exists);
     const claude = this.claude() !== null;
     return {
       claude, have,
       installable: setup.ADAPTERS.filter((a) => setup.installable(a.id, exists)).map((a) => a.id),
+      why: Object.fromEntries(setup.ADAPTERS.map((a) => [a.id, setup.whyNot(a.id, exists)])) as Partial<Record<setup.Tool, string>>,
       agent: setup.pick(this.memo.get<string>('anew.agent'), claude, have),
       bootstrapped: setup.bootstrapped(this.read('AGENTS.md')),
     };
   }
 
+  private shown = '';
+  private keyNow(): string {
+    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')) });
+  }
+
+  // After a refresh: redrawn only when the setup it shows changed (review round 1, M-1).
+  refreshed(): void {
+    if (!this.disposed && this.keyNow() !== this.shown) this.render();
+  }
+
   render(): void {
     if (this.disposed) return;
+    this.shown = this.keyNow();
     const names = ['specs/active', 'specs/done', 'specs/plans'].flatMap((d) => { try { return fs.readdirSync(path.join(this.root, d)); } catch { return []; } });
     this.web.webview.html = start.html({
       kind: this.kind, description: this.description, mode: start.mode(this.read('AGENTS.md')), number: start.nextNumber(names),

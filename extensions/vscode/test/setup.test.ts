@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ADAPTERS, installed, installable, bootstrapped, initArgs, pick, forAgent, needs, type Exists } from '../src/setup.ts';
+import { ADAPTERS, installed, installable, bootstrapped, initArgs, pick, forAgent, needs, whyNot, key, type Exists, type Tool } from '../src/setup.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const has = (...paths: string[]): Exists => (rel) => paths.includes(rel);
@@ -66,4 +66,27 @@ test('the sidebar\'s setup card: what is missing, nothing when set up', () => {
   assert.deepEqual(needs(['cursor'], ''), ['The project is not set up yet (bootstrap has not run).']);
   assert.deepEqual(needs([], configured), ['No AI tool adapter is installed.']);
   assert.deepEqual(needs(['codex'], configured), []);
+});
+
+test('M-2: bootstrapped exactly as doctor reads it — any form of a set mode counts, a "Mode: unset" anywhere does not', () => {
+  assert.equal(bootstrapped('# AGENTS.md\n\n**Mode:** lite — set\n'), true);
+  assert.equal(bootstrapped('# AGENTS.md\n\nMode: strict\n'), true);
+  assert.equal(bootstrapped('# AGENTS.md\n\n**Mode: lite**\n\nOld text: Mode: unset until bootstrap.\n'), false);
+  assert.equal(bootstrapped('# AGENTS.md\n\nmode: UNSET\n'), false);
+  assert.equal(bootstrapped('> **STATUS: NOT CONFIGURED.**\n**Mode: lite**\n'), false);
+});
+
+test('L-3: why Install is not offered names what is missing', () => {
+  assert.equal(whyNot('cursor', has('adapters/cursor/')), 'no scripts/init here');
+  assert.equal(whyNot('cursor', has('scripts/init')), 'no adapters/cursor/ here');
+  assert.equal(whyNot('cursor', has('scripts/init', 'adapters/cursor/')), '');
+});
+
+test('M-1: the start screen\'s refresh key changes with the setup it shows, and only with it', () => {
+  const s = { have: ['cursor'] as Tool[], installable: ['codex'] as Tool[], bootstrapped: false, mode: 'unset', why: {} };
+  const k = key(s);
+  assert.equal(key({ ...s }), k);
+  for (const changed of [{ have: [] as Tool[] }, { installable: [] as Tool[] }, { bootstrapped: true }, { mode: 'lite' }, { why: { cursor: 'no scripts/init here' } }]) {
+    assert.notEqual(key({ ...s, ...changed }), k, JSON.stringify(changed));
+  }
 });

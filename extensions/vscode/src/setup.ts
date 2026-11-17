@@ -23,7 +23,8 @@ export const ADAPTERS: Adapter[] = [
 export const adapter = (id: Tool): Adapter => ADAPTERS.find((a) => a.id === id) as Adapter;
 export const isTool = (s: string): s is Tool => ADAPTERS.some((a) => a.id === s);
 
-// `exists` takes a workspace-relative path; a trailing / asks for a folder.
+// `exists` takes a workspace-relative path: a trailing / asks for a folder, else a file (doctor's
+// -d and -f).
 export type Exists = (rel: string) => boolean;
 
 export function installed(exists: Exists): Tool[] {
@@ -32,12 +33,26 @@ export function installed(exists: Exists): Tool[] {
 
 // Install is offered when init has something to copy: the adapter's folder under adapters/.
 export function installable(id: Tool, exists: Exists): boolean {
-  return exists('scripts/init') && exists(`adapters/${id}/`);
+  return whyNot(id, exists) === '';
 }
 
-// Bootstrap has run when AGENTS.md is configured and names a mode — the lines doctor warns about.
+// Bootstrap has run when doctor says so: no `STATUS: NOT CONFIGURED` and no `Mode: unset`
+// (scripts/doctor, the mode case-insensitive as there) — never a stricter reading (G-6).
 export function bootstrapped(agents: string): boolean {
-  return !agents.includes('STATUS: NOT CONFIGURED') && /\*\*Mode:\s*(lite|strict)\*\*/i.test(agents);
+  return agents.trim() !== '' && !agents.includes('STATUS: NOT CONFIGURED') && !/Mode: unset/i.test(agents);
+}
+
+// Why Install is not offered for an adapter that is missing; '' when it is.
+export function whyNot(id: Tool, exists: Exists): string {
+  if (!exists('scripts/init')) return 'no scripts/init here';
+  if (!exists(`adapters/${id}/`)) return `no adapters/${id}/ here`;
+  return '';
+}
+
+// What a refresh can change on the start screen; it is redrawn from a refresh only when this
+// changed, so typing is never taken by a redraw for an unrelated file (review round 1, M-1).
+export function key(s: { have: Tool[]; installable: Tool[]; bootstrapped: boolean; mode: string; why: Partial<Record<Tool, string>> }): string {
+  return JSON.stringify([s.have, s.installable, s.bootstrapped, s.mode, s.why]);
 }
 
 // scripts/init's arguments: the tool alone, never --force.
