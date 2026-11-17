@@ -61,3 +61,18 @@ test('a finding written as a heading, and one inside a fenced block is not one',
   const r = split('### M-1 (Medium) — rounding at the limit\nThe 99,995 case. Recommendation: round half up.\n\n```\n**H-9** not a finding\n```\n');
   assert.deepEqual(r.map((x) => [x.id, x.severity, x.title, x.recommendation]), [['M-1', 'Medium', 'rounding at the limit', 'round half up.']]);
 });
+
+test('M-2: protocol ids and severity words in sentences are not findings', () => {
+  const r = split([
+    '- **AC-1** — PASS: proven by `status.test.ts`',
+    '**High-level summary:** the diff is small.',
+    '**Low risk overall.**',
+    '**R-07** plan drift check: clean.',
+    '**G-1** as approved',
+    '- **B-14** still deferred',
+    '- **A-1** recorded',
+    '**Low: a real one** at x.ts:3.',
+    '**Info** — a note',
+  ].join('\n'));
+  assert.deepEqual(r.map((x) => `${x.id}:${x.severity}:${x.title}`), ['L-1:Low:a real one', 'Info-1:Info:a note']);
+});

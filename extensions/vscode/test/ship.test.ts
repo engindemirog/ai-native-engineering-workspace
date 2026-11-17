@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { model, offered, prStep, triageRounds, html } from '../src/ship.ts';
+import { model, offered, prStep, triageRounds, html, probed, defaultBranch } from '../src/ship.ts';
 import type { Row } from '../src/status.ts';
 
 const spec = ['# Spec 0004 — report', '', '- Status: In progress', '', '## Acceptance criteria',
@@ -42,7 +42,7 @@ test('the PR step: offered on a feature branch with gh signed in; else the comma
 });
 
 const view = (over = {}) => ({ row: row('SHIP', 'human'), file: 'specs/active/0004-report.md', model: model(spec, plan), approver: 'Ada',
-  shell: true, running: false, result: null, pr: null, prOutput: null, nonce: 'n0nce', cspSource: 'vscode-resource:', ...over });
+  shell: true, running: false, result: null, pr: null, prOutput: null, pushing: false, nonce: 'n0nce', cspSource: 'vscode-resource:', ...over });
 
 test('the screen: criteria with proof (no tick boxes), one Ship button, escaped text', () => {
   const h = html(view());
@@ -70,4 +70,20 @@ test('after a written ship: gate\'s line, then the PR step; a refusal shows gate
   const manual = html(view({ result: { written: true, code: 0, text: 'x', next: '' }, pr: prStep({ branch: 'feat/x', defaultBranch: 'main', remote: 'origin', gh: false }) }));
   assert.ok(!manual.includes('id="pr"'));
   assert.ok(manual.includes('git push -u origin feat/x\ngh pr create --fill'));
+});
+
+test('H-2: a failed git probe is no branch name; a remote without HEAD means main', () => {
+  assert.equal(probed({ code: 128, stdout: 'fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n' }), '');
+  assert.equal(probed({ code: 0, stdout: 'origin/main\n' }), 'origin/main');
+  assert.equal(defaultBranch('', 'origin'), 'main');
+  assert.equal(defaultBranch('origin/trunk', 'origin'), 'trunk');
+  // shipped on main with origin/HEAD unset: no push button
+  assert.equal(prStep({ branch: 'main', defaultBranch: defaultBranch(probed({ code: 128, stdout: '' }), 'origin'), remote: 'origin', gh: true }).offered, false);
+});
+
+test('L-1: while pushing, the button is disabled and the screen says so', () => {
+  const pr = prStep({ branch: 'feat/x', defaultBranch: 'main', remote: 'origin', gh: true });
+  const h = html(view({ result: { written: true, code: 0, text: 'x', next: '' }, pr, pushing: true }));
+  assert.ok(h.includes('<button id="pr" class="primary" disabled>Push and open PR…</button>'));
+  assert.ok(h.includes('<p class="hint" role="status">Pushing and opening the PR…</p>'));
 });

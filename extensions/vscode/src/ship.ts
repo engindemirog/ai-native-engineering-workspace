@@ -57,6 +57,19 @@ export function offered(row: Row): { ok: boolean; why: string } {
   return { ok: true, why: '' };
 }
 
+// A git probe's answer: its first stdout line on exit 0, '' otherwise — an error message is never
+// a branch name.
+export function probed(r: { code: number; stdout: string }): string {
+  return r.code === 0 ? r.stdout.trim().split('\n')[0].trim() : '';
+}
+
+// The default branch from `git symbolic-ref --short refs/remotes/<remote>/HEAD`; when the remote
+// has no HEAD (common), main.
+export function defaultBranch(head: string, remote: string): string {
+  const b = head.startsWith(`${remote}/`) ? head.slice(remote.length + 1) : head;
+  return b || 'main';
+}
+
 // After a written ship: the push and the PR. Offered when gh is signed in and the branch is not the
 // default one; otherwise the commands to copy.
 export function prStep(o: { branch: string; defaultBranch: string; remote: string; gh: boolean }): { offered: boolean; why: string; commands: string[] } {
@@ -77,6 +90,7 @@ export interface ShipView {
   result: { written: boolean; code: number; text: string; next: string } | null;
   pr: { offered: boolean; why: string; commands: string[] } | null;
   prOutput: string | null;
+  pushing: boolean; // git push and gh pr create are running
   nonce: string;
   cspSource: string;
 }
@@ -94,11 +108,13 @@ export function html(v: ShipView): string {
   const decide = written ? '' : `<div class="decide">
   <p class="prose">Ship ticks every criterion and the Definition of Done, writes <code>Status: Shipped</code>, moves the spec to <code>specs/done/</code> and commits. The scorecard, the PR and the merge stay with you.</p>
   <div class="row"><button id="open" class="secondary">Open the spec</button><button id="ship" class="primary"${o.ok && v.shell && !v.running ? '' : ' disabled'}>Ship</button></div>
-  <p class="hint">${esc(!o.ok ? o.why : !v.shell ? 'No POSIX shell found: set anew.shell. Nothing can be written.' : v.running ? `Running ./scripts/gate ship ${v.row.spec}…` : 'Read the criteria with their proof above; Ship is one decision on all of them.')}</p>
+  <p class="hint" role="status">${esc(!o.ok ? o.why : !v.shell ? 'No POSIX shell found: set anew.shell. Nothing can be written.' : v.running ? `Running ./scripts/gate ship ${v.row.spec}…` : 'Read the criteria with their proof above; Ship is one decision on all of them.')}</p>
   <p class="foot">Written by <code>./scripts/gate ship ${esc(v.row.spec)}</code>. ${esc(v.approver ? `The commit carries git user.name: ${v.approver}.` : 'git user.name is not set: gate will refuse until it is.')}</p>
 </div>`;
   const pr = written && v.pr ? `<div class="card"><span class="label">Then: the PR</span>
-  ${v.pr.offered ? '<div class="row"><button id="pr" class="primary">Push and open PR…</button></div><p class="hint">Asks first, naming the branch and the remote. Merging stays on GitHub.</p>' : `<p class="hint">${esc(v.pr.why)}.</p>`}
+  ${v.pr.offered
+    ? `<div class="row"><button id="pr" class="primary"${v.pushing ? ' disabled' : ''}>Push and open PR…</button></div><p class="hint" role="status">${v.pushing ? 'Pushing and opening the PR…' : 'Asks first, naming the branch and the remote. Merging stays on GitHub.'}</p>`
+    : `<p class="hint">${esc(v.pr.why)}.</p>`}
   <pre class="out">${esc(v.pr.commands.join('\n'))}</pre>
   ${v.prOutput !== null ? `<pre class="out" role="status">${esc(v.prOutput)}</pre>` : ''}
 </div>` : '';

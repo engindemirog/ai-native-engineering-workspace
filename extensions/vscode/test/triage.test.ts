@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { problems, round, nextB, write, html, oneLine, type Decision } from '../src/triage.ts';
+import { problems, round, nextB, write, html, oneLine, appended, type Decision } from '../src/triage.ts';
 import type { Finding } from '../src/report.ts';
 import type { Row } from '../src/status.ts';
 
@@ -95,5 +95,30 @@ test('a finding whose id names no severity carries it in front, as status reads 
   assert.equal(t('Info-2', 'Info'), 'Info-2 x');
   assert.equal(t('L-a', 'Low'), 'Low L-a x');
   assert.equal(t('F-1', 'Medium'), 'Medium F-1 x');
-  assert.equal(t('F-2', ''), 'F-2 x');
+  assert.deepEqual(problems([{ finding: f('F-2', 'x', ''), verdict: 'real', note: '' }]), ['F-2: choose its severity']);
+});
+
+test('H-1: a finding without a severity cannot be saved; one the id contradicts gets the word in front', () => {
+  assert.deepEqual(problems([{ finding: f('X-1', 'by hand', ''), verdict: 'real', note: '' }]), ['X-1: choose its severity']);
+  const t = (id: string, severity: Finding['severity']) => write([{ finding: f(id, 'x', severity), verdict: 'real', note: '' }], ctx).args[4];
+  assert.equal(t('H-1', 'Low'), 'Low H-1 x');
+  assert.equal(t('L-1', 'High'), 'High L-1 x');
+  assert.equal(t('M-1', 'Critical'), 'M-1 x');
+  assert.equal(t('X-1', 'Medium'), 'Medium X-1 x');
+});
+
+test('M-1: the backlog text the extension appends — and the text it puts back on a refusal', () => {
+  assert.equal(appended('# B\n', ['- **B-1** — x']), '# B\n- **B-1** — x\n');
+  assert.equal(appended('# B', ['- **B-1** — x', '- **B-2** — y']), '# B\n- **B-1** — x\n- **B-2** — y\n');
+  assert.equal(appended('# B\n', []), '# B\n');
+  assert.equal(appended('', ['- **B-1** — x']), '- **B-1** — x\n');
+});
+
+test('the severity is chosen on the card; the report textarea is named; the save hint is live', () => {
+  const ds: Decision[] = [{ finding: f('X-1', '', ''), verdict: null, note: '' }];
+  const h = html(view({ decisions: ds, problems: problems(ds) }));
+  assert.ok(h.includes('<select name="sev-0" aria-label="X-1 severity"'));
+  assert.ok(h.includes('<option value="" selected>severity?</option>'));
+  assert.ok(h.includes('<textarea name="report" aria-label="The Review report"'));
+  assert.ok(h.includes('<p class="hint" role="status">Decide every finding first: X-1: the finding has no text; X-1: choose its severity; X-1: no decision yet.</p>'));
 });

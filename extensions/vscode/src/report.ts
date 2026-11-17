@@ -14,9 +14,11 @@ export interface Finding {
   recommendation: string; // the reviewer's "Recommendation:" / "Fix:", when the finding has one
 }
 
-// A finding id: one or two capitals or "Info", a dash, a number or a letter (H-1, CB-2, L-a,
-// Info-3). Longer words with a number ("Fix-2", "Step-1") are not ids.
-const ID = String.raw`(?:[A-Z]{1,2}|Info)-(?:\d+|[a-z])`;
+// A finding id: one or two capitals or "Info", a dash, a number or a letter (H-1, L-a, F-2,
+// Info-3). Longer words with a number ("Fix-2", "Step-1") are not ids, and neither are the
+// protocol's own: criteria (AC, CB, PB), recovery ramps (R), self-critique (G), amendments (A),
+// backlog entries (B) — a VERIFY report lists those as evidence, not as findings.
+const ID = String.raw`(?!(?:AC|CB|PB|R|G|A|B)-)(?:[A-Z]{1,2}|Info)-(?:\d+|[a-z])`;
 const SEV = String.raw`Critical|High|Medium|Low|Info`;
 const START = new RegExp(String.raw`^(\s*)(?:[-*+]\s+|\d+[.)]\s+|#{2,4}\s+)?\*\*(.+?)\*\*(.*)$`);
 const BY_LETTER: Record<string, Severity> = { C: 'Critical', H: 'High', M: 'Medium', L: 'Low', I: 'Info', Info: 'Info' };
@@ -77,7 +79,9 @@ function start(line: string): Open | null {
   const [, lead, bold, rest] = m;
   const item = /^\s*(?:[-*+]|\d+[.)])\s/.test(line);
   const byId = new RegExp(String.raw`^(${ID})\b\s*(.*)$`).exec(bold);
-  const bySev = new RegExp(String.raw`^(${SEV})\b\s*[:.(—-]?\s*(.*)$`).exec(bold);
+  // a bare severity opens a finding only as a label — "Low: …", "Info (…)", "High —", or alone —
+  // never as a word in a sentence ("High-level summary", "Low risk overall")
+  const bySev = new RegExp(String.raw`^(${SEV})(?:\s*[:(—]\s*(.*)|\s*[.:]?\s*$)`).exec(bold);
   if (!byId && !bySev) return null;
   let id = '';
   let after: string;
@@ -88,7 +92,7 @@ function start(line: string): Open | null {
     severity = BY_LETTER[id.split('-')[0]] ?? '';
   } else {
     severity = bySev![1] as Severity;
-    after = bySev![2];
+    after = bySev![2] ?? '';
   }
   // an explicit severity next to the id: "(Low)", "(Low, test gap)", "Low (new …)", "(High) —"
   const word = new RegExp(String.raw`^[\s(]*(${SEV})\b`).exec(after);

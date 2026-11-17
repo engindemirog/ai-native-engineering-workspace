@@ -19,12 +19,21 @@ export interface Decision {
 // gate refuses '|', tabs and line breaks in a finding or a note; the screen's text is one line.
 export const oneLine = (s: string) => s.replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
 
-// The finding as the table holds it. scripts/status reads a round's severity from the id (H-1,
-// L-2, Info-3) or a severity word among the first two words; an id that says none (L-a, F-1)
-// gets the severity in front, so the round stays readable.
+// How scripts/status reads a finding's severity (scripts/status, severity()): C-/H-/M-<digit> as
+// Medium or higher, L-/I-/Info-<digit> as Low/Info, else a severity word among the first two words.
+const CLASS: Record<string, 'high' | 'low'> = { Critical: 'high', High: 'high', Medium: 'high', Low: 'low', Info: 'low' };
+function idClass(id: string): 'high' | 'low' | null {
+  if (/^[CHM]-\d/i.test(id)) return 'high';
+  if (/^(?:L|I|Info)-\d/i.test(id)) return 'low';
+  return null;
+}
+
+// The finding as the table holds it: the id when status reads the right severity from it, else
+// the severity word in front (an id that says none, L-a or F-1, or one the report contradicts,
+// "H-1 (Low)") — so the round status reads is the one the screen showed.
 export function text(f: Finding): string {
-  const readable = /^(?:[CHMLI]|Info)-\d/i.test(f.id) || f.severity === '';
-  return oneLine(readable ? `${f.id} ${f.title}` : `${f.severity} ${f.id} ${f.title}`).slice(0, 200);
+  const same = f.severity !== '' && idClass(f.id) === CLASS[f.severity];
+  return oneLine(same || f.severity === '' ? `${f.id} ${f.title}` : `${f.severity} ${f.id} ${f.title}`).slice(0, 200);
 }
 
 // Why Save is not offered yet; empty when it is.
@@ -32,6 +41,8 @@ export function problems(ds: Decision[]): string[] {
   const out: string[] = [];
   for (const d of ds) {
     if (oneLine(d.finding.title) === '') out.push(`${d.finding.id}: the finding has no text`);
+    // status reads every round's severities; one it cannot read leaves the row unclear
+    if (d.finding.severity === '') out.push(`${d.finding.id}: choose its severity`);
     if (d.verdict === null) out.push(`${d.finding.id}: no decision yet`);
     else if (d.verdict === 'noise' && oneLine(d.note) === '') out.push(`${d.finding.id}: noise needs its rationale`);
   }
@@ -48,6 +59,13 @@ export function round(plan: string, kind: Kind): number {
     if (inside && /^### /.test(line) && new RegExp(`^### +${kind}( |$)`, 'i').test(line)) n++;
   }
   return n + 1;
+}
+
+// The backlog with the defers' entries appended — what the extension writes before the gate call,
+// and puts back (the text before) when gate refuses, so a refusal writes nothing.
+export function appended(backlog: string, entries: string[]): string {
+  if (entries.length === 0) return backlog;
+  return backlog + (backlog === '' || backlog.endsWith('\n') ? '' : '\n') + entries.join('\n') + '\n';
 }
 
 export function nextB(backlog: string): number {
@@ -122,7 +140,7 @@ export function html(v: TriageView): string {
   const kinds = v.kinds.length > 1 ? `<div class="row">${v.kinds.map((k) => `<button id="kind-${k}" class="secondary" data-keep="1" aria-pressed="${k === v.kind}">${k === 'review' ? 'Review round' : 'VERIFY round'}</button>`).join('')}</div>` : '';
   const paste = `<section aria-label="Report"><span class="label">The ${label} report</span>
 <p class="muted">Paste the report as the reviewer returned it. The screen splits it into findings; you decide each one.</p>
-<textarea name="report" placeholder="Paste the ${esc(label)} report here">${esc(v.report)}</textarea>
+<textarea name="report" aria-label="The ${esc(label)} report" placeholder="Paste the ${esc(label)} report here">${esc(v.report)}</textarea>
 <div class="row"><button id="split" class="primary">Split into findings</button><button id="clean" class="secondary">Clean round — no findings</button><button id="add" class="secondary">Add a finding by hand</button></div></section>`;
   const ds = v.decisions;
   const decided = ds ? ds.filter((d) => d.verdict !== null).length : 0;
@@ -130,7 +148,7 @@ export function html(v: TriageView): string {
     ? '<p class="muted" role="status">A clean round: no findings. Save writes the round with no table.</p>'
     : `<p class="muted" role="status">${ds.length} finding(s) read from the report · ${decided} / ${ds.length} decided. The reviewer's recommendation is shown; no decision is chosen for you. A missed finding: add it by hand.</p>` + ds.map((d, i) => `
 <div class="card finding">
-  <div class="row"><span class="tag">${esc(d.finding.id)}</span><span class="sev ${SEV_CLASS[d.finding.severity]}">${esc(d.finding.severity || 'severity?')}</span>
+  <div class="row"><span class="tag">${esc(d.finding.id)}</span><select name="sev-${i}" aria-label="${esc(d.finding.id)} severity" class="sev ${SEV_CLASS[d.finding.severity]}">${['', 'Critical', 'High', 'Medium', 'Low', 'Info'].map((s) => `<option value="${s}"${s === d.finding.severity ? ' selected' : ''}>${s || 'severity?'}</option>`).join('')}</select>
   <input name="title-${i}" aria-label="${esc(d.finding.id)} text" value="${esc(d.finding.title)}" class="grow"><button id="rm-${i}" class="secondary small" aria-label="Remove ${esc(d.finding.id)}">Remove</button></div>
   ${d.finding.detail ? `<p class="muted small">${esc(d.finding.detail)}</p>` : ''}
   ${d.finding.recommendation ? `<p class="small"><strong>Recommendation:</strong> ${esc(d.finding.recommendation)}</p>` : ''}
@@ -140,7 +158,7 @@ export function html(v: TriageView): string {
   const preview = v.preview ? `<div class="card"><span class="label">Written to the plan</span><pre class="out">${esc(v.preview.preview)}</pre>${v.preview.entries.length ? `<span class="label">Appended to specs/backlog.md first</span><pre class="out">${esc(v.preview.entries.join('\n'))}</pre>` : ''}</div>` : '';
   const save = ds === null || v.result?.written ? '' : `<div class="decide">
   <div class="row"><button id="save" class="primary"${v.problems.length || !v.shell || v.running ? ' disabled' : ''}>Save triage</button></div>
-  <p class="hint">${esc(!v.shell ? 'No POSIX shell found: set anew.shell. Nothing can be written.' : v.running ? 'Running ./scripts/gate triage…' : v.problems.length ? `Decide every finding first: ${v.problems.join('; ')}.` : 'The table is written to the plan and committed.')}</p>
+  <p class="hint" role="status">${esc(!v.shell ? 'No POSIX shell found: set anew.shell. Nothing can be written.' : v.running ? 'Running ./scripts/gate triage…' : v.problems.length ? `Decide every finding first: ${v.problems.join('; ')}.` : 'The table is written to the plan and committed.')}</p>
   <p class="foot">Written by <code>./scripts/gate triage ${esc(v.row.spec)} --${v.kind}</code>.</p>
 </div>`;
   return page({ title, nonce: v.nonce, cspSource: v.cspSource }, `

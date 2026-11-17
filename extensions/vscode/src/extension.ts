@@ -14,7 +14,7 @@ import { html, notice } from './panel.ts';
 import * as sidebar from './sidebar.ts';
 import * as start from './start.ts';
 import * as triage from './triage.ts';
-import { split } from './report.ts';
+import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
@@ -264,7 +264,8 @@ class Start {
   private async on(type: string, form: Record<string, string>): Promise<void> {
     this.description = form.description ?? this.description;
     if (type.startsWith('kind-')) {
-      this.kind = type.slice(5) as start.Kind;
+      const k = start.KINDS.find((x) => x.id === type.slice(5)); // only a known kind
+      if (k) this.kind = k.id;
       return this.render();
     }
     const cmd = start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')));
@@ -370,10 +371,16 @@ class Triage {
     this.decisions?.forEach((d, i) => {
       if (form[`title-${i}`] !== undefined) d.finding.title = form[`title-${i}`];
       if (form[`note-${i}`] !== undefined) d.note = form[`note-${i}`];
+      const sev = form[`sev-${i}`];
+      if (sev !== undefined && ['', 'Critical', 'High', 'Medium', 'Low', 'Info'].includes(sev)) d.finding.severity = sev as Finding['severity'];
     });
+    const row = this.row();
     const v = /^v-(\d+)-(real|noise|defer|investigate)$/.exec(type);
     const rm = /^rm-(\d+)$/.exec(type);
-    if (type === 'kind-review' || type === 'kind-verify') this.kind = type.slice(5) as triage.Kind;
+    if (type === 'kind-review' || type === 'kind-verify') {
+      // only a round the row's stage allows (gate would refuse the other)
+      if (row && triageKinds(row).includes(type.slice(5) as triage.Kind)) this.kind = type.slice(5) as triage.Kind;
+    }
     else if (type === 'split') this.decisions = split(this.report).map((finding) => ({ finding, verdict: null, note: '' }));
     else if (type === 'clean') this.decisions = [];
     else if (type === 'add') {
@@ -398,35 +405,43 @@ class Triage {
     const ds = this.decisions;
     if (shell === null || ds === null || this.running || triage.problems(ds).length) return this.render();
     const w = triage.write(ds, this.context());
-    if (w.entries.length) {
-      const before = this.read('specs/backlog.md');
-      fs.writeFileSync(path.join(this.root, 'specs', 'backlog.md'), before + (before === '' || before.endsWith('\n') ? '' : '\n') + w.entries.join('\n') + '\n');
-    }
+    const file = path.join(this.root, 'specs', 'backlog.md');
+    const existed = fs.existsSync(file);
+    const before = this.read('specs/backlog.md');
+    // put the backlog back as it was: a refusal (or a failed call) writes nothing
+    const restore = () => { if (!w.entries.length) return; if (existed) fs.writeFileSync(file, before); else fs.rmSync(file, { force: true }); };
+    if (w.entries.length) fs.writeFileSync(file, triage.appended(before, w.entries));
     this.running = true;
     this.render();
     const spec = this.spec;
-    const r = await runScript(shell, this.root, 'gate', w.args);
+    let r: Awaited<ReturnType<typeof runScript>>;
+    try {
+      r = await runScript(shell, this.root, 'gate', w.args);
+    } catch (e) {
+      restore();
+      throw e;
+    }
     this.running = false;
     const a = answer(r.code, r.stdout, r.stderr);
+    if (!a.written) restore();
     const real = ds.some((d) => d.verdict === 'real');
     const next = !a.written ? '' : real ? `/build ${spec}` : this.kind === 'review' || ds.some((d) => d.verdict === 'investigate') ? `/verify ${spec}` : '';
     if (this.spec === spec) this.result = { ...a, next };
-    if (w.entries.length) {
+    if (w.entries.length && a.written) {
       const ids = w.entries.map((e) => /\*\*(B-\d+)\*\*/.exec(e)?.[1]).join(', ');
-      void (a.written
-        ? vscode.window.showInformationMessage(`specs/backlog.md: ${ids} appended, not committed — commit it with the fix round or the PR.`)
-        : vscode.window.showWarningMessage(`gate refused; specs/backlog.md keeps ${ids} — remove them or save again.`));
+      void vscode.window.showInformationMessage(`specs/backlog.md: ${ids} appended, not committed — commit it with the fix round or the PR.`);
     }
     await this.refresh();
   }
 }
 
-// A program's exit code and output, never through a shell string.
-function run(cmd: string, args: string[], cwd: string): Promise<{ code: number; out: string }> {
+// A program's exit code, its stdout, and stdout with stderr (for showing), never through a shell
+// string.
+function run(cmd: string, args: string[], cwd: string): Promise<{ code: number; stdout: string; out: string }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { cwd }, (e, stdout, stderr) => {
       const code = e ? (typeof (e as { code?: unknown }).code === 'number' ? (e as { code: number }).code : 1) : 0;
-      resolve({ code, out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
+      resolve({ code, stdout: String(stdout ?? ''), out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
     });
   });
 }
@@ -441,6 +456,7 @@ class Ship {
   private result: { written: boolean; code: number; text: string; next: string } | null = null;
   private pr: { offered: boolean; why: string; commands: string[] } | null = null;
   private prOutput: string | null = null;
+  private pushing = false;
   private branch = '';
   private remote = 'origin';
   private approver = '';
@@ -457,9 +473,10 @@ class Ship {
     this.refresh = refresh;
     this.web = vscode.window.createWebviewPanel('anew.ship', 'ANEW · ship', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
     this.web.onDidDispose(() => { this.disposed = true; });
-    void run('git', ['config', 'user.name'], root).then((r) => { this.approver = r.out; this.render(); });
+    void run('git', ['config', 'user.name'], root).then((r) => { this.approver = ship.probed(r); this.render(); });
     this.web.webview.onDidReceiveMessage((m: { type: string }) => this.on(m.type).catch((e: Error) => {
       this.running = false;
+      this.pushing = false;
       void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
       this.render();
     }));
@@ -496,7 +513,7 @@ class Ship {
     this.web.title = `ANEW · ${row.spec} ship`;
     this.web.webview.html = ship.html({
       row, file: this.file, model: ship.model(this.read(this.file), this.read(`specs/plans/${row.spec}-plan.md`)), approver: this.approver,
-      shell: this.shell() !== null, running: this.running, result: this.result, pr: this.pr, prOutput: this.prOutput,
+      shell: this.shell() !== null, running: this.running, result: this.result, pr: this.pr, prOutput: this.prOutput, pushing: this.pushing,
       nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
@@ -522,28 +539,31 @@ class Ship {
     if (this.spec !== spec) return this.refresh();
     this.result = { ...answer(r.code, r.stdout, r.stderr), next: '' };
     if (this.result.written) {
-      this.branch = (await run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], this.root)).out;
-      const remote = (await run('git', ['config', `branch.${this.branch}.remote`], this.root)).out;
-      this.remote = remote || 'origin';
-      const head = (await run('git', ['symbolic-ref', '--short', `refs/remotes/${this.remote}/HEAD`], this.root)).out;
+      // each probe counts only on exit 0: an error message is never a branch or a remote
+      this.branch = ship.probed(await run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], this.root));
+      this.remote = ship.probed(await run('git', ['config', `branch.${this.branch}.remote`], this.root)) || 'origin';
+      const head = ship.probed(await run('git', ['symbolic-ref', '--short', `refs/remotes/${this.remote}/HEAD`], this.root));
       const gh = (await run('gh', ['auth', 'status'], this.root)).code === 0;
-      this.pr = ship.prStep({ branch: this.branch, defaultBranch: head.replace(`${this.remote}/`, '') || 'main', remote: this.remote, gh });
+      this.pr = ship.prStep({ branch: this.branch, defaultBranch: ship.defaultBranch(head, this.remote), remote: this.remote, gh });
     }
     await this.refresh();
   }
 
   // Outward-facing: asks first, naming the branch and the remote; shows git's and gh's own output.
   private async openPr(): Promise<void> {
-    if (!this.pr?.offered) return;
+    if (!this.pr?.offered || this.pushing) return this.render();
     const ok = await vscode.window.showWarningMessage(`Push ${this.branch} to ${this.remote} and open a pull request?`,
       { modal: true, detail: `${this.pr.commands.join('\n')}\n\nThe merge stays on GitHub.` }, 'Push and open PR');
-    if (ok !== 'Push and open PR') return;
+    if (ok !== 'Push and open PR') return this.render(); // cancelled: the button is offered again
+    this.pushing = true;
+    this.render();
     const push = await run('git', ['push', '-u', this.remote, this.branch], this.root);
     this.prOutput = `$ ${this.pr.commands[0]}\n${push.out}`;
     if (push.code === 0) {
       const pr = await run('gh', ['pr', 'create', '--fill'], this.root);
       this.prOutput += `\n$ ${this.pr.commands[1]}\n${pr.out}`;
     }
+    this.pushing = false;
     this.render();
   }
 }
