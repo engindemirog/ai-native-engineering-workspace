@@ -9,7 +9,7 @@ import { parseStatus, grouped, waiting, writeFor, type Row, type Status, type Gr
 import { gateArgs, answer } from './gate.ts';
 import { sections, SPEC_SECTIONS, PLAN_SECTIONS } from './summary.ts';
 import { offer, decision, done, shown, type Done } from './panel-logic.ts';
-import { html } from './panel.ts';
+import { html, notice } from './panel.ts';
 
 type Item = { kind: 'group'; group: Group; rows: Row[] } | { kind: 'row'; row: Row } | { kind: 'message'; text: string };
 
@@ -40,20 +40,23 @@ export function activate(ctx: vscode.ExtensionContext): void {
     getTreeItem(item: Item): vscode.TreeItem {
       if (item.kind === 'message') return new vscode.TreeItem(item.text);
       if (item.kind === 'group') {
-        const t = new vscode.TreeItem(`${item.group.toUpperCase()} · ${item.rows.length}`,
+        return new vscode.TreeItem(`${item.group.toUpperCase()} · ${item.rows.length}`,
           item.group === 'shipped' ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
-        return t;
       }
       const r = item.row;
       const t = new vscode.TreeItem(`${r.spec} · ${r.name}`);
-      t.description = r.warnings.length ? `${r.stage} · ${r.warnings.length} warning(s)` : r.stage;
+      t.description = label(r) + (r.warnings.length ? ` · ${r.warnings.length} warning(s)` : '');
       t.tooltip = [`${r.stage}${r.who ? ` (${r.who})` : ''}`, r.next && `next: ${r.next}`, ...r.warnings.map((w) => `WARN ${w}`), ...r.notes].filter(Boolean).join('\n');
-      t.iconPath = new vscode.ThemeIcon(r.warnings.length ? 'warning' : r.stage === 'shipped' ? 'pass' : writeFor(r) ? 'bell-dot' : 'circle-outline');
+      t.iconPath = r.warnings.length ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('editorWarning.foreground'))
+        : r.stage === 'shipped' ? new vscode.ThemeIcon('pass', new vscode.ThemeColor('charts.green'))
+        : r.who === 'human' || r.stage.startsWith('unclear') ? new vscode.ThemeIcon('bell-dot', new vscode.ThemeColor('charts.orange'))
+        : new vscode.ThemeIcon('sync', new vscode.ThemeColor('charts.blue'));
       t.command = { command: 'anew.open', title: 'Open', arguments: [r.spec] };
       return t;
     },
   };
-  ctx.subscriptions.push(vscode.window.registerTreeDataProvider('anew.work', tree));
+  const view = vscode.window.createTreeView('anew.work', { treeDataProvider: tree });
+  ctx.subscriptions.push(view);
 
   const bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   bar.command = 'workbench.view.extension.anew';
@@ -79,6 +82,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     bar.text = problem ? '$(warning) ANEW' : n ? `$(bell-dot) ANEW: ${n} waiting for you` : '$(check) ANEW';
     bar.tooltip = problem ?? (n ? `${n} decision(s) wait for you` : 'nothing waits for you');
     bar.show();
+    view.badge = n ? { value: n, tooltip: `${n} decision(s) wait for you` } : undefined;
     changed.fire();
     panel?.render();
   }
@@ -93,7 +97,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   ctx.subscriptions.push(
     vscode.commands.registerCommand('anew.refresh', () => refresh()),
     vscode.commands.registerCommand('anew.open', (spec: string) => {
-      if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, shellOf, refresh);
+      if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, () => problem, shellOf, refresh);
       panel.show(spec);
     }),
   );
@@ -102,28 +106,39 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
 export function deactivate(): void {}
 
+// What a row waits for, in the list's words: the decision when it is the human's, else the stage
+// and who has it.
+function label(r: Row): string {
+  const w = writeFor(r);
+  if (w !== null) return w === 'approve-spec' ? 'Spec approval' : 'Plan approval';
+  if (r.stage === 'shipped' || r.stage.startsWith('unclear')) return r.stage;
+  return r.who === 'human' ? `${r.stage} · your decision` : `${r.stage} · ${r.who}`;
+}
+
 // One panel, reused for whichever row was opened last.
 class Approval {
   private readonly web: vscode.WebviewPanel;
   private spec = '';
   private opened: string | null = null; // the decision whose file was opened from this panel
-  private running = false;
+  private running: string | null = null; // the spec a gate call runs for
   private result: Done | null = null;
   disposed = false;
   private readonly root: string;
   private readonly status: () => Status | null;
+  private readonly problem: () => string | null;
   private readonly shell: () => string | null;
   private readonly refresh: () => Promise<void>;
 
-  constructor(root: string, status: () => Status | null, shell: () => string | null, refresh: () => Promise<void>) {
+  constructor(root: string, status: () => Status | null, problem: () => string | null, shell: () => string | null, refresh: () => Promise<void>) {
     this.root = root;
     this.status = status;
+    this.problem = problem;
     this.shell = shell;
     this.refresh = refresh;
     this.web = vscode.window.createWebviewPanel('anew.approval', 'ANEW', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
     this.web.onDidDispose(() => { this.disposed = true; });
     this.web.webview.onDidReceiveMessage((m: { type: string }) => this.on(m.type).catch((e: Error) => {
-      this.running = false;
+      this.running = null;
       void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
       this.render();
     }));
@@ -153,7 +168,11 @@ class Approval {
   render(): void {
     if (this.disposed) return;
     const row = this.row();
-    if (!row) { this.web.webview.html = '<!doctype html><p>This spec is no longer in scripts/status.</p>'; return; }
+    if (!row) {
+      const text = this.problem() ?? (this.status() === null ? 'reading scripts/status…' : `${this.spec} is no longer in scripts/status.`);
+      this.web.webview.html = notice(text, randomBytes(16).toString('hex'), this.web.webview.cspSource);
+      return;
+    }
     const file = this.file(row);
     const text = file && fs.existsSync(path.join(this.root, file)) ? fs.readFileSync(path.join(this.root, file), 'utf8') : '';
     const names = file?.startsWith('specs/plans/') ? PLAN_SECTIONS : SPEC_SECTIONS;
@@ -175,15 +194,22 @@ class Approval {
       if (type === 'open') this.opened = decision(row, file);
       return this.render();
     }
+    if (type === 'copy') {
+      if (this.result?.next) {
+        await vscode.env.clipboard.writeText(this.result.next);
+        void vscode.window.showInformationMessage(`Copied: ${this.result.next}`);
+      }
+      return;
+    }
     if (type !== 'approve') return;
     const d = decision(row, file);
     const o = offer({ row, opened: this.opened === d, shell: this.shell() !== null, running: this.running });
     const shell = this.shell();
     if (!o.approve || o.write === null || shell === null) return this.render();
-    this.running = true;
+    this.running = row.spec;
     this.render();
     const r = await runScript(shell, this.root, 'gate', gateArgs(o.write, row.spec));
-    this.running = false;
+    this.running = null;
     // the panel may have moved to another row while gate ran; the answer stays with its own spec
     if (this.spec === row.spec) this.result = done(answer(r.code, r.stdout, r.stderr), row, file, o.write);
     await this.refresh();
