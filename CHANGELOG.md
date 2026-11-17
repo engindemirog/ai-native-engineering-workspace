@@ -34,6 +34,31 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.28 — The VS Code extension, part 2: the whole process on the screen
+
+A current release (not in `1.24.x`). No rule changes: the extension stays a screen over
+`scripts/status --json` and `scripts/gate`.
+
+- **Extension 0.2.0** (the `.vsix` is attached to the release), laid out as the approved mockup:
+  - the sidebar as cards, with **+ New work** on top and each card naming the decision it waits
+    for;
+  - **start new work:** the kind and a description build the agent's command, shown first; a
+    fresh Claude Code session opens with it in a terminal, or you copy it to any agent;
+  - **triage:** the reviewer's report is pasted and split into findings; each is decided real ·
+    noise · defer · investigate (none chosen for you); `scripts/gate triage` writes the table; a
+    defer's backlog entry is appended first and shown in the preview;
+  - **ship:** criteria with their proof, the Definition of Done and the rounds; `scripts/gate
+    ship`; then push and open the PR after a confirmation, or copy the two commands. Never a merge;
+  - the approval panel: wrapped and odd-shaped criteria, pipes in the test map, the light theme's
+    contrast, the approver's name (B-14–B-20).
+
+### Upgrading
+
+- `extensions/vscode/` (optional): replace the folder, or install the `.vsix` from the release.
+- `docs/commands.md` §F, `README.md`: intent: the extension covers the four gates and starting
+  work.
+- Full diff: `/compare/v1.27...v1.28`.
+
 ## v1.27 — The VS Code extension, part 1: the work list and the approvals
 
 A current release (not in `1.24.x`). No rule changes: the extension is an optional screen over

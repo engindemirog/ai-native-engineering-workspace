@@ -1,23 +1,34 @@
 # ANEW for VS Code
 
-A screen over two ANEW scripts, inside VS Code:
+The human's part of the ANEW process on a screen, inside VS Code — over two scripts,
+`scripts/status --json` (what it shows) and `scripts/gate` (what it writes):
 
-- **The work list** (the ANEW view in the activity bar): every spec from `scripts/status --json`,
-  grouped as *your turn* · *in progress* · *shipped*, with its stage and warnings. The status bar
-  shows how many decisions wait for you.
-- **Spec and plan approval:** opening a spec at ANALYZE or a plan at PLAN (human) shows the file's
-  summary. **Approve** appears only after **Open the full file** has opened it, and runs
-  `scripts/gate approve-spec NNNN` or `scripts/gate approve-plan NNNN`; gate's answer is shown as
-  it is. **Request changes** opens the file and writes nothing.
+- **The sidebar** (the ANEW view in the activity bar): **+ New work**, then every spec as a card,
+  grouped as *your turn* · *in progress* · *shipped*, each naming the decision it waits for. The
+  view's badge and the status bar show how many decisions wait for you.
+- **Start new work:** pick the kind (new feature, change, bug fix, refactor), say what you want;
+  the command for the agent is shown first. **Start in Claude Code** opens a fresh session with it
+  in a new terminal (when `claude` is on PATH); **Copy command** for any other agent.
+- **Spec and plan approval:** the file as cards (intent and criteria; files, criterion ↔ test,
+  risks). **Approve** appears only after **Open the full file** has opened it, and runs
+  `scripts/gate approve-spec|approve-plan NNNN`. **Request changes** opens the file.
+- **Triage** (a row at REVIEW or VERIFY): paste the reviewer's report; it is split into findings,
+  each decided real · noise · defer · investigate — none chosen for you. A missed finding is added
+  by hand. The table is previewed, then written by `scripts/gate triage`.
+- **Ship** (a row at SHIP): each criterion with its proof from the plan, the Definition of Done,
+  the evidence, the triage rounds; **Ship** runs `scripts/gate ship NNNN`. Then **Push and open
+  PR**, after a confirmation that names the branch and the remote — or the commands to copy. The
+  merge stays on GitHub.
 
-Triage, ship and starting new work come in a later version; until then those rows open the file,
-and `scripts/gate` does the rest in a terminal (`docs/commands.md`).
+gate's answer is shown as it is on every screen, with the next command to copy.
 
 ## What it reads and writes
 
-It reads what `scripts/status --json` and the spec and plan files say, and writes nothing itself:
-every decision is one `scripts/gate` call, the same one you would type. It keeps no state of its
-own; a team without it follows the same process by hand.
+It reads what `scripts/status --json` and the spec and plan files say. Every decision is one
+`scripts/gate` call, the same one you would type; the only file it writes itself is the backlog
+entry for a deferred finding (shown in the preview, left for you to commit). A pasted report lives
+only in the open screen. It keeps no state of its own; a team without it follows the same process
+by hand.
 
 ## Install
 

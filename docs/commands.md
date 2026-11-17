@@ -406,20 +406,33 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ## F — Editor: the VS Code extension
 
 ### The VS Code extension (`extensions/vscode/`)
-- **What it does:** a screen over two scripts: the work list (your turn · in progress · shipped)
-  and a status bar count from `scripts/status --json`; for a spec at ANALYZE or a plan at PLAN
-  (human), a panel with the file's summary and an Approve button that runs
-  `scripts/gate approve-spec|approve-plan NNNN` and shows gate's answer as it is. Triage, ship and
-  starting new work come in a later version; until then those rows open the file.
+- **What it does:** the human's part of the process on a screen, over two scripts:
+  - the sidebar: **+ New work**, then the work as cards (your turn · in progress · shipped), each
+    naming the decision it waits for; a waiting badge and a status bar count — all from
+    `scripts/status --json`;
+  - **start new work:** the kind (`/new-feature`, `/change`, `/fix-bug`, `/refactor`; `/analyze`
+    for a feature in strict) and a description build the command, shown first; it opens a fresh
+    Claude Code session with it in a terminal, or you copy it to any agent. It writes no file;
+  - **approve spec / plan** (ANALYZE, PLAN human): the file as cards; Approve after the full file
+    was opened → `scripts/gate approve-spec|approve-plan NNNN`;
+  - **triage** (REVIEW, VERIFY, an open investigate): paste the reviewer's report; it is split
+    into findings, each decided real · noise · defer · investigate (none chosen for you); a missed
+    finding is added by hand; the table is previewed → `scripts/gate triage NNNN --review|--verify`.
+    A defer's `specs/backlog.md` entry is appended first, shown in the preview, left uncommitted;
+  - **ship** (SHIP): criteria with their proof from the plan, the DoD, the evidence, the rounds →
+    `scripts/gate ship NNNN`; then **Push and open PR**, after a confirmation naming branch and
+    remote (`git push -u`, `gh pr create --fill`), or the two commands to copy. Never a merge.
 - **When to use it:** when you follow the work in VS Code rather than the terminal.
-- **Reads / writes:** reads what `scripts/status` and the spec and plan files say; writes nothing
-  itself — every decision is one `scripts/gate` call. No state of its own.
+- **Reads / writes:** reads what `scripts/status` and the spec and plan files say; every decision
+  is one `scripts/gate` call; the only file it writes itself is a defer's backlog entry. A pasted
+  report lives only in the open screen. No state of its own.
 - **Stops at:** Approve appears only after "Open the full file" has opened the file: the decision
   is on the file, not the summary.
 - **Lite / Strict:** no difference (gate's own rules apply).
 - **Refusal:** gate's message, unchanged; without a POSIX shell (Git for Windows' `bash.exe`, or
   the setting `anew.shell`) it reads and writes nothing and says so.
-- **Common mistake:** expecting it to run the agent — it shows the next step; you run it.
+- **Common mistake:** expecting it to drive the agent — it opens a session with your command and
+  shows the next step after each decision; the agent's segments and their stops are unchanged.
 
 ## Recovery ramps
 

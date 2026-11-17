@@ -48,5 +48,25 @@ test('this repo\'s own plan 0009 and spec 0009 read as cards', () => {
   assert.equal(r[0].title, 'Node 24\'s type stripping for tests');
   assert.match(r[0].advice, /^Recommendation: accept;/);
   const spec = Object.fromEntries(sections(fs.readFileSync(path.join(repo, '.anew-dev/done/0009-vscode-extension.md'), 'utf8'), SPEC_SECTIONS).map((s) => [s.title, s.body]));
-  assert.deepEqual(criteria(spec['Acceptance criteria']).map((c) => c.id), ['AC-1', 'AC-2', 'AC-3', 'AC-4', 'AC-5', 'AC-6', 'AC-7']);
+  assert.deepEqual(criteria(spec['Acceptance criteria'])!.map((c) => c.id), ['AC-1', 'AC-2', 'AC-3', 'AC-4', 'AC-5', 'AC-6', 'AC-7']);
+});
+
+test('B-14: a wrapped criterion keeps its continuation lines', () => {
+  assert.deepEqual(criteria('- [ ] AC-1 — the list groups match\n  for a fixture (unit tests).\n- [ ] AC-2 — short'), [
+    { id: 'AC-1', text: 'the list groups match for a fixture (unit tests).', done: false },
+    { id: 'AC-2', text: 'short', done: false },
+  ]);
+});
+
+test('B-15: a criterion in another shape makes the list unreadable, not shorter', () => {
+  assert.equal(criteria('- [ ] AC-1 — fine\n- [ ] AC-3: other shape'), null);
+  assert.equal(criteria('- [ ] AC-1 — fine\n* [ ] AC-2 — star bullet'), null);
+  assert.deepEqual(criteria('Some prose.\n- [ ] AC-1 — fine'), [{ id: 'AC-1', text: 'fine', done: false }]);
+});
+
+test('B-17: pipes inside a cell; a header that is not "Acceptance criterion"', () => {
+  assert.deepEqual(pairs('| AC | Test |\n|---|---|\n| AC-1 | `a \| b` |\n| AC-2 | `x|y` and z |'), [
+    { criterion: 'AC-1', proof: 'a | b' },
+    { criterion: 'AC-2', proof: 'x|y and z' },
+  ]);
 });

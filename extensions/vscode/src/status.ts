@@ -20,7 +20,7 @@ export interface Status {
 
 export type Group = 'your turn' | 'in progress' | 'shipped';
 
-// The gate a row's stage decides in 0.1.0; triage and ship come with spec 0010.
+// The approval a row's stage decides (the approval panel); triage and ship have their own screens.
 export type Write = 'approve-spec' | 'approve-plan' | null;
 
 const KEYS: (keyof Row)[] = ['spec', 'name', 'spec_status', 'plan_status', 'stage', 'who', 'next'];

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { offer, decision, done, shown, steps } from '../src/panel-logic.ts';
+import { offer, decision, done, shown, steps, fileFor } from '../src/panel-logic.ts';
 import type { Row } from '../src/status.ts';
 
 const row = (stage: string, who: string): Row => ({ spec: '0004', name: 'report', spec_status: '', plan_status: '', stage, who, next: '', warnings: [], notes: [] });
@@ -52,7 +52,7 @@ test('triage, ship and agent stages offer no write', () => {
     assert.equal(o.approve, false, r.stage);
     assert.equal(o.requestChanges, false, r.stage);
   }
-  assert.match(offer({ row: row('SHIP', 'human'), opened: true, shell: true, running: null }).hint, /comes with spec 0010/);
+  assert.match(offer({ row: row('SHIP', 'human'), opened: true, shell: true, running: null }).hint, /open the row from the sidebar for its screen/);
 });
 
 test('opening the spec does not open the plan approval that follows it (the panel stays open)', () => {
@@ -87,4 +87,14 @@ test('gate\'s answer stays while the agent works on the stage it leads to, and g
   assert.equal(shown(no, spec, specFile), no); // a refusal stays on its decision
   assert.equal(shown(no, row('PLAN', 'Developer'), planFile), null);
   assert.equal(shown(null, spec, specFile), null);
+});
+
+test('Info-1: past PLAN the cards are the plan\'s; before it the spec\'s', () => {
+  const has = () => true;
+  assert.equal(fileFor(row('ANALYZE', 'human'), 'specs/active/0004-report.md', has), 'specs/active/0004-report.md');
+  assert.equal(fileFor(row('PLAN', 'Developer'), 'specs/active/0004-report.md', has), 'specs/active/0004-report.md');
+  assert.equal(fileFor(plan, 'specs/active/0004-report.md', has), 'specs/plans/0004-plan.md');
+  for (const s of ['BUILD', 'REVIEW', 'FIX ROUND', 'VERIFY']) assert.equal(fileFor(row(s, 'Developer'), 'specs/active/0004-report.md', has), 'specs/plans/0004-plan.md', s);
+  assert.equal(fileFor(row('BUILD', 'Developer'), 'specs/active/0004-report.md', () => false), 'specs/active/0004-report.md');
+  assert.equal(fileFor(row('shipped', ''), 'specs/done/0004-report.md', has), 'specs/done/0004-report.md');
 });
