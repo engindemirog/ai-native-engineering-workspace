@@ -1,0 +1,184 @@
+// The VS Code layer: activation, the work list, the status bar item and the approval panel. The
+// logic lives in the modules it imports; this file only wires them to VS Code.
+import * as vscode from 'vscode';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { findShell, runScript } from './shell.ts';
+import { parseStatus, grouped, waiting, writeFor, type Row, type Status, type Group } from './status.ts';
+import { gateArgs, answer, type Answer } from './gate.ts';
+import { sections, SPEC_SECTIONS, PLAN_SECTIONS } from './summary.ts';
+import { offer } from './panel-logic.ts';
+import { html } from './panel.ts';
+
+type Item = { kind: 'group'; group: Group; rows: Row[] } | { kind: 'row'; row: Row } | { kind: 'message'; text: string };
+
+const GROUPS: Group[] = ['your turn', 'in progress', 'shipped'];
+
+export function activate(ctx: vscode.ExtensionContext): void {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  const root = folder?.uri.fsPath;
+  if (!root || !fs.existsSync(path.join(root, 'scripts', 'status')) || !fs.existsSync(path.join(root, 'AGENTS.md'))) return;
+  void vscode.commands.executeCommand('setContext', 'anew.active', true);
+
+  const shellOf = () => findShell({ setting: vscode.workspace.getConfiguration('anew').get<string>('shell') ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
+  let status: Status | null = null;
+  let problem: string | null = null;
+
+  const changed = new vscode.EventEmitter<void>();
+  const tree: vscode.TreeDataProvider<Item> = {
+    onDidChangeTreeData: changed.event,
+    getChildren(item?: Item): Item[] {
+      if (item?.kind === 'group') return item.rows.map((row) => ({ kind: 'row', row }));
+      if (item) return [];
+      if (problem !== null) return [{ kind: 'message', text: problem }];
+      if (status === null) return [{ kind: 'message', text: 'reading scripts/status…' }];
+      if (status.rows.length === 0) return [{ kind: 'message', text: 'no work yet — start with /new-feature or /analyze' }];
+      const g = grouped(status);
+      return GROUPS.filter((k) => g[k].length > 0).map((k) => ({ kind: 'group', group: k, rows: g[k] }));
+    },
+    getTreeItem(item: Item): vscode.TreeItem {
+      if (item.kind === 'message') return new vscode.TreeItem(item.text);
+      if (item.kind === 'group') {
+        const t = new vscode.TreeItem(`${item.group.toUpperCase()} · ${item.rows.length}`,
+          item.group === 'shipped' ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
+        return t;
+      }
+      const r = item.row;
+      const t = new vscode.TreeItem(`${r.spec} · ${r.name}`);
+      t.description = r.warnings.length ? `${r.stage} · ${r.warnings.length} warning(s)` : r.stage;
+      t.tooltip = [`${r.stage}${r.who ? ` (${r.who})` : ''}`, r.next && `next: ${r.next}`, ...r.warnings.map((w) => `WARN ${w}`), ...r.notes].filter(Boolean).join('\n');
+      t.iconPath = new vscode.ThemeIcon(r.warnings.length ? 'warning' : r.stage === 'shipped' ? 'pass' : writeFor(r) ? 'bell-dot' : 'circle-outline');
+      t.command = { command: 'anew.open', title: 'Open', arguments: [r.spec] };
+      return t;
+    },
+  };
+  ctx.subscriptions.push(vscode.window.registerTreeDataProvider('anew.work', tree));
+
+  const bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+  bar.command = 'workbench.view.extension.anew';
+  ctx.subscriptions.push(bar);
+
+  async function refresh(): Promise<void> {
+    const shell = shellOf();
+    if (shell === null) {
+      status = null;
+      problem = 'No POSIX shell found — set anew.shell (Git for Windows: bash.exe)';
+    } else {
+      const r = await runScript(shell, root as string, 'status', ['--json']);
+      try {
+        if (r.code !== 0) throw new Error(r.stderr.trim() || `scripts/status exited ${r.code}`);
+        status = parseStatus(r.stdout);
+        problem = null;
+      } catch (e) {
+        status = null;
+        problem = (e as Error).message;
+      }
+    }
+    const n = status ? waiting(status) : 0;
+    bar.text = problem ? '$(warning) ANEW' : n ? `$(bell-dot) ANEW: ${n} waiting for you` : '$(check) ANEW';
+    bar.tooltip = problem ?? (n ? `${n} decision(s) wait for you` : 'nothing waits for you');
+    bar.show();
+    changed.fire();
+    panel?.render();
+  }
+
+  let timer: NodeJS.Timeout | undefined;
+  const soon = () => { clearTimeout(timer); timer = setTimeout(() => void refresh(), 300); };
+  const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'specs/**'));
+  watcher.onDidChange(soon); watcher.onDidCreate(soon); watcher.onDidDelete(soon);
+  ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
+
+  let panel: Approval | null = null;
+  ctx.subscriptions.push(
+    vscode.commands.registerCommand('anew.refresh', () => refresh()),
+    vscode.commands.registerCommand('anew.open', (spec: string) => {
+      if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, shellOf, refresh);
+      panel.show(spec);
+    }),
+  );
+  void refresh();
+}
+
+export function deactivate(): void {}
+
+// One panel, reused for whichever row was opened last.
+class Approval {
+  private readonly web: vscode.WebviewPanel;
+  private spec = '';
+  private opened = false;
+  private running = false;
+  private result: Answer | null = null;
+  disposed = false;
+  private readonly root: string;
+  private readonly status: () => Status | null;
+  private readonly shell: () => string | null;
+  private readonly refresh: () => Promise<void>;
+
+  constructor(root: string, status: () => Status | null, shell: () => string | null, refresh: () => Promise<void>) {
+    this.root = root;
+    this.status = status;
+    this.shell = shell;
+    this.refresh = refresh;
+    this.web = vscode.window.createWebviewPanel('anew.approval', 'ANEW', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
+    this.web.onDidDispose(() => { this.disposed = true; });
+    this.web.webview.onDidReceiveMessage((m: { type: string }) => void this.on(m.type));
+  }
+
+  show(spec: string): void {
+    if (spec !== this.spec) { this.spec = spec; this.opened = false; this.result = null; }
+    this.render();
+    this.web.reveal();
+  }
+
+  private row(): Row | undefined {
+    return this.status()?.rows.find((r) => r.spec === this.spec);
+  }
+
+  // The file the decision is on: the plan for a plan approval, the spec otherwise.
+  private file(row: Row): string | null {
+    if (writeFor(row) === 'approve-plan') return `specs/plans/${row.spec}-plan.md`;
+    for (const dir of ['specs/active', 'specs/done']) {
+      const abs = path.join(this.root, dir);
+      const hit = fs.existsSync(abs) ? fs.readdirSync(abs).find((f) => f.startsWith(`${row.spec}-`) && f.endsWith('.md')) : undefined;
+      if (hit) return `${dir}/${hit}`;
+    }
+    return null;
+  }
+
+  render(): void {
+    if (this.disposed) return;
+    const row = this.row();
+    if (!row) { this.web.webview.html = '<!doctype html><p>This spec is no longer in scripts/status.</p>'; return; }
+    const file = this.file(row);
+    const text = file && fs.existsSync(path.join(this.root, file)) ? fs.readFileSync(path.join(this.root, file), 'utf8') : '';
+    const names = file?.startsWith('specs/plans/') ? PLAN_SECTIONS : SPEC_SECTIONS;
+    this.web.title = `ANEW · ${row.spec}`;
+    this.web.webview.html = html({
+      row, file: file ?? '(file not found)', sections: sections(text, names),
+      offer: offer({ row, opened: this.opened, shell: this.shell() !== null, running: this.running }),
+      result: this.result, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+    });
+  }
+
+  private async on(type: string): Promise<void> {
+    const row = this.row();
+    const file = row && this.file(row);
+    if (!row || !file) return this.render();
+    if (type === 'open' || type === 'changes') {
+      await vscode.window.showTextDocument(vscode.Uri.file(path.join(this.root, file)), { viewColumn: vscode.ViewColumn.Beside, preview: false });
+      if (type === 'open') this.opened = true;
+      return this.render();
+    }
+    if (type !== 'approve') return;
+    const o = offer({ row, opened: this.opened, shell: this.shell() !== null, running: this.running });
+    const shell = this.shell();
+    if (!o.approve || o.write === null || shell === null) return this.render();
+    this.running = true;
+    this.render();
+    const r = await runScript(shell, this.root, 'gate', gateArgs(o.write, row.spec));
+    this.running = false;
+    this.result = answer(r.code, r.stdout, r.stderr);
+    await this.refresh();
+  }
+}
