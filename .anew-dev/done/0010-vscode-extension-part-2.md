@@ -1,6 +1,6 @@
 # Spec 0010 — the VS Code extension, part 2: the whole process on the screen
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0010-plan.md`
 - Self-critique: done (G-1–G-6 accepted as recommended, Engin Demiroğ, 2026-11-17)
@@ -80,36 +80,36 @@ Deliberately not done:
   by the human's run at SHIP.
 
 ## Acceptance criteria
-- [ ] AC-1 — the sidebar shows the groups, card badges, lines and waiting count that
+- [x] AC-1 — the sidebar shows the groups, card badges, lines and waiting count that
   `scripts/status --json` gives for a fixture with a row at every stage; every card and
   **+ New work** are keyboard reachable buttons (unit tests on the view model and the HTML).
-- [ ] AC-2 — start: each kind builds its command from the description, `/analyze` for a new
+- [x] AC-2 — start: each kind builds its command from the description, `/analyze` for a new
   feature in strict mode; **Start in Claude Code** is offered only when `claude` is found; no file
   changes (unit tests; the human's run).
-- [ ] AC-3 — triage: the 0009 review and VERIFY reports in this repo's history split into their
+- [x] AC-3 — triage: the 0009 review and VERIFY reports in this repo's history split into their
   findings (id, severity, title, recommendation); a report the splitter cannot read leaves the
   hand-entry form, never a guessed finding (unit tests on real reports).
-- [ ] AC-4 — triage: Save stays disabled until every finding has a verdict, noise a rationale and
+- [x] AC-4 — triage: Save stays disabled until every finding has a verdict, noise a rationale and
   defer a backlog entry; it builds exactly the `scripts/gate triage` arguments, and on a fixture
   repo leaves the same commit as the terminal call; a refusal writes nothing (unit + integration).
-- [ ] AC-5 — ship: criteria, proofs and the Definition of Done shown match the files; Ship runs
+- [x] AC-5 — ship: criteria, proofs and the Definition of Done shown match the files; Ship runs
   `scripts/gate ship NNNN` and on a fixture repo leaves the same commit and move as the terminal
   call; at a stage other than SHIP no Ship is offered (unit + integration).
-- [ ] AC-6 — the approval panel: B-14–B-20 each have a test that fails on the old code; after a
+- [x] AC-6 — the approval panel: B-14–B-20 each have a test that fails on the old code; after a
   plan approval the plan's cards stay (unit tests).
-- [ ] AC-7 — on this machine the packaged `.vsix` installs, and a feature on a pilot copy goes
+- [x] AC-7 — on this machine the packaged `.vsix` installs, and a feature on a pilot copy goes
   from **+ New work** through both approvals, a triage and Ship on the screens; screenshots of
   every screen and state, judged by the human at SHIP.
-- [ ] AC-8 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+- [x] AC-8 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; README, `docs/commands.md`, `extensions/vscode/README.md`, CHANGELOG v1.28
   and `.anew-version` v1.28.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-17)
 - **G-1 — triage reads a pasted report.** Reports live in the chat; no file holds them (0009 G-2).
