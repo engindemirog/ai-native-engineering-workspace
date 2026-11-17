@@ -49,15 +49,26 @@ test('opening the spec does not open the plan approval that follows it (the pane
   assert.equal(offer({ row: plan, opened: opened === next, shell: true, running: false }).approve, false);
 });
 
-test('gate\'s answer stays while the agent works, and goes once a new decision is up', () => {
+test('gate\'s answer stays while the agent works on the stage it leads to, and goes after', () => {
   const spec = row('ANALYZE', 'human');
-  const d = decision(spec, 'specs/active/0004-report.md');
-  const ok = done({ written: true, code: 0, text: 'approve-spec 0004: spec approved — x @abc' }, d, 'approve-spec');
+  const specFile = 'specs/active/0004-report.md';
+  const planFile = 'specs/plans/0004-plan.md';
+  const ok = done({ written: true, code: 0, text: 'approve-spec 0004: spec approved — x @abc' }, spec, specFile, 'approve-spec');
   assert.equal(ok.next, '/plan in your agent');
-  assert.equal(done({ written: true, code: 0, text: '' }, d, 'approve-plan').next, '/build in your agent');
-  assert.equal(done({ written: false, code: 1, text: 'gate: no' }, d, 'approve-spec').next, '');
-  assert.equal(shown(ok, d, 'approve-spec'), ok); // refused or not yet refreshed: same decision
-  assert.equal(shown(ok, decision(row('PLAN', 'Developer'), 'specs/plans/0004-plan.md'), null), ok); // the agent writes the plan
-  assert.equal(shown(ok, decision(plan, 'specs/plans/0004-plan.md'), 'approve-plan'), null); // the plan approval is up
-  assert.equal(shown(null, d, 'approve-spec'), null);
+  assert.equal(shown(ok, spec, specFile), ok); // not yet refreshed: same decision
+  assert.equal(shown(ok, row('PLAN', 'Developer'), planFile), ok); // the agent writes the plan
+  assert.equal(shown(ok, plan, planFile), null); // the plan approval is up
+  assert.equal(shown(ok, row('BUILD', 'Developer'), planFile), null); // later stages: gone
+  assert.equal(shown(ok, { ...row('PLAN', 'Developer'), spec: '0005' }, 'specs/plans/0005-plan.md'), null); // another spec
+
+  const built = done({ written: true, code: 0, text: '' }, plan, planFile, 'approve-plan');
+  assert.equal(built.next, '/build in your agent');
+  assert.equal(shown(built, row('BUILD', 'Developer'), planFile), built);
+  for (const r of [row('REVIEW', 'fresh session / read-only reviewer'), row('SHIP', 'human'), row('shipped', '')]) assert.equal(shown(built, r, planFile), null, r.stage);
+
+  const no = done({ written: false, code: 1, text: 'gate: no' }, spec, specFile, 'approve-spec');
+  assert.equal(no.next, '');
+  assert.equal(shown(no, spec, specFile), no); // a refusal stays on its decision
+  assert.equal(shown(no, row('PLAN', 'Developer'), planFile), null);
+  assert.equal(shown(null, spec, specFile), null);
 });

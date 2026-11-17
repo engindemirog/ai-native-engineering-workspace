@@ -41,15 +41,20 @@ export function decision(row: Row, file: string | null): string {
 // gate's answer, with the decision it was given on and the step it leads to.
 export interface Done extends Answer {
   decision: string;
+  spec: string;
   next: string;
+  after: string; // the stage a written answer leads to: PLAN for approve-spec, BUILD for approve-plan
 }
 
-export function done(a: Answer, decision: string, write: NonNullable<Write>): Done {
+export function done(a: Answer, row: Row, file: string | null, write: NonNullable<Write>): Done {
   const next = !a.written ? '' : write === 'approve-spec' ? '/plan in your agent' : '/build in your agent';
-  return { ...a, decision, next };
+  return { ...a, decision: decision(row, file), spec: row.spec, next, after: write === 'approve-spec' ? 'PLAN' : 'BUILD' };
 }
 
-// The answer stays on screen while the agent works on the row, and goes once a new decision is up.
-export function shown(d: Done | null, decision: string, write: Write): Done | null {
-  return d !== null && (d.decision === decision || write === null) ? d : null;
+// The answer stays on its own decision, and on the stage a write leads to while the agent works
+// there; on any other row or stage it goes.
+export function shown(d: Done | null, row: Row, file: string | null): Done | null {
+  if (d === null) return null;
+  if (d.decision === decision(row, file)) return d;
+  return d.written && d.spec === row.spec && row.stage === d.after && writeFor(row) === null ? d : null;
 }

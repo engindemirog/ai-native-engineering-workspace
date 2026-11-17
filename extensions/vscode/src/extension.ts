@@ -162,7 +162,7 @@ class Approval {
     this.web.webview.html = html({
       row, file: file ?? '(file not found)', sections: sections(text, names),
       offer: offer({ row, opened: this.opened === d, shell: this.shell() !== null, running: this.running }),
-      result: shown(this.result, d, writeFor(row)), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      result: shown(this.result, row, file), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
@@ -184,7 +184,8 @@ class Approval {
     this.render();
     const r = await runScript(shell, this.root, 'gate', gateArgs(o.write, row.spec));
     this.running = false;
-    this.result = done(answer(r.code, r.stdout, r.stderr), d, o.write);
+    // the panel may have moved to another row while gate ran; the answer stays with its own spec
+    if (this.spec === row.spec) this.result = done(answer(r.code, r.stdout, r.stderr), row, file, o.write);
     await this.refresh();
   }
 }
