@@ -34,6 +34,27 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.29 — The VS Code extension, part 3: setting up a project on the screen
+
+A current release (not in `1.24.x`). No rule changes: the extension stays a screen over
+`scripts/status --json`, `scripts/gate` and `scripts/init`.
+
+- **Extension 0.3.0** (the `.vsix` is attached to the release):
+  - **setup** on the start screen: each adapter (Claude Code, GitHub Copilot, Cursor, Codex)
+    installed or not, read as `scripts/doctor` reads it; **Install** a missing one after a
+    confirmation naming the files — `./scripts/init <tool>`, never `--force`, nothing committed;
+  - **bootstrap first:** while AGENTS.md is not configured, the one work offered is `/bootstrap`;
+    the kinds of work appear once it has set the mode;
+  - **the command in the agent's form:** pick the agent; Codex gets `$new-feature`, the others
+    `/new-feature` (0.2.0 handed `/…` to Codex too);
+  - a sidebar card while an adapter or the bootstrap is missing.
+
+### Upgrading
+
+- `extensions/vscode/` (optional): replace the folder, or install the `.vsix` from the release.
+- `docs/commands.md` §F, `README.md`: intent: the extension also covers the setup.
+- Full diff: `/compare/v1.28...v1.29`.
+
 ## v1.28 — The VS Code extension, part 2: the whole process on the screen
 
 A current release (not in `1.24.x`). No rule changes: the extension stays a screen over
