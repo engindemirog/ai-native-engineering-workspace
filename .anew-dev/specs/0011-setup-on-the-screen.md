@@ -1,9 +1,9 @@
 # Spec 0011 — the VS Code extension, part 3: setting up a project on the screen
 
-- Status: Draft
+- Status: Approved
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0011-plan.md`
-- Self-critique: pending
+- Self-critique: done (G-1–G-6 accepted as recommended, Engin Demiroğ, 2026-11-17)
 - Source: the human after 0010's SHIP: "Ekranda scripts initi mevcut adaptörler kurulmamışsa bile
   onları kuracak seçenek de olmalı"
 
@@ -93,7 +93,7 @@ Deliberately not done:
 - [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
 - [ ] Spec moved to `.anew-dev/done/`
 
-## Self-critique
+## Self-critique (approved 2026-11-17)
 - **G-1 — where the setup lives.** Recommendation: on the Start screen, because that is where the
   missing setup breaks the work, plus one card in the sidebar so a fresh copy shows it at once. The
   alternative, a separate setup screen, is one more screen for a step done once per project.
