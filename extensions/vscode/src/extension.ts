@@ -13,6 +13,8 @@ import { offer, decision, done, shown, fileFor, type Done } from './panel-logic.
 import { html, notice } from './panel.ts';
 import * as sidebar from './sidebar.ts';
 import * as start from './start.ts';
+import * as triage from './triage.ts';
+import { split } from './report.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -73,6 +75,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     bar.show();
     drawSide();
     panel?.render();
+    triager?.render();
   }
 
   let timer: NodeJS.Timeout | undefined;
@@ -83,6 +86,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
   let panel: Approval | null = null;
   let starter: Start | null = null;
+  let triager: Triage | null = null;
   ctx.subscriptions.push(
     vscode.commands.registerCommand('anew.refresh', () => refresh()),
     vscode.commands.registerCommand('anew.newWork', () => {
@@ -90,6 +94,12 @@ export function activate(ctx: vscode.ExtensionContext): void {
       starter.show();
     }),
     vscode.commands.registerCommand('anew.open', (spec: string) => {
+      const row = status?.rows.find((r) => r.spec === spec);
+      if (row && triageKinds(row).length) {
+        if (triager === null || triager.disposed) triager = new Triage(root as string, () => status, shellOf, refresh);
+        triager.show(spec);
+        return;
+      }
       if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, () => problem, shellOf, refresh);
       panel.show(spec);
     }),
@@ -263,5 +273,142 @@ class Start {
     t.show();
     this.started = cmd;
     this.render();
+  }
+}
+
+// The rounds a row can be triaged in: REVIEW → a review round, VERIFY → a VERIFY round, an open
+// investigate → either (scripts/gate triage).
+function triageKinds(row: Row): triage.Kind[] {
+  if (row.stage === 'REVIEW') return ['review'];
+  if (row.stage === 'VERIFY') return ['verify'];
+  if (row.stage.startsWith('unclear: investigate open')) return ['review', 'verify'];
+  return [];
+}
+
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+// The triage screen: the pasted report split into findings, the human's decisions, one gate call.
+// The report lives only in this screen.
+class Triage {
+  private readonly web: vscode.WebviewPanel;
+  private spec = '';
+  private kind: triage.Kind = 'review';
+  private report = '';
+  private decisions: triage.Decision[] | null = null;
+  private running = false;
+  private result: { written: boolean; code: number; text: string; next: string } | null = null;
+  private name = '';
+  disposed = false;
+  private readonly root: string;
+  private readonly status: () => Status | null;
+  private readonly shell: () => string | null;
+  private readonly refresh: () => Promise<void>;
+
+  constructor(root: string, status: () => Status | null, shell: () => string | null, refresh: () => Promise<void>) {
+    this.root = root;
+    this.status = status;
+    this.shell = shell;
+    this.refresh = refresh;
+    this.web = vscode.window.createWebviewPanel('anew.triage', 'ANEW · triage', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
+    this.web.onDidDispose(() => { this.disposed = true; });
+    execFile('git', ['config', 'user.name'], { cwd: root }, (_e, out) => { this.name = String(out ?? '').trim(); });
+    this.web.webview.onDidReceiveMessage((m: { type: string; form?: Record<string, string> }) => this.on(m.type, m.form ?? {}).catch((e: Error) => {
+      this.running = false;
+      void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
+      this.render();
+    }));
+  }
+
+  show(spec: string): void {
+    if (spec !== this.spec) { this.spec = spec; this.report = ''; this.decisions = null; this.result = null; }
+    const row = this.row();
+    if (row && triageKinds(row).length && !triageKinds(row).includes(this.kind)) this.kind = triageKinds(row)[0];
+    this.render();
+    this.web.reveal();
+  }
+
+  private row(): Row | undefined {
+    return this.status()?.rows.find((r) => r.spec === this.spec);
+  }
+
+  private read(rel: string): string {
+    try { return fs.readFileSync(path.join(this.root, rel), 'utf8'); } catch { return ''; }
+  }
+
+  private context(): triage.Context {
+    return { kind: this.kind, spec: this.spec, plan: this.read(`specs/plans/${this.spec}-plan.md`), backlog: this.read('specs/backlog.md'), name: this.name, today: today() };
+  }
+
+  render(): void {
+    if (this.disposed) return;
+    const row = this.row();
+    if (!row) {
+      this.web.webview.html = notice(`${this.spec} is not in scripts/status now.`, randomBytes(16).toString('hex'), this.web.webview.cspSource);
+      return;
+    }
+    const problems = this.decisions ? triage.problems(this.decisions) : [];
+    const kinds = triageKinds(row);
+    this.web.title = `ANEW · ${row.spec} triage`;
+    this.web.webview.html = triage.html({
+      row, plan: `specs/plans/${row.spec}-plan.md`, kind: this.kind, kinds: kinds.length ? kinds : [this.kind],
+      report: this.report, decisions: this.decisions, preview: this.decisions && !problems.length ? triage.write(this.decisions, this.context()) : null,
+      problems, shell: this.shell() !== null, running: this.running, result: this.result, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+    });
+  }
+
+  private async on(type: string, form: Record<string, string>): Promise<void> {
+    // the page's fields first: the pasted report, each finding's text and note
+    if (form.report !== undefined) this.report = form.report;
+    this.decisions?.forEach((d, i) => {
+      if (form[`title-${i}`] !== undefined) d.finding.title = form[`title-${i}`];
+      if (form[`note-${i}`] !== undefined) d.note = form[`note-${i}`];
+    });
+    const v = /^v-(\d+)-(real|noise|defer|investigate)$/.exec(type);
+    const rm = /^rm-(\d+)$/.exec(type);
+    if (type === 'kind-review' || type === 'kind-verify') this.kind = type.slice(5) as triage.Kind;
+    else if (type === 'split') this.decisions = split(this.report).map((finding) => ({ finding, verdict: null, note: '' }));
+    else if (type === 'clean') this.decisions = [];
+    else if (type === 'add') {
+      const ds = this.decisions ?? [];
+      let n = 1;
+      while (ds.some((d) => d.finding.id === `X-${n}`)) n++;
+      ds.push({ finding: { id: `X-${n}`, severity: '', title: '', detail: '', recommendation: '' }, verdict: null, note: '' });
+      this.decisions = ds;
+    } else if (v && this.decisions?.[Number(v[1])]) this.decisions[Number(v[1])].verdict = v[2] as triage.Verdict;
+    else if (rm && this.decisions) this.decisions.splice(Number(rm[1]), 1);
+    else if (type === 'copy') {
+      if (this.result?.next) await vscode.env.clipboard.writeText(this.result.next);
+      return;
+    } else if (type === 'save') return this.save();
+    this.render();
+  }
+
+  // The backlog entries for the defers first (the one file the extension writes itself), then the
+  // gate call. A refusal leaves the entries and says so.
+  private async save(): Promise<void> {
+    const shell = this.shell();
+    const ds = this.decisions;
+    if (shell === null || ds === null || this.running || triage.problems(ds).length) return this.render();
+    const w = triage.write(ds, this.context());
+    if (w.entries.length) {
+      const before = this.read('specs/backlog.md');
+      fs.writeFileSync(path.join(this.root, 'specs', 'backlog.md'), before + (before === '' || before.endsWith('\n') ? '' : '\n') + w.entries.join('\n') + '\n');
+    }
+    this.running = true;
+    this.render();
+    const spec = this.spec;
+    const r = await runScript(shell, this.root, 'gate', w.args);
+    this.running = false;
+    const a = answer(r.code, r.stdout, r.stderr);
+    const real = ds.some((d) => d.verdict === 'real');
+    const next = !a.written ? '' : real ? `/build ${spec}` : this.kind === 'review' || ds.some((d) => d.verdict === 'investigate') ? `/verify ${spec}` : '';
+    if (this.spec === spec) this.result = { ...a, next };
+    if (w.entries.length) {
+      const ids = w.entries.map((e) => /\*\*(B-\d+)\*\*/.exec(e)?.[1]).join(', ');
+      void (a.written
+        ? vscode.window.showInformationMessage(`specs/backlog.md: ${ids} appended, not committed — commit it with the fix round or the PR.`)
+        : vscode.window.showWarningMessage(`gate refused; specs/backlog.md keeps ${ids} — remove them or save again.`));
+    }
+    await this.refresh();
   }
 }
