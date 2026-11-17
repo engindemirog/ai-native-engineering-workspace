@@ -55,6 +55,10 @@
       {
         "command": "anew.open",
         "title": "ANEW: Open"
+      },
+      {
+        "command": "anew.newWork",
+        "title": "ANEW: New work"
       }
     ],
     "menus": {
@@ -68,6 +72,10 @@
       "commandPalette": [
         {
           "command": "anew.refresh",
+          "when": "anew.active"
+        },
+        {
+          "command": "anew.newWork",
           "when": "anew.active"
         },
         {

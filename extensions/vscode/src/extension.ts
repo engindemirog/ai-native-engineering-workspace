@@ -12,6 +12,7 @@ import { sections, SPEC_SECTIONS, PLAN_SECTIONS } from './summary.ts';
 import { offer, decision, done, shown, fileFor, type Done } from './panel-logic.ts';
 import { html, notice } from './panel.ts';
 import * as sidebar from './sidebar.ts';
+import * as start from './start.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -81,8 +82,13 @@ export function activate(ctx: vscode.ExtensionContext): void {
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
 
   let panel: Approval | null = null;
+  let starter: Start | null = null;
   ctx.subscriptions.push(
     vscode.commands.registerCommand('anew.refresh', () => refresh()),
+    vscode.commands.registerCommand('anew.newWork', () => {
+      if (starter === null || starter.disposed) starter = new Start(root as string, read);
+      starter.show();
+    }),
     vscode.commands.registerCommand('anew.open', (spec: string) => {
       if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, () => problem, shellOf, refresh);
       panel.show(spec);
@@ -194,5 +200,68 @@ class Approval {
     // the panel may have moved to another row while gate ran; the answer stays with its own spec
     if (this.spec === row.spec) this.result = done(answer(r.code, r.stdout, r.stderr), row, file, o.write);
     await this.refresh();
+  }
+}
+
+// The start screen: it builds the command and opens a fresh agent session with it, or hands the
+// command over; it writes no file and answers no gate (spec 0010, G-2).
+class Start {
+  private readonly web: vscode.WebviewPanel;
+  private kind: start.Kind = 'feature';
+  private description = '';
+  private started: string | null = null;
+  disposed = false;
+  private readonly root: string;
+  private readonly read: (rel: string) => string;
+
+  constructor(root: string, read: (rel: string) => string) {
+    this.root = root;
+    this.read = read;
+    this.web = vscode.window.createWebviewPanel('anew.start', 'ANEW · new work', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
+    this.web.onDidDispose(() => { this.disposed = true; });
+    this.web.webview.onDidReceiveMessage((m: { type: string; form?: Record<string, string> }) => this.on(m.type, m.form ?? {}).catch((e: Error) => {
+      void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
+      this.render();
+    }));
+  }
+
+  show(): void {
+    this.render();
+    this.web.reveal();
+  }
+
+  private claude(): string | null {
+    return start.findClaude({ platform: process.platform, pathEnv: process.env.PATH ?? '', exists: (p) => fs.existsSync(p), read: (p) => fs.readFileSync(p, 'utf8') });
+  }
+
+  private render(): void {
+    if (this.disposed) return;
+    const names = ['specs/active', 'specs/done', 'specs/plans'].flatMap((d) => { try { return fs.readdirSync(path.join(this.root, d)); } catch { return []; } });
+    this.web.webview.html = start.html({
+      kind: this.kind, description: this.description, mode: start.mode(this.read('AGENTS.md')), number: start.nextNumber(names),
+      claude: this.claude() !== null, started: this.started, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+    });
+  }
+
+  private async on(type: string, form: Record<string, string>): Promise<void> {
+    this.description = form.description ?? this.description;
+    if (type.startsWith('kind-')) {
+      this.kind = type.slice(5) as start.Kind;
+      return this.render();
+    }
+    const cmd = start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')));
+    if (cmd === null) return this.render();
+    if (type === 'copy') {
+      await vscode.env.clipboard.writeText(cmd);
+      void vscode.window.showInformationMessage(`Copied: ${cmd}`);
+      return;
+    }
+    if (type !== 'start') return;
+    const exe = this.claude();
+    if (exe === null) return this.render();
+    const t = vscode.window.createTerminal({ name: 'ANEW · new work', shellPath: exe, shellArgs: [cmd], cwd: this.root });
+    t.show();
+    this.started = cmd;
+    this.render();
   }
 }
