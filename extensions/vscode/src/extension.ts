@@ -1,20 +1,17 @@
-// The VS Code layer: activation, the work list, the status bar item and the approval panel. The
-// logic lives in the modules it imports; this file only wires them to VS Code.
+// The VS Code layer: activation, the sidebar, the status bar item and the screens. The logic lives
+// in the modules it imports; this file only wires them to VS Code.
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { findShell, runScript } from './shell.ts';
-import { parseStatus, grouped, waiting, writeFor, type Row, type Status, type Group } from './status.ts';
+import { parseStatus, waiting, type Row, type Status } from './status.ts';
 import { gateArgs, answer } from './gate.ts';
 import { sections, SPEC_SECTIONS, PLAN_SECTIONS } from './summary.ts';
 import { offer, decision, done, shown, fileFor, type Done } from './panel-logic.ts';
-import { execFile } from 'node:child_process';
 import { html, notice } from './panel.ts';
-
-type Item = { kind: 'group'; group: Group; rows: Row[] } | { kind: 'row'; row: Row } | { kind: 'message'; text: string };
-
-const GROUPS: Group[] = ['your turn', 'in progress', 'shipped'];
+import * as sidebar from './sidebar.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -23,41 +20,31 @@ export function activate(ctx: vscode.ExtensionContext): void {
   void vscode.commands.executeCommand('setContext', 'anew.active', true);
 
   const shellOf = () => findShell({ setting: vscode.workspace.getConfiguration('anew').get<string>('shell') ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
+  const read = (rel: string) => { try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return ''; } };
+  // The mockup's header: the mode from AGENTS.md and the base version from .anew-version.
+  const meta = () => [/\*\*Mode:\s*([a-z]+)\*\*/i.exec(read('AGENTS.md'))?.[1], read('.anew-version').trim()].filter(Boolean).join(' · ');
   let status: Status | null = null;
   let problem: string | null = null;
 
-  const changed = new vscode.EventEmitter<void>();
-  const tree: vscode.TreeDataProvider<Item> = {
-    onDidChangeTreeData: changed.event,
-    getChildren(item?: Item): Item[] {
-      if (item?.kind === 'group') return item.rows.map((row) => ({ kind: 'row', row }));
-      if (item) return [];
-      if (problem !== null) return [{ kind: 'message', text: problem }];
-      if (status === null) return [{ kind: 'message', text: 'reading scripts/status…' }];
-      if (status.rows.length === 0) return [{ kind: 'message', text: 'no work yet — start with /new-feature or /analyze' }];
-      const g = grouped(status);
-      return GROUPS.filter((k) => g[k].length > 0).map((k) => ({ kind: 'group', group: k, rows: g[k] }));
-    },
-    getTreeItem(item: Item): vscode.TreeItem {
-      if (item.kind === 'message') return new vscode.TreeItem(item.text);
-      if (item.kind === 'group') {
-        return new vscode.TreeItem(`${item.group.toUpperCase()} · ${item.rows.length}`,
-          item.group === 'shipped' ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
-      }
-      const r = item.row;
-      const t = new vscode.TreeItem(`${r.spec} · ${r.name}`);
-      t.description = label(r) + (r.warnings.length ? ` · ${r.warnings.length} warning(s)` : '');
-      t.tooltip = [`${r.stage}${r.who ? ` (${r.who})` : ''}`, r.next && `next: ${r.next}`, ...r.warnings.map((w) => `WARN ${w}`), ...r.notes].filter(Boolean).join('\n');
-      t.iconPath = r.warnings.length ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('editorWarning.foreground'))
-        : r.stage === 'shipped' ? new vscode.ThemeIcon('pass', new vscode.ThemeColor('charts.green'))
-        : r.who === 'human' || r.stage.startsWith('unclear') ? new vscode.ThemeIcon('bell-dot', new vscode.ThemeColor('charts.orange'))
-        : new vscode.ThemeIcon('sync', new vscode.ThemeColor('charts.blue'));
-      t.command = { command: 'anew.open', title: 'Open', arguments: [r.spec] };
-      return t;
-    },
+  let side: vscode.WebviewView | null = null;
+  const drawSide = () => {
+    if (side === null) return;
+    const m = sidebar.model(status, problem, meta());
+    side.webview.html = sidebar.html(m, randomBytes(16).toString('hex'), side.webview.cspSource);
+    side.badge = m.waiting ? { value: m.waiting, tooltip: `${m.waiting} decision(s) wait for you` } : undefined;
   };
-  const view = vscode.window.createTreeView('anew.work', { treeDataProvider: tree });
-  ctx.subscriptions.push(view);
+  ctx.subscriptions.push(vscode.window.registerWebviewViewProvider('anew.work', {
+    resolveWebviewView(v: vscode.WebviewView) {
+      side = v;
+      v.webview.options = { enableScripts: true, localResourceRoots: [] };
+      v.webview.onDidReceiveMessage((m: { type: string }) => {
+        if (m.type === 'new') void vscode.commands.executeCommand('anew.newWork');
+        else if (m.type.startsWith('row-')) void vscode.commands.executeCommand('anew.open', m.type.slice(4));
+      });
+      v.onDidDispose(() => { side = null; });
+      drawSide();
+    },
+  }, { webviewOptions: { retainContextWhenHidden: false } }));
 
   const bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   bar.command = 'workbench.view.extension.anew';
@@ -83,8 +70,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     bar.text = problem ? '$(warning) ANEW' : n ? `$(bell-dot) ANEW: ${n} waiting for you` : '$(check) ANEW';
     bar.tooltip = problem ?? (n ? `${n} decision(s) wait for you` : 'nothing waits for you');
     bar.show();
-    view.badge = n ? { value: n, tooltip: `${n} decision(s) wait for you` } : undefined;
-    changed.fire();
+    drawSide();
     panel?.render();
   }
 
@@ -106,15 +92,6 @@ export function activate(ctx: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {}
-
-// What a row waits for, in the list's words: the decision when it is the human's, else the stage
-// and who has it.
-function label(r: Row): string {
-  const w = writeFor(r);
-  if (w !== null) return w === 'approve-spec' ? 'Spec approval' : 'Plan approval';
-  if (r.stage === 'shipped' || r.stage.startsWith('unclear')) return r.stage;
-  return r.who === 'human' ? `${r.stage} · your decision` : `${r.stage} · ${r.who}`;
-}
 
 // One panel, reused for whichever row was opened last.
 class Approval {
