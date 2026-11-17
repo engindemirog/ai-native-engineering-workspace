@@ -8,7 +8,8 @@ import { findShell, runScript } from './shell.ts';
 import { parseStatus, grouped, waiting, writeFor, type Row, type Status, type Group } from './status.ts';
 import { gateArgs, answer } from './gate.ts';
 import { sections, SPEC_SECTIONS, PLAN_SECTIONS } from './summary.ts';
-import { offer, decision, done, shown, type Done } from './panel-logic.ts';
+import { offer, decision, done, shown, fileFor, type Done } from './panel-logic.ts';
+import { execFile } from 'node:child_process';
 import { html, notice } from './panel.ts';
 
 type Item = { kind: 'group'; group: Group; rows: Row[] } | { kind: 'row'; row: Row } | { kind: 'message'; text: string };
@@ -122,6 +123,7 @@ class Approval {
   private opened: string | null = null; // the decision whose file was opened from this panel
   private running: string | null = null; // the spec a gate call runs for
   private result: Done | null = null;
+  private approver = ''; // git user.name, the name gate writes
   disposed = false;
   private readonly root: string;
   private readonly status: () => Status | null;
@@ -137,6 +139,7 @@ class Approval {
     this.refresh = refresh;
     this.web = vscode.window.createWebviewPanel('anew.approval', 'ANEW', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
     this.web.onDidDispose(() => { this.disposed = true; });
+    execFile('git', ['config', 'user.name'], { cwd: root }, (_e, out) => { this.approver = String(out ?? '').trim(); this.render(); });
     this.web.webview.onDidReceiveMessage((m: { type: string }) => this.on(m.type).catch((e: Error) => {
       this.running = null;
       void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
@@ -154,15 +157,16 @@ class Approval {
     return this.status()?.rows.find((r) => r.spec === this.spec);
   }
 
-  // The file the decision is on: the plan for a plan approval, the spec otherwise.
+  // The file the screen reads (panel-logic.ts, fileFor): the plan for a plan approval and past
+  // PLAN, the spec otherwise.
   private file(row: Row): string | null {
-    if (writeFor(row) === 'approve-plan') return `specs/plans/${row.spec}-plan.md`;
+    let spec: string | null = null;
     for (const dir of ['specs/active', 'specs/done']) {
       const abs = path.join(this.root, dir);
       const hit = fs.existsSync(abs) ? fs.readdirSync(abs).find((f) => f.startsWith(`${row.spec}-`) && f.endsWith('.md')) : undefined;
-      if (hit) return `${dir}/${hit}`;
+      if (hit) { spec = `${dir}/${hit}`; break; }
     }
-    return null;
+    return fileFor(row, spec, (rel) => fs.existsSync(path.join(this.root, rel)));
   }
 
   render(): void {
@@ -181,7 +185,7 @@ class Approval {
     this.web.webview.html = html({
       row, file: file ?? '(file not found)', sections: sections(text, names),
       offer: offer({ row, opened: this.opened === d, shell: this.shell() !== null, running: this.running }),
-      result: shown(this.result, row, file), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      result: shown(this.result, row, file), approver: this.approver, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 

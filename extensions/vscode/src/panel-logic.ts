@@ -13,6 +13,7 @@ export interface PanelState {
 
 export interface Offer {
   write: Write;
+  open: boolean; // "Open the file" is offered (not while gate runs)
   approve: boolean;
   requestChanges: boolean;
   hint: string;
@@ -24,15 +25,25 @@ export function offer(s: PanelState): Offer {
     const hint = s.row.who === 'human'
       ? `${s.row.stage}: this decision's screen comes with spec 0010 — open the file, or use scripts/gate in a terminal.`
       : s.row.stage === 'shipped' ? 'Shipped.' : `${s.row.stage}: waiting for ${s.row.who || 'a decision status cannot read'}.`;
-    return { write, approve: false, requestChanges: false, hint };
+    return { write, open: true, approve: false, requestChanges: false, hint };
   }
-  if (!s.shell) return { write, approve: false, requestChanges: true, hint: 'No POSIX shell found: set anew.shell (Git for Windows: bash.exe). Nothing can be written.' };
+  if (!s.shell) return { write, open: true, approve: false, requestChanges: true, hint: 'No POSIX shell found: set anew.shell (Git for Windows: bash.exe). Nothing can be written.' };
   if (s.running !== null) {
     const hint = s.running === s.row.spec ? `Running ./scripts/gate ${write} ${s.row.spec}…` : `gate is running for ${s.running}; wait for its answer.`;
-    return { write, approve: false, requestChanges: false, hint };
+    return { write, open: false, approve: false, requestChanges: false, hint };
   }
-  if (!s.opened) return { write, approve: false, requestChanges: true, hint: 'The file opens in the editor. The approve button appears here once it is open: the approval is given on the file, not on this summary.' };
-  return { write, approve: true, requestChanges: true, hint: 'The file is open beside this panel. Approve it, or request changes.' };
+  if (!s.opened) return { write, open: true, approve: false, requestChanges: true, hint: 'The file opens in the editor. The approve button appears here once it is open: the approval is given on the file, not on this summary.' };
+  return { write, open: true, approve: true, requestChanges: true, hint: 'The file is open beside this panel. Approve it, or request changes.' };
+}
+
+// The file a row's screen reads: the plan once the row is past PLAN (its build, review and VERIFY
+// follow the plan) or when the plan is the decision; the spec otherwise.
+const PAST_PLAN = ['BUILD', 'REVIEW', 'FIX ROUND', 'VERIFY'];
+
+export function fileFor(row: Row, specFile: string | null, exists: (rel: string) => boolean): string | null {
+  const plan = `specs/plans/${row.spec}-plan.md`;
+  if (writeFor(row) === 'approve-plan' || (PAST_PLAN.includes(row.stage) && exists(plan))) return plan;
+  return specFile;
 }
 
 // The decision the panel is on: one spec, one write, one file. Opening the file belongs to it, so

@@ -12,7 +12,7 @@ const sections = [
 ];
 const view = (over: Partial<View> = {}): View => ({
   row, file: 'specs/plans/0004-plan.md', sections,
-  offer: offer({ row, opened: false, shell: true, running: null }), result: null, nonce: 'n0nce', cspSource: 'vscode-resource:', ...over,
+  offer: offer({ row, opened: false, shell: true, running: null }), result: null, approver: 'Engin Demiroğ', nonce: 'n0nce', cspSource: 'vscode-resource:', ...over,
 });
 
 test('everything from the files is escaped', () => {
@@ -45,8 +45,8 @@ test('the summary reads as the mockup\'s cards: strip, files, test map, risks', 
   assert.ok(h.includes('<span class="step done">✓ Spec</span><span class="step now you">● Plan · waiting for you</span><span class="step">Build</span>'));
   assert.ok(h.includes('Files to change · 1'));
   assert.ok(h.includes('Criterion ↔ test · 1/2 mapped'));
-  assert.ok(h.includes('<span class="id">AC-2</span> → <span class="missing">no test yet</span>'));
-  assert.ok(h.includes('Risks · 1, each with a recommendation'));
+  assert.ok(h.includes('<span class="id">AC-2</span> → <span class="missing">⚠ no test yet</span>'));
+  assert.ok(h.includes('>Risks · 1<'));
 });
 
 test('approve is a button only when the offer has it, and only after the file is open', () => {
@@ -66,11 +66,55 @@ test('written and refused are shown as gate said them', () => {
   const ok = html(view({ result: { written: true, code: 0, text: 'approve-plan 0004: plan approved — specs/plans/0004-plan.md @abc1234', next: '/build 0004' } }));
   assert.ok(ok.includes('<strong>✓ Plan approved — written and committed</strong>'));
   assert.ok(ok.includes('<pre class="out">approve-plan 0004: plan approved — specs/plans/0004-plan.md @abc1234</pre>'));
-  assert.ok(ok.includes('<code class="cmd">/build 0004</code><button id="copy" class="secondary">Copy</button>'));
+  assert.ok(ok.includes('<code class="cmd">/build 0004</code><button id="copy" class="secondary" data-keep="1">Copy</button>'));
   assert.ok(!ok.includes('id="approve"'));
   const no = html(view({ result: { written: false, code: 1, text: 'gate: 0004 is at BUILD <x>', next: '' } }));
   assert.ok(no.includes('Refused (exit 1) — nothing was written.'));
   assert.ok(no.includes('<pre class="out">gate: 0004 is at BUILD &lt;x&gt;</pre>'));
   assert.ok(!no.includes('approved — written'));
   assert.ok(!no.includes('id="copy"'));
+});
+
+const specRow: Row = { ...row, stage: 'ANALYZE', name: 'demo' };
+const specView = (over: Partial<View> = {}): View => view({
+  row: specRow, file: 'specs/active/0004-demo.md',
+  sections: [{ title: 'Intent', body: 'Why <img src=x onerror=alert(1)>' }, { title: 'Acceptance criteria', body: '- [ ] AC-1 — shows <script>x</script>' }],
+  offer: offer({ row: specRow, opened: false, shell: true, running: null }), ...over,
+});
+
+test('B-18: the spec cards escape the intent and the criteria', () => {
+  const h = html(specView());
+  assert.ok(h.includes('Why &lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(h.includes('shows &lt;script&gt;x&lt;/script&gt;'));
+  assert.ok(!h.includes('<img'));
+  assert.equal((h.match(/<script\b/g) ?? []).length, 1);
+});
+
+test('B-15: an unreadable criteria list shows the section as it is', () => {
+  const h = html(specView({ sections: [{ title: 'Acceptance criteria', body: '- [ ] AC-1 — fine\n- [ ] AC-3: other <b>' }] }));
+  assert.ok(h.includes('<pre>- [ ] AC-1 — fine\n- [ ] AC-3: other &lt;b&gt;</pre>'));
+});
+
+test('B-16: the risks label claims no recommendation the risks lack', () => {
+  const h = html(view({ sections: [{ title: 'Risks & open questions', body: '1. **A.** Recommendation: x.\n2. **B.** No advice.' }] }));
+  assert.ok(h.includes('>Risks · 2<'));
+  assert.ok(!h.includes('each with a recommendation'));
+});
+
+test('B-19: while gate runs no button is offered, not even Open', () => {
+  const h = html(view({ offer: offer({ row, opened: true, shell: true, running: '0004' }) }));
+  assert.ok(!h.includes('<button id="open"'));
+  assert.ok(!h.includes('<button id="approve"'));
+  assert.ok(!h.includes('<button id="changes"'));
+});
+
+test('B-20: the orange chip carries dark text in every theme; a missing test is not colour alone', () => {
+  const h = html(view());
+  assert.match(h, /\.step\.now\.you \{[^}]*color: #1b1c20/);
+  assert.ok(h.includes('<span class="missing">⚠ no test yet</span>'));
+});
+
+test('the approver is named, as gate will write it', () => {
+  assert.ok(html(view({ approver: 'Ada Lovelace' })).includes('The approver is taken from git user.name: Ada Lovelace'));
+  assert.ok(html(view({ approver: '' })).includes('git user.name is not set'));
 });

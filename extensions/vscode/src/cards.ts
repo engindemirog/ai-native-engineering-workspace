@@ -25,13 +25,16 @@ export function plain(s: string): string {
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 
-// The top-level list items ("- " or "1. " at the start of a line), each with its continuation lines.
+// The top-level list items ("- " or "1. " at the start of a line), each with its indented
+// continuation lines; an unindented line ends the item.
 export function items(body: string): string[] {
   const out: string[] = [];
+  let open = false;
   for (const line of body.split('\n')) {
     const m = /^(?:[-*]|\d+[.)])\s+(.*)$/.exec(line);
-    if (m) out.push(m[1]);
-    else if (out.length > 0 && line.trim() !== '') out[out.length - 1] += `\n${line.trim()}`;
+    if (m) { out.push(m[1]); open = true; }
+    else if (open && /^\s+\S/.test(line)) out[out.length - 1] += `\n${line.trim()}`;
+    else open = false;
   }
   return out;
 }
@@ -45,16 +48,35 @@ export function files(body: string): string[] {
   });
 }
 
-// The criterion ↔ test table's rows, header and separator left out.
+// The criterion ↔ test table's rows: the header (the row before the |---| separator) and the
+// separator left out; a pipe escaped (\|) or inside backticks stays in its cell.
 export function pairs(body: string): Pair[] {
+  const rows = body.split('\n').filter((l) => /^\s*\|/.test(l));
+  const sep = rows.findIndex((l) => /^\s*\|[\s|:-]*\|\s*$/.test(l));
   const out: Pair[] = [];
-  for (const line of body.split('\n')) {
-    if (!/^\s*\|/.test(line) || /^\s*\|[\s|:-]*\|\s*$/.test(line)) continue;
-    const cells = line.trim().replace(/^\||\|$/g, '').split('|').map((c) => plain(c));
-    if (cells[0] === '' || /^acceptance criterion$/i.test(cells[0])) continue;
+  rows.forEach((line, i) => {
+    if (i === sep || i === sep - 1) return;
+    const cells = cellsOf(line).map((c) => plain(c));
+    if (cells[0] === '' || /^acceptance criterion$/i.test(cells[0])) return;
     out.push({ criterion: cells[0], proof: cells[1] ?? '' });
-  }
+  });
   return out;
+}
+
+function cellsOf(line: string): string[] {
+  const cells: string[] = [];
+  let cur = '';
+  let code = false;
+  const s = line.trim().replace(/^\|/, '');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '\\' && s[i + 1] === '|') { cur += '|'; i++; continue; }
+    if (c === '`') code = !code;
+    if (c === '|' && !code) { cells.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim() !== '') cells.push(cur);
+  return cells;
 }
 
 // Each risk: its bold lead or first sentence as the title, its recommendation (or the rest) below.
@@ -73,12 +95,20 @@ function splitSentence(s: string): [string, string] {
   return m ? [m[1], m[2]] : [s, ''];
 }
 
-// A spec's criteria: "- [ ] AC-n — text"; a line in another shape is not a criterion.
-export function criteria(body: string): Criterion[] {
+// A spec's criteria: "- [ ] AC-n — text", continuation lines joined. null when an item that
+// looks like a criterion is in another shape: the card then shows the section as it is, never a
+// shorter list.
+export function criteria(body: string): Criterion[] | null {
   const out: Criterion[] = [];
   for (const line of body.split('\n')) {
-    const m = /^- \[( |x|X)\]\s+(?:~~)?(AC-\d+)\s*[—-]\s*(.*)$/.exec(line);
-    if (m) out.push({ id: m[2], text: clip(plain(m[3].replace(/~~/g, '')), 200), done: m[1] !== ' ' });
+    if (/^\s*[*+] \[|^\s*[-*+]?\s*(?:~~)?AC-\d+\s*:/.test(line)) return null;
+  }
+  for (const i of items(body)) {
+    const one = i.replace(/\s*\n\s*/g, ' ');
+    if (!/^\[/.test(one) && !/\bAC-\d+/.test(one)) continue;
+    const m = /^\[( |x|X)\]\s+(?:~~)?(AC-\d+)\s*[—-]\s*(.*)$/.exec(one);
+    if (!m) return null;
+    out.push({ id: m[2], text: clip(plain(m[3].replace(/~~/g, '')), 300), done: m[1] !== ' ' });
   }
   return out;
 }
