@@ -11,7 +11,7 @@ import { parseStatus, writeFor } from '../src/status.ts';
 import { gateArgs, answer } from '../src/gate.ts';
 import { write as triageWrite, type Decision } from '../src/triage.ts';
 import { offered } from '../src/ship.ts';
-import { ADAPTERS, initArgs, installed } from '../src/setup.ts';
+import { ADAPTERS, existsIn, initArgs, installed } from '../src/setup.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -219,8 +219,7 @@ test('setup: what init writes for each adapter is what the confirmation lists, a
     assert.ok(wrote.length > 0, a.id);
     for (const f of wrote) assert.ok(a.writes.some((w) => w.endsWith('/') ? f.startsWith(w) : f === w), `${a.id}: ${f} is not in the list`);
     for (const w of a.writes) assert.ok(wrote.some((f) => w.endsWith('/') ? f.startsWith(w) : f === w), `${a.id}: ${w} is listed but not written`);
-    const exists = (rel: string) => fs.existsSync(path.join(dir, rel));
-    assert.deepEqual(installed(exists), [a.id]);
+    assert.deepEqual(installed(existsIn(dir)), [a.id]);
   }
 });
 

@@ -141,5 +141,6 @@ test('L-4: while init runs, the agent picks, Start and Copy are disabled', () =>
   const h = html({ ...view, description: 'x', installable: ['codex'], installing: 'codex' });
   assert.equal((h.match(/<button id="agent-[a-z-]+" class="secondary small" data-keep="1" aria-pressed="(?:true|false)" disabled>/g) ?? []).length, 4);
   assert.ok(h.includes('<button id="start" class="primary" data-hold="1" disabled>Start in Claude Code</button>'));
-  assert.ok(h.includes('<button id="copy" class="secondary" data-keep="1" disabled>Copy command</button>'));
+  // R2-2: held, so typing in the description does not enable it again
+  assert.ok(h.includes('<button id="copy" class="secondary" data-keep="1" data-hold="1" disabled>Copy command</button>'));
 });

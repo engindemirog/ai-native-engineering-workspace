@@ -166,7 +166,7 @@ ${work}
   <span class="label">Goes to the agent</span>
   <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : EMPTY}</pre>
   <ul class="facts"><li>A new session — no context carried over</li><li>${esc(modeLine)}</li><li>${setup ? 'It stops for your approval of what bootstrap writes' : 'First stop: the spec approval is yours'}</li></ul>
-  <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${cmd && !v.installing ? '' : ' disabled'}>Copy command</button></div>
+  <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${v.installing ? ' data-hold="1"' : ''}${cmd && !v.installing ? '' : ' disabled'}>Copy command</button></div>
   <p class="foot">${esc(canStart && !ready ? 'Start waits for the Claude Code adapter: install it above, or copy the command.' : foot)}</p>
 </div>
 ${v.started ? `<div class="result ok" role="status"><strong>✓ A session opened in a new terminal with the command.</strong><p class="prose">${setup ? 'When bootstrap has set the mode, the kinds of work appear here.' : 'When the spec draft is written, it appears under “Your turn” in the sidebar.'}</p></div>` : ''}

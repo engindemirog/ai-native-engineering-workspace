@@ -3,6 +3,9 @@
 // files `scripts/doctor`'s adapter check names, so the screen and doctor never disagree (G-6).
 // The extension writes none of these files: `./scripts/init <tool>` does, never with --force (G-2).
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 export type Tool = 'claude-code' | 'github-copilot' | 'cursor' | 'codex';
 
 export interface Adapter {
@@ -27,6 +30,17 @@ export const isTool = (s: string): s is Tool => ADAPTERS.some((a) => a.id === s)
 // -d and -f).
 export type Exists = (rel: string) => boolean;
 
+// The workspace's Exists, read from disk: a file where a folder is asked for is not there, nor the
+// other way round (spec 0011, G-6).
+export function existsIn(root: string): Exists {
+  return (rel) => {
+    try {
+      const st = fs.statSync(path.join(root, rel));
+      return rel.endsWith('/') ? st.isDirectory() : st.isFile();
+    } catch { return false; }
+  };
+}
+
 export function installed(exists: Exists): Tool[] {
   return ADAPTERS.filter((a) => exists(a.marker)).map((a) => a.id);
 }
@@ -37,7 +51,8 @@ export function installable(id: Tool, exists: Exists): boolean {
 }
 
 // Bootstrap has run when doctor says so: no `STATUS: NOT CONFIGURED` and no `Mode: unset`
-// (scripts/doctor, the mode case-insensitive as there) — never a stricter reading (G-6).
+// (scripts/doctor, the mode case-insensitive as there, G-6). One reading is stricter: an empty
+// AGENTS.md is not set up, so the screen offers bootstrap where doctor stays quiet (review round 2).
 export function bootstrapped(agents: string): boolean {
   return agents.trim() !== '' && !agents.includes('STATUS: NOT CONFIGURED') && !/Mode: unset/i.test(agents);
 }
@@ -51,8 +66,10 @@ export function whyNot(id: Tool, exists: Exists): string {
 
 // What a refresh can change on the start screen; it is redrawn from a refresh only when this
 // changed, so typing is never taken by a redraw for an unrelated file (review round 1, M-1).
-export function key(s: { have: Tool[]; installable: Tool[]; bootstrapped: boolean; mode: string; why: Partial<Record<Tool, string>> }): string {
-  return JSON.stringify([s.have, s.installable, s.bootstrapped, s.mode, s.why]);
+// The likely number is left out: the screen gives it as likely, and a new spec must not take the
+// typing (review round 2).
+export function key(s: { have: Tool[]; installable: Tool[]; bootstrapped: boolean; mode: string; why: Partial<Record<Tool, string>>; shell: boolean; claude: boolean }): string {
+  return JSON.stringify([s.have, s.installable, s.bootstrapped, s.mode, s.why, s.shell, s.claude]);
 }
 
 // scripts/init's arguments: the tool alone, never --force.

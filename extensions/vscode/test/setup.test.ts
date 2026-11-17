@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ADAPTERS, installed, installable, bootstrapped, initArgs, pick, forAgent, needs, whyNot, key, type Exists, type Tool } from '../src/setup.ts';
+import * as os from 'node:os';
+import { ADAPTERS, existsIn, installed, installable, bootstrapped, initArgs, pick, forAgent, needs, whyNot, key, type Exists, type Tool } from '../src/setup.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const has = (...paths: string[]): Exists => (rel) => paths.includes(rel);
@@ -83,10 +84,30 @@ test('L-3: why Install is not offered names what is missing', () => {
 });
 
 test('M-1: the start screen\'s refresh key changes with the setup it shows, and only with it', () => {
-  const s = { have: ['cursor'] as Tool[], installable: ['codex'] as Tool[], bootstrapped: false, mode: 'unset', why: {} };
+  const s = { have: ['cursor'] as Tool[], installable: ['codex'] as Tool[], bootstrapped: false, mode: 'unset', why: {}, shell: true, claude: true };
   const k = key(s);
   assert.equal(key({ ...s }), k);
-  for (const changed of [{ have: [] as Tool[] }, { installable: [] as Tool[] }, { bootstrapped: true }, { mode: 'lite' }, { why: { cursor: 'no scripts/init here' } }]) {
+  for (const changed of [{ have: [] as Tool[] }, { installable: [] as Tool[] }, { bootstrapped: true }, { mode: 'lite' }, { why: { cursor: 'no scripts/init here' } }, { shell: false }, { claude: false }]) {
     assert.notEqual(key({ ...s, ...changed }), k, JSON.stringify(changed));
   }
+});
+
+test('R2-5: existsIn tells a file from a folder as doctor\'s -f and -d do', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'anew-exists-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'x');
+    fs.mkdirSync(path.join(dir, '.cursor', 'rules'), { recursive: true });
+    // a folder named as a file marker, a file named as a folder marker
+    fs.mkdirSync(path.join(dir, '.agents', 'skills', 'analyze', 'SKILL.md'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.github'));
+    fs.writeFileSync(path.join(dir, '.github', 'copilot-instructions.md'), 'x');
+    const exists = existsIn(dir);
+    assert.equal(exists('CLAUDE.md'), true);
+    assert.equal(exists('CLAUDE.md/'), false);
+    assert.equal(exists('.cursor/rules/'), true);
+    assert.equal(exists('.cursor/rules'), false);
+    assert.equal(exists('.agents/skills/analyze/SKILL.md'), false);
+    assert.equal(exists('nothing'), false);
+    assert.deepEqual(installed(exists), ['claude-code', 'github-copilot', 'cursor']);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

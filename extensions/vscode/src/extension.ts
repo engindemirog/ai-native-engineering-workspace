@@ -34,7 +34,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   let side: vscode.WebviewView | null = null;
   const drawSide = () => {
     if (side === null) return;
-    const m = sidebar.model(status, problem, meta(), setup.needs(setup.installed(existsIn(root)), read('AGENTS.md')));
+    const m = sidebar.model(status, problem, meta(), setup.needs(setup.installed(setup.existsIn(root)), read('AGENTS.md')));
     side.webview.html = sidebar.html(m, randomBytes(16).toString('hex'), side.webview.cspSource);
     side.badge = m.waiting ? { value: m.waiting, tooltip: `${m.waiting} decision(s) wait for you` } : undefined;
   };
@@ -87,7 +87,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'specs/**'));
   watcher.onDidChange(soon); watcher.onDidCreate(soon); watcher.onDidDelete(soon);
   // the setup follows an install or a bootstrap: AGENTS.md and the files doctor's adapter check names
-  const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github,.github/copilot-instructions.md,.cursor,.cursor/rules/**,.agents,.agents/skills/analyze/SKILL.md}'));
+  const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github,.github/copilot-instructions.md,.cursor,.cursor/rules,.cursor/rules/**,.agents,.agents/skills,.agents/skills/analyze,.agents/skills/analyze/SKILL.md}'));
   setupWatcher.onDidChange(soon); setupWatcher.onDidCreate(soon); setupWatcher.onDidDelete(soon);
   ctx.subscriptions.push(setupWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
@@ -122,17 +122,6 @@ export function activate(ctx: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {}
-
-// A workspace-relative path that exists: a trailing / asks for a folder, else a file — as doctor's
-// -d and -f (spec 0011, G-6).
-function existsIn(root: string): setup.Exists {
-  return (rel) => {
-    try {
-      const st = fs.statSync(path.join(root, rel));
-      return rel.endsWith('/') ? st.isDirectory() : st.isFile();
-    } catch { return false; }
-  };
-}
 
 // One panel, reused for whichever row was opened last.
 class Approval {
@@ -280,7 +269,7 @@ class Start {
 
   // Read again on every draw: installed or not is never cached (spec 0011, Constraints).
   private setup() {
-    const exists = existsIn(this.root);
+    const exists = setup.existsIn(this.root);
     const have = setup.installed(exists);
     const claude = this.claude() !== null;
     return {
@@ -294,7 +283,7 @@ class Start {
 
   private shown = '';
   private keyNow(): string {
-    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')) });
+    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null });
   }
 
   // After a refresh: redrawn only when the setup it shows changed (review round 1, M-1).
