@@ -47,6 +47,6 @@ test('this repo\'s own plan 0009 and spec 0009 read as cards', () => {
   assert.equal(r.length, 6);
   assert.equal(r[0].title, 'Node 24\'s type stripping for tests');
   assert.match(r[0].advice, /^Recommendation: accept;/);
-  const spec = Object.fromEntries(sections(fs.readFileSync(path.join(repo, '.anew-dev/specs/0009-vscode-extension.md'), 'utf8'), SPEC_SECTIONS).map((s) => [s.title, s.body]));
+  const spec = Object.fromEntries(sections(fs.readFileSync(path.join(repo, '.anew-dev/done/0009-vscode-extension.md'), 'utf8'), SPEC_SECTIONS).map((s) => [s.title, s.body]));
   assert.deepEqual(criteria(spec['Acceptance criteria']).map((c) => c.id), ['AC-1', 'AC-2', 'AC-3', 'AC-4', 'AC-5', 'AC-6', 'AC-7']);
 });

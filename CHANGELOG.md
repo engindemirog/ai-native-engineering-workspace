@@ -40,9 +40,11 @@ A current release (not in `1.24.x`). No rule changes: the extension is an option
 `scripts/status --json` and `scripts/gate`, and writes nothing that gate would not.
 
 - **`extensions/vscode/`** (new, extension 0.1.0, the `.vsix` is attached to the release): the
-  work list grouped as your turn · in progress · shipped, with warnings and a status bar count;
-  spec and plan approval from a panel that shows the file's summary and offers Approve only after
-  the full file was opened. Triage, ship and starting new work follow in a later version.
+  work list grouped as your turn · in progress · shipped, with warnings, a waiting badge and a
+  status bar count; spec and plan approval from a panel laid out as the approved mockup — the
+  stage strip, the summary as cards (files, criterion ↔ test, risks with their recommendation; a
+  spec's intent and criteria), Approve only after the full file was opened, gate's answer with
+  the next command and Copy. Triage, ship and starting new work follow in a later version.
 - Install: Extensions view → `…` → Install from VSIX. It activates in a workspace with
   `scripts/status` and `AGENTS.md`; the scripts run with `sh`, or Git for Windows' `bash.exe`
   (setting `anew.shell`).

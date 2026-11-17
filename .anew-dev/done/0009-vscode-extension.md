@@ -1,6 +1,6 @@
 # Spec 0009 — the VS Code extension, part 1: the work list and the approvals
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0009-plan.md`
 - Self-critique: done (G-1–G-6 accepted, Engin Demiroğ, 2026-11-17)
@@ -69,31 +69,31 @@ Deliberately not done:
   the VS Code layer is thin and proven by AC-6's run.
 
 ## Acceptance criteria
-- [ ] AC-1 — the list groups, stages, warnings and waiting count match `scripts/status --json`
+- [x] AC-1 — the list groups, stages, warnings and waiting count match `scripts/status --json`
   for a fixture with a spec at every stage (unit tests on parsing and grouping, and one test that
   runs the real `scripts/status --json` on a fixture repo).
-- [ ] AC-2 — approve builds exactly `approve-spec NNNN` / `approve-plan NNNN` for gate; run
+- [x] AC-2 — approve builds exactly `approve-spec NNNN` / `approve-plan NNNN` for gate; run
   against a fixture repo it leaves the same commit and file contents as the same call from a
   terminal; on a refusal the panel shows gate's message and nothing is written.
-- [ ] AC-3 — approve is not offered before the full file has been opened; a row at triage or ship
+- [x] AC-3 — approve is not offered before the full file has been opened; a row at triage or ship
   offers no write.
-- [ ] AC-4 — the plan and spec summaries show the template sections; a file without them shows
+- [x] AC-4 — the plan and spec summaries show the template sections; a file without them shows
   only "open the file".
-- [ ] AC-5 — outside an ANEW workspace the extension shows nothing; without a shell it offers no
+- [x] AC-5 — outside an ANEW workspace the extension shows nothing; without a shell it offers no
   write.
-- [ ] AC-6 — on this machine (Windows, Git Bash) the packaged `.vsix` installs, and the list and
+- [x] AC-6 — on this machine (Windows, Git Bash) the packaged `.vsix` installs, and the list and
   both approvals work on a pilot copy; one screenshot per screen and state, judged by the human
   at SHIP.
-- [ ] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+- [x] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; README and `docs/commands.md` name the extension; CHANGELOG v1.27 and
   `.anew-version` v1.27.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-17)
 - **G-1 — in this repo**, `extensions/vscode/`: it reads status and gate output, which change
