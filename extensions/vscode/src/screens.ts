@@ -33,6 +33,10 @@ const form = () => Object.fromEntries([...document.querySelectorAll('[name]')].m
 for (const b of document.querySelectorAll('button[id]')) {
   b.addEventListener('click', () => { if (!b.dataset.keep) b.disabled = true; vscode.postMessage({ type: b.id, form: form() }); });
 }
+// a choice made in a list takes effect at once (a severity can unlock Save)
+for (const s of document.querySelectorAll('select[name]')) {
+  s.addEventListener('change', () => vscode.postMessage({ type: 'sync', form: form() }));
+}
 </script>
 </body>
 </html>`;

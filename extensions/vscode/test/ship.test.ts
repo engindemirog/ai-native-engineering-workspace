@@ -75,7 +75,9 @@ test('after a written ship: gate\'s line, then the PR step; a refusal shows gate
 test('H-2: a failed git probe is no branch name; a remote without HEAD means main', () => {
   assert.equal(probed({ code: 128, stdout: 'fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n' }), '');
   assert.equal(probed({ code: 0, stdout: 'origin/main\n' }), 'origin/main');
-  assert.equal(defaultBranch('', 'origin'), 'main');
+  assert.equal(defaultBranch('', 'origin'), '');
+  assert.match(prStep({ branch: 'master', defaultBranch: '', remote: 'origin', gh: true }).why, /no origin\/HEAD/);
+  assert.equal(prStep({ branch: 'master', defaultBranch: '', remote: 'origin', gh: true }).offered, false);
   assert.equal(defaultBranch('origin/trunk', 'origin'), 'trunk');
   // shipped on main with origin/HEAD unset: no push button
   assert.equal(prStep({ branch: 'main', defaultBranch: defaultBranch(probed({ code: 128, stdout: '' }), 'origin'), remote: 'origin', gh: true }).offered, false);

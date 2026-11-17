@@ -399,31 +399,27 @@ class Triage {
   }
 
   // The backlog entries for the defers first (the one file the extension writes itself), then the
-  // gate call. A refusal leaves the entries and says so.
+  // gate call; a refusal puts the backlog back as it was (triage.withBacklog).
   private async save(): Promise<void> {
     const shell = this.shell();
     const ds = this.decisions;
     if (shell === null || ds === null || this.running || triage.problems(ds).length) return this.render();
     const w = triage.write(ds, this.context());
     const file = path.join(this.root, 'specs', 'backlog.md');
-    const existed = fs.existsSync(file);
-    const before = this.read('specs/backlog.md');
-    // put the backlog back as it was: a refusal (or a failed call) writes nothing
-    const restore = () => { if (!w.entries.length) return; if (existed) fs.writeFileSync(file, before); else fs.rmSync(file, { force: true }); };
-    if (w.entries.length) fs.writeFileSync(file, triage.appended(before, w.entries));
+    const io: triage.BacklogIO = {
+      read: () => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null),
+      write: (t) => fs.writeFileSync(file, t),
+      remove: () => fs.rmSync(file, { force: true }),
+    };
     this.running = true;
     this.render();
     const spec = this.spec;
-    let r: Awaited<ReturnType<typeof runScript>>;
-    try {
-      r = await runScript(shell, this.root, 'gate', w.args);
-    } catch (e) {
-      restore();
-      throw e;
-    }
+    const head = async () => ship.probed(await run('git', ['rev-parse', 'HEAD'], this.root));
+    const a = await triage.withBacklog(io, w.entries, async () => {
+      const r = await runScript(shell, this.root, 'gate', w.args);
+      return answer(r.code, r.stdout, r.stderr);
+    }, head);
     this.running = false;
-    const a = answer(r.code, r.stdout, r.stderr);
-    if (!a.written) restore();
     const real = ds.some((d) => d.verdict === 'real');
     const next = !a.written ? '' : real ? `/build ${spec}` : this.kind === 'review' || ds.some((d) => d.verdict === 'investigate') ? `/verify ${spec}` : '';
     if (this.spec === spec) this.result = { ...a, next };

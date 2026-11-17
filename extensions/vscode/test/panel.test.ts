@@ -118,3 +118,7 @@ test('the approver is named, as gate will write it', () => {
   assert.ok(html(view({ approver: 'Ada Lovelace' })).includes('The approver is taken from git user.name: Ada Lovelace'));
   assert.ok(html(view({ approver: '' })).includes('git user.name is not set'));
 });
+
+test('a choice in a list is sent at once (a severity can unlock Save)', () => {
+  assert.ok(html(view()).includes("s.addEventListener('change', () => vscode.postMessage({ type: 'sync', form: form() }));"));
+});

@@ -68,6 +68,36 @@ export function appended(backlog: string, entries: string[]): string {
   return backlog + (backlog === '' || backlog.endsWith('\n') ? '' : '\n') + entries.join('\n') + '\n';
 }
 
+// The backlog file, as withBacklog reads and writes it (null: there is no file).
+export interface BacklogIO {
+  read(): string | null;
+  write(text: string): void;
+  remove(): void;
+}
+
+// The defers' entries appended, then the gate call. When gate refuses or the call fails, the file
+// is put back as it was — unless HEAD moved (gate committed, then was interrupted): the committed
+// table names those entries, so they stay.
+export async function withBacklog<A extends { written: boolean }>(io: BacklogIO, entries: string[], call: () => Promise<A>, head: () => Promise<string>): Promise<A> {
+  if (entries.length === 0) return call();
+  const before = io.read();
+  const start = await head();
+  io.write(appended(before ?? '', entries));
+  const restore = async () => {
+    if ((await head()) !== start) return;
+    if (before === null) io.remove(); else io.write(before);
+  };
+  let a: A;
+  try {
+    a = await call();
+  } catch (e) {
+    await restore();
+    throw e;
+  }
+  if (!a.written) await restore();
+  return a;
+}
+
 export function nextB(backlog: string): number {
   const ns = [...backlog.matchAll(/\*\*B-(\d+)\*\*/g)].map((m) => Number(m[1]));
   return (ns.length ? Math.max(...ns) : 0) + 1;

@@ -76,3 +76,8 @@ test('M-2: protocol ids and severity words in sentences are not findings', () =>
   ].join('\n'));
   assert.deepEqual(r.map((x) => `${x.id}:${x.severity}:${x.title}`), ['L-1:Low:a real one', 'Info-1:Info:a note']);
 });
+
+test('L-5: a severity label with a spaced hyphen or an en dash is a finding; "High-level" still is not', () => {
+  const r = split('**High - missing auth check**\n**Medium – rounding**\n**High-level summary:** x');
+  assert.deepEqual(r.map((x) => `${x.id}:${x.severity}:${x.title}`), ['H-1:High:missing auth check', 'M-1:Medium:rounding']);
+});

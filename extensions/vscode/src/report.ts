@@ -79,9 +79,9 @@ function start(line: string): Open | null {
   const [, lead, bold, rest] = m;
   const item = /^\s*(?:[-*+]|\d+[.)])\s/.test(line);
   const byId = new RegExp(String.raw`^(${ID})\b\s*(.*)$`).exec(bold);
-  // a bare severity opens a finding only as a label — "Low: …", "Info (…)", "High —", or alone —
-  // never as a word in a sentence ("High-level summary", "Low risk overall")
-  const bySev = new RegExp(String.raw`^(${SEV})(?:\s*[:(—]\s*(.*)|\s*[.:]?\s*$)`).exec(bold);
+  // a bare severity opens a finding only as a label — "Low: …", "Info (…)", "High — …", "High - …",
+  // "Medium – …", or alone — never as a word in a sentence ("High-level summary", "Low risk overall")
+  const bySev = new RegExp(String.raw`^(${SEV})(?:\s*(?:[:(—–]|-\s)\s*(.*)|\s*[.:]?\s*$)`).exec(bold);
   if (!byId && !bySev) return null;
   let id = '';
   let after: string;

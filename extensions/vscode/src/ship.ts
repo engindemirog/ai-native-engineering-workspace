@@ -63,11 +63,10 @@ export function probed(r: { code: number; stdout: string }): string {
   return r.code === 0 ? r.stdout.trim().split('\n')[0].trim() : '';
 }
 
-// The default branch from `git symbolic-ref --short refs/remotes/<remote>/HEAD`; when the remote
-// has no HEAD (common), main.
+// The default branch from `git symbolic-ref --short refs/remotes/<remote>/HEAD`; '' when the remote
+// has no HEAD (common) — unknown, never guessed: the push is then not offered.
 export function defaultBranch(head: string, remote: string): string {
-  const b = head.startsWith(`${remote}/`) ? head.slice(remote.length + 1) : head;
-  return b || 'main';
+  return head.startsWith(`${remote}/`) ? head.slice(remote.length + 1) : head;
 }
 
 // After a written ship: the push and the PR. Offered when gh is signed in and the branch is not the
@@ -75,6 +74,7 @@ export function defaultBranch(head: string, remote: string): string {
 export function prStep(o: { branch: string; defaultBranch: string; remote: string; gh: boolean }): { offered: boolean; why: string; commands: string[] } {
   const commands = [`git push -u ${o.remote} ${o.branch}`, 'gh pr create --fill'];
   if (!o.branch || o.branch === 'HEAD') return { offered: false, why: 'no branch is checked out', commands };
+  if (!o.defaultBranch) return { offered: false, why: `${o.remote} names no default branch (no ${o.remote}/HEAD; git remote set-head ${o.remote} --auto sets it): run the commands yourself`, commands };
   if (o.branch === o.defaultBranch) return { offered: false, why: `you are on ${o.branch}, the default branch: ship work from a feature branch (docs/git.md)`, commands };
   if (!o.gh) return { offered: false, why: 'gh is not signed in (gh auth status): run the commands yourself', commands };
   return { offered: true, why: '', commands };
