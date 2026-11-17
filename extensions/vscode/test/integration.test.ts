@@ -10,6 +10,7 @@ import { findShell, runScript } from '../src/shell.ts';
 import { parseStatus, writeFor } from '../src/status.ts';
 import { gateArgs, answer } from '../src/gate.ts';
 import { write as triageWrite, type Decision } from '../src/triage.ts';
+import { offered } from '../src/ship.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -109,6 +110,8 @@ async function atReview(name: string): Promise<string> {
   const specFile = path.join(dir, 'specs', 'active', '0001-demo.md');
   fs.writeFileSync(specFile, fs.readFileSync(specFile, 'utf8').replace('- Status: Approved', '- Status: In progress'));
   fs.writeFileSync(path.join(dir, 'specs', 'backlog.md'), '# Backlog — deferred findings\n');
+  fs.mkdirSync(path.join(dir, 'specs', 'done'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'specs', 'done', 'README.md'), '# Shipped specs\n');
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '-m', 'build');
   const p = path.join(dir, 'specs', 'plans', '0001-plan.md');
@@ -165,4 +168,26 @@ test('triage: a refusal (a defer whose entry is missing) writes nothing', { skip
   assert.equal(ans.written, false);
   assert.match(ans.text, /B-9 is not in specs\/backlog\.md/);
   assert.deepEqual(snapshot(dir), before);
+});
+
+test('ship: the screen\'s gate call leaves what the terminal call leaves; before SHIP it is refused', { skip }, async () => {
+  const a = await atReview('ship-a');
+  const b = await atReview('ship-b');
+  const early = await runScript(shell as string, a, 'gate', ['ship', '0001']);
+  assert.equal(answer(early.code, early.stdout, early.stderr).written, false);
+  for (const d of [a, b]) {
+    terminal(d, './scripts/gate triage 0001 --review');
+    terminal(d, './scripts/gate triage 0001 --verify');
+  }
+  const row = parseStatus((await runScript(shell as string, a, 'status', ['--json'])).stdout).rows[0];
+  assert.equal(row.stage, 'SHIP');
+  assert.equal(offered(row).ok, true);
+  const r = await runScript(shell as string, a, 'gate', ['ship', '0001']);
+  const ans = answer(r.code, r.stdout, r.stderr);
+  assert.equal(ans.written, true, r.stderr);
+  assert.match(ans.text, /^ship 0001: .*specs\/done\/0001-demo\.md @[0-9a-f]+/);
+  terminal(b, './scripts/gate ship 0001');
+  assert.deepEqual(change(a), change(b));
+  assert.ok(fs.existsSync(path.join(a, 'specs', 'done', '0001-demo.md')));
+  assert.match(fs.readFileSync(path.join(a, 'specs', 'done', '0001-demo.md'), 'utf8'), /^- \[x\] AC-1 — it works$/m);
 });

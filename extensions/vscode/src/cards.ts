@@ -95,18 +95,18 @@ function splitSentence(s: string): [string, string] {
   return m ? [m[1], m[2]] : [s, ''];
 }
 
-// A spec's criteria: "- [ ] AC-n — text", continuation lines joined. null when an item that
-// looks like a criterion is in another shape: the card then shows the section as it is, never a
-// shorter list.
+// A spec's criteria: "- [ ] AC-n — text" (CB-n, PB-n in a mini spec), continuation lines joined.
+// null when an item that looks like a criterion is in another shape: the card then shows the
+// section as it is, never a shorter list.
 export function criteria(body: string): Criterion[] | null {
   const out: Criterion[] = [];
   for (const line of body.split('\n')) {
-    if (/^\s*[*+] \[|^\s*[-*+]?\s*(?:~~)?AC-\d+\s*:/.test(line)) return null;
+    if (/^\s*[*+] \[|^\s*[-*+]?\s*(?:~~)?(?:AC|CB|PB)-\d+\s*:/.test(line)) return null;
   }
   for (const i of items(body)) {
     const one = i.replace(/\s*\n\s*/g, ' ');
-    if (!/^\[/.test(one) && !/\bAC-\d+/.test(one)) continue;
-    const m = /^\[( |x|X)\]\s+(?:~~)?(AC-\d+)\s*[—-]\s*(.*)$/.exec(one);
+    if (!/^\[/.test(one) && !/\b(?:AC|CB|PB)-\d+/.test(one)) continue;
+    const m = /^\[( |x|X)\]\s+(?:~~)?((?:AC|CB|PB)-\d+)\s*[—-]\s*(.*)$/.exec(one);
     if (!m) return null;
     out.push({ id: m[2], text: clip(plain(m[3].replace(/~~/g, '')), 300), done: m[1] !== ' ' });
   }

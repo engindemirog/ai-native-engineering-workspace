@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { findShell, runScript } from './shell.ts';
 import { parseStatus, waiting, type Row, type Status } from './status.ts';
-import { gateArgs, answer } from './gate.ts';
+import { gateArgs, shipArgs, answer } from './gate.ts';
 import { sections, SPEC_SECTIONS, PLAN_SECTIONS } from './summary.ts';
 import { offer, decision, done, shown, fileFor, type Done } from './panel-logic.ts';
 import { html, notice } from './panel.ts';
@@ -15,6 +15,7 @@ import * as sidebar from './sidebar.ts';
 import * as start from './start.ts';
 import * as triage from './triage.ts';
 import { split } from './report.ts';
+import * as ship from './ship.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -76,6 +77,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     drawSide();
     panel?.render();
     triager?.render();
+    shipper?.render();
   }
 
   let timer: NodeJS.Timeout | undefined;
@@ -87,6 +89,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   let panel: Approval | null = null;
   let starter: Start | null = null;
   let triager: Triage | null = null;
+  let shipper: Ship | null = null;
   ctx.subscriptions.push(
     vscode.commands.registerCommand('anew.refresh', () => refresh()),
     vscode.commands.registerCommand('anew.newWork', () => {
@@ -95,6 +98,11 @@ export function activate(ctx: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('anew.open', (spec: string) => {
       const row = status?.rows.find((r) => r.spec === spec);
+      if (row && row.stage === 'SHIP') {
+        if (shipper === null || shipper.disposed) shipper = new Ship(root as string, () => status, shellOf, refresh);
+        shipper.show(spec);
+        return;
+      }
       if (row && triageKinds(row).length) {
         if (triager === null || triager.disposed) triager = new Triage(root as string, () => status, shellOf, refresh);
         triager.show(spec);
@@ -410,5 +418,132 @@ class Triage {
         : vscode.window.showWarningMessage(`gate refused; specs/backlog.md keeps ${ids} — remove them or save again.`));
     }
     await this.refresh();
+  }
+}
+
+// A program's exit code and output, never through a shell string.
+function run(cmd: string, args: string[], cwd: string): Promise<{ code: number; out: string }> {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { cwd }, (e, stdout, stderr) => {
+      const code = e ? (typeof (e as { code?: unknown }).code === 'number' ? (e as { code: number }).code : 1) : 0;
+      resolve({ code, out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
+    });
+  });
+}
+
+// The ship screen: what the files say, one gate call, then the push and the PR on the human's
+// confirmation. It never merges.
+class Ship {
+  private readonly web: vscode.WebviewPanel;
+  private spec = '';
+  private file = ''; // the spec, workspace-relative, as it was when the screen opened
+  private running = false;
+  private result: { written: boolean; code: number; text: string; next: string } | null = null;
+  private pr: { offered: boolean; why: string; commands: string[] } | null = null;
+  private prOutput: string | null = null;
+  private branch = '';
+  private remote = 'origin';
+  private approver = '';
+  disposed = false;
+  private readonly root: string;
+  private readonly status: () => Status | null;
+  private readonly shell: () => string | null;
+  private readonly refresh: () => Promise<void>;
+
+  constructor(root: string, status: () => Status | null, shell: () => string | null, refresh: () => Promise<void>) {
+    this.root = root;
+    this.status = status;
+    this.shell = shell;
+    this.refresh = refresh;
+    this.web = vscode.window.createWebviewPanel('anew.ship', 'ANEW · ship', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
+    this.web.onDidDispose(() => { this.disposed = true; });
+    void run('git', ['config', 'user.name'], root).then((r) => { this.approver = r.out; this.render(); });
+    this.web.webview.onDidReceiveMessage((m: { type: string }) => this.on(m.type).catch((e: Error) => {
+      this.running = false;
+      void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
+      this.render();
+    }));
+  }
+
+  show(spec: string): void {
+    if (spec !== this.spec) { this.spec = spec; this.result = null; this.pr = null; this.prOutput = null; this.file = this.find(); }
+    this.render();
+    this.web.reveal();
+  }
+
+  private find(): string {
+    for (const dir of ['specs/active', 'specs/done']) {
+      try {
+        const hit = fs.readdirSync(path.join(this.root, dir)).find((f) => f.startsWith(`${this.spec}-`) && f.endsWith('.md'));
+        if (hit) return `${dir}/${hit}`;
+      } catch { /* no such folder */ }
+    }
+    return '';
+  }
+
+  private read(rel: string): string {
+    try { return fs.readFileSync(path.join(this.root, rel), 'utf8'); } catch { return ''; }
+  }
+
+  render(): void {
+    if (this.disposed) return;
+    const row = this.status()?.rows.find((r) => r.spec === this.spec);
+    if (!row) {
+      this.web.webview.html = notice(`${this.spec} is not in scripts/status now.`, randomBytes(16).toString('hex'), this.web.webview.cspSource);
+      return;
+    }
+    if (!fs.existsSync(path.join(this.root, this.file))) this.file = this.find();
+    this.web.title = `ANEW · ${row.spec} ship`;
+    this.web.webview.html = ship.html({
+      row, file: this.file, model: ship.model(this.read(this.file), this.read(`specs/plans/${row.spec}-plan.md`)), approver: this.approver,
+      shell: this.shell() !== null, running: this.running, result: this.result, pr: this.pr, prOutput: this.prOutput,
+      nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+    });
+  }
+
+  private async on(type: string): Promise<void> {
+    if (type === 'open') {
+      if (this.file) await vscode.window.showTextDocument(vscode.Uri.file(path.join(this.root, this.file)), { viewColumn: vscode.ViewColumn.Beside, preview: false });
+      return this.render();
+    }
+    if (type === 'ship') return this.ship();
+    if (type === 'pr') return this.openPr();
+  }
+
+  private async ship(): Promise<void> {
+    const row = this.status()?.rows.find((r) => r.spec === this.spec);
+    const shell = this.shell();
+    if (!row || shell === null || this.running || !ship.offered(row).ok) return this.render();
+    this.running = true;
+    this.render();
+    const spec = this.spec;
+    const r = await runScript(shell, this.root, 'gate', shipArgs(spec));
+    this.running = false;
+    if (this.spec !== spec) return this.refresh();
+    this.result = { ...answer(r.code, r.stdout, r.stderr), next: '' };
+    if (this.result.written) {
+      this.branch = (await run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], this.root)).out;
+      const remote = (await run('git', ['config', `branch.${this.branch}.remote`], this.root)).out;
+      this.remote = remote || 'origin';
+      const head = (await run('git', ['symbolic-ref', '--short', `refs/remotes/${this.remote}/HEAD`], this.root)).out;
+      const gh = (await run('gh', ['auth', 'status'], this.root)).code === 0;
+      this.pr = ship.prStep({ branch: this.branch, defaultBranch: head.replace(`${this.remote}/`, '') || 'main', remote: this.remote, gh });
+    }
+    await this.refresh();
+  }
+
+  // Outward-facing: asks first, naming the branch and the remote; shows git's and gh's own output.
+  private async openPr(): Promise<void> {
+    if (!this.pr?.offered) return;
+    const ok = await vscode.window.showWarningMessage(`Push ${this.branch} to ${this.remote} and open a pull request?`,
+      { modal: true, detail: `${this.pr.commands.join('\n')}\n\nThe merge stays on GitHub.` }, 'Push and open PR');
+    if (ok !== 'Push and open PR') return;
+    const push = await run('git', ['push', '-u', this.remote, this.branch], this.root);
+    this.prOutput = `$ ${this.pr.commands[0]}\n${push.out}`;
+    if (push.code === 0) {
+      const pr = await run('gh', ['pr', 'create', '--fill'], this.root);
+      this.prOutput += `\n$ ${this.pr.commands[1]}\n${pr.out}`;
+    }
+    this.render();
   }
 }

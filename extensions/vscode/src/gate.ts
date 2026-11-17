@@ -7,6 +7,12 @@ export function gateArgs(write: NonNullable<Write>, spec: string): string[] {
   return [write, spec];
 }
 
+// ship NNNN (stage SHIP): ticks, moves and commits (scripts/gate).
+export function shipArgs(spec: string): string[] {
+  if (!/^[0-9]{4}$/.test(spec)) throw new Error(`not a spec number: ${spec}`);
+  return ['ship', spec];
+}
+
 export interface Answer {
   written: boolean;
   code: number;

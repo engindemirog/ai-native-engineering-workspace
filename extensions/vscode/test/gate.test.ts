@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gateArgs, answer } from '../src/gate.ts';
+import { gateArgs, shipArgs, answer } from '../src/gate.ts';
 
 test('the arguments are the terminal call, nothing added', () => {
   assert.deepEqual(gateArgs('approve-spec', '0012'), ['approve-spec', '0012']);
@@ -18,4 +18,9 @@ test('the answer is gate\'s own text: the result line, or the refusal', () => {
   const no = answer(1, '', 'gate: 0003 is at BUILD (Developer); approve-plan decides PLAN (human)\n');
   assert.deepEqual(no, { written: false, code: 1, text: 'gate: 0003 is at BUILD (Developer); approve-plan decides PLAN (human)' });
   assert.equal(answer(2, '', '').text, 'gate exited 2');
+});
+
+test('ship takes the spec number only', () => {
+  assert.deepEqual(shipArgs('0004'), ['ship', '0004']);
+  for (const s of ['4', '0004 ', '0004;x']) assert.throws(() => shipArgs(s), /not a spec number/);
 });
