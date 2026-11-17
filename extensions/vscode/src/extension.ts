@@ -34,7 +34,8 @@ export function activate(ctx: vscode.ExtensionContext): void {
   let side: vscode.WebviewView | null = null;
   const drawSide = () => {
     if (side === null) return;
-    const m = sidebar.model(status, problem, meta());
+    const exists = (rel: string) => fs.existsSync(path.join(root, rel));
+    const m = sidebar.model(status, problem, meta(), setup.needs(setup.installed(exists), read('AGENTS.md')));
     side.webview.html = sidebar.html(m, randomBytes(16).toString('hex'), side.webview.cspSource);
     side.badge = m.waiting ? { value: m.waiting, tooltip: `${m.waiting} decision(s) wait for you` } : undefined;
   };
@@ -43,7 +44,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
       side = v;
       v.webview.options = { enableScripts: true, localResourceRoots: [] };
       v.webview.onDidReceiveMessage((m: { type: string }) => {
-        if (m.type === 'new') void vscode.commands.executeCommand('anew.newWork');
+        if (m.type === 'new' || m.type === 'setup') void vscode.commands.executeCommand('anew.newWork');
         else if (m.type.startsWith('row-')) void vscode.commands.executeCommand('anew.open', m.type.slice(4));
       });
       v.onDidDispose(() => { side = null; });
@@ -86,6 +87,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
   const soon = () => { clearTimeout(timer); timer = setTimeout(() => void refresh(), 300); };
   const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'specs/**'));
   watcher.onDidChange(soon); watcher.onDidCreate(soon); watcher.onDidDelete(soon);
+  // the setup follows an install or a bootstrap: AGENTS.md and the files doctor's adapter check names
+  const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github/copilot-instructions.md,.cursor/rules/**,.agents/skills/analyze/SKILL.md}'));
+  setupWatcher.onDidChange(soon); setupWatcher.onDidCreate(soon); setupWatcher.onDidDelete(soon);
+  ctx.subscriptions.push(setupWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
 
   let panel: Approval | null = null;
