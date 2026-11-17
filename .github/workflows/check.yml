@@ -29,3 +29,20 @@ jobs:
           else
             echo "scripts/check.conf not present yet (pre-bootstrap) — skipping."
           fi
+
+  extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extensions/vscode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install (dev dependencies only)
+        run: npm ci
+      - name: Typecheck and tests (the integration tests run the real scripts/status and scripts/gate)
+        run: npm test
+      - name: Package the .vsix
+        run: npm run package

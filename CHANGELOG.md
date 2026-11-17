@@ -34,6 +34,32 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.27 — The VS Code extension, part 1: the work list and the approvals
+
+A current release (not in `1.24.x`). No rule changes: the extension is an optional screen over
+`scripts/status --json` and `scripts/gate`, and writes nothing that gate would not.
+
+- **`extensions/vscode/`** (new, extension 0.1.0, the `.vsix` is attached to the release): the
+  work list grouped as your turn · in progress · shipped, with warnings, a waiting badge and a
+  status bar count; spec and plan approval from a panel laid out as the approved mockup — the
+  stage strip, the summary as cards (files, criterion ↔ test, risks with their recommendation; a
+  spec's intent and criteria), Approve only after the full file was opened, gate's answer with
+  the next command and Copy. Triage, ship and starting new work follow in a later version.
+- Install: Extensions view → `…` → Install from VSIX. It activates in a workspace with
+  `scripts/status` and `AGENTS.md`; the scripts run with `sh`, or Git for Windows' `bash.exe`
+  (setting `anew.shell`).
+
+### Upgrading
+
+- `extensions/vscode/` (new, optional): take the folder to build the extension yourself, or skip
+  it and install the `.vsix` from the release; nothing else reads it. `.gitignore` gains its
+  build output (`node_modules/`, `out/`, `*.vsix`).
+- `.github/workflows/check.yml`: a job `extension` (Node 24: `npm ci`, `npm test`,
+  `npm run package`); drop it with the folder.
+- `docs/commands.md`, `README.md`: intent: the extension is documented as an optional editor
+  screen over status and gate.
+- Full diff: `/compare/v1.26.1...v1.27`.
+
 ## v1.26.1 — doctor: the template's untouched approval line is no approval
 
 A fix (not a new rule; also in v1.24.2). doctor stripped HTML comments one line at a time, so the
