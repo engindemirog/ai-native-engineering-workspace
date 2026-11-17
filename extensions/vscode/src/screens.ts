@@ -30,12 +30,23 @@ export function page(f: Frame, body: string): string {
 <script nonce="${f.nonce}">
 const vscode = acquireVsCodeApi();
 const form = () => Object.fromEntries([...document.querySelectorAll('[name]')].map((e) => [e.name, e.type === 'radio' ? (e.checked ? e.value : undefined) : e.value]).filter((x) => x[1] !== undefined));
+// the page is drawn again after every decision: the element that had focus gets it back
+const key = (e) => (e && e.id ? '#' + e.id : e && e.name ? '[name="' + e.name + '"]' : '');
+const keep = () => vscode.setState({ focus: key(document.activeElement) });
+const back = (vscode.getState() || {}).focus;
+if (back) { const el = document.querySelector(back); if (el) el.focus(); vscode.setState({}); }
+const send = (type) => { keep(); vscode.postMessage({ type, form: form() }); };
 for (const b of document.querySelectorAll('button[id]')) {
-  b.addEventListener('click', () => { if (!b.dataset.keep) b.disabled = true; vscode.postMessage({ type: b.id, form: form() }); });
+  b.addEventListener('click', () => { if (!b.dataset.keep) b.disabled = true; send(b.id); });
 }
-// a choice made in a list takes effect at once (a severity can unlock Save)
-for (const s of document.querySelectorAll('select[name]')) {
-  s.addEventListener('change', () => vscode.postMessage({ type: 'sync', form: form() }));
+// a choice in a list, or a field left, takes effect at once (a severity or a rationale can unlock Save)
+for (const s of document.querySelectorAll('select[name], input[name], textarea[name]')) {
+  s.addEventListener('change', () => send('sync'));
+}
+// typing is kept by the extension as it goes, so a redraw or a hidden tab loses nothing
+let typing;
+for (const s of document.querySelectorAll('input[name], textarea[name]')) {
+  s.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => vscode.postMessage({ type: 'input', form: form() }), 300); });
 }
 </script>
 </body>

@@ -204,7 +204,7 @@ ${v.result ? answerBox(v.result, 'Triage saved — written and committed') : ''}
 .finding { gap: 10px; }
 .tag { font-weight: 700; font-family: var(--mono); }
 .sev { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--line); }
-.sev.hi { background: var(--bad); color: var(--vscode-editor-background); border-color: transparent; }
+.sev.hi { background: var(--bad); color: #1b1c20; border-color: transparent; }
 .sev.mid { background: var(--you); color: #1b1c20; border-color: transparent; }
 .grow { flex: 1 1 260px; min-width: 0; }
 .small { font-size: 12.5px; margin: 0; }

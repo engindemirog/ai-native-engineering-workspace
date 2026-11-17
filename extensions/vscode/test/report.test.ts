@@ -81,3 +81,14 @@ test('L-5: a severity label with a spaced hyphen or an en dash is a finding; "Hi
   const r = split('**High - missing auth check**\n**Medium – rounding**\n**High-level summary:** x');
   assert.deepEqual(r.map((x) => `${x.id}:${x.severity}:${x.title}`), ['H-1:High:missing auth check', 'M-1:Medium:rounding']);
 });
+
+test('Info-1: mini-spec criteria and a line saying an earlier finding is resolved are not findings', () => {
+  const r = split('- **CB-1** — ticked\n- **PB-2** — proven\n- **H-1: resolved.** keyed by file\n- **L-2 (x):** fixed in fix-1\n- **M-1 (Medium)** — a new one');
+  assert.deepEqual(r.map((x) => x.id), ['M-1']);
+});
+
+test('F-1: a "Recommended action:" line is the recommendation', () => {
+  const r = split(fs.readFileSync(path.join(dir, '0009-review-1.md'), 'utf8'));
+  assert.match(r[0].recommendation, /^key `opened` and `result` by the file or write/);
+  assert.match(r[1].recommendation, /^add `"when": "anew.active"`/);
+});

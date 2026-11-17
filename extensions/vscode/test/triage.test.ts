@@ -122,3 +122,7 @@ test('the severity is chosen on the card; the report textarea is named; the save
   assert.ok(h.includes('<textarea name="report" aria-label="The Review report"'));
   assert.ok(h.includes('<p class="hint" role="status">Decide every finding first: X-1: the finding has no text; X-1: choose its severity; X-1: no decision yet.</p>'));
 });
+
+test('F-4: the High/Critical pill carries dark text in every theme', () => {
+  assert.match(html(view()), /\.sev\.hi \{[^}]*color: #1b1c20/);
+});

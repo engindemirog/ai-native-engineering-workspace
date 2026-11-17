@@ -65,7 +65,9 @@ export function split(report: string): Finding[] {
   return open.map((o) => {
     const body = o.lines.join(' ');
     const title = o.title || clip(flat(body), 160);
-    const rec = /\b(?:Recommendation|Recommended fix|Suggested fix|Fix|Öneri)\s*:\s*(.+)/i.exec(`${o.title} ${body}`);
+    // "Recommendation:", "**Recommended action:**", "Suggested fix:", "Fix:", "Öneri:" — the bold's
+    // closing ** after the colon is not part of the advice
+    const rec = /\b(?:Recommendation|Recommended (?:action|fix)|Suggested fix|Fix|Action|Öneri)\s*:\s*(?:\*\*\s*)?(.+)/i.exec(`${o.title} ${body}`);
     return { id: o.id, severity: o.severity, title: clip(title, 200), detail: clip(flat(o.title ? body : ''), 500), recommendation: rec ? clip(flat(rec[1]), 260) : '' };
   });
 }

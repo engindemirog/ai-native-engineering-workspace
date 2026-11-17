@@ -72,7 +72,7 @@ test('after a written ship: gate\'s line, then the PR step; a refusal shows gate
   assert.ok(manual.includes('git push -u origin feat/x\ngh pr create --fill'));
 });
 
-test('H-2: a failed git probe is no branch name; a remote without HEAD means main', () => {
+test('H-2, L-6: a failed git probe is no branch name; a remote without HEAD names no default branch, so no push', () => {
   assert.equal(probed({ code: 128, stdout: 'fatal: ref refs/remotes/origin/HEAD is not a symbolic ref\n' }), '');
   assert.equal(probed({ code: 0, stdout: 'origin/main\n' }), 'origin/main');
   assert.equal(defaultBranch('', 'origin'), '');
@@ -88,4 +88,9 @@ test('L-1: while pushing, the button is disabled and the screen says so', () => 
   const h = html(view({ result: { written: true, code: 0, text: 'x', next: '' }, pr, pushing: true }));
   assert.ok(h.includes('<button id="pr" class="primary" disabled>Push and open PR…</button>'));
   assert.ok(h.includes('<p class="hint" role="status">Pushing and opening the PR…</p>'));
+});
+
+test('F-5: when the push is not offered, the commands can be copied', () => {
+  const h = html(view({ result: { written: true, code: 0, text: 'x', next: '' }, pr: prStep({ branch: 'feat/x', defaultBranch: '', remote: 'origin', gh: true }) }));
+  assert.ok(h.includes('<button id="copy-cmds" class="secondary" data-keep="1">Copy the commands</button>'));
 });

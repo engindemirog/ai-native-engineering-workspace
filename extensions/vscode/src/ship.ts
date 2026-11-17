@@ -114,7 +114,7 @@ export function html(v: ShipView): string {
   const pr = written && v.pr ? `<div class="card"><span class="label">Then: the PR</span>
   ${v.pr.offered
     ? `<div class="row"><button id="pr" class="primary"${v.pushing ? ' disabled' : ''}>Push and open PR…</button></div><p class="hint" role="status">${v.pushing ? 'Pushing and opening the PR…' : 'Asks first, naming the branch and the remote. Merging stays on GitHub.'}</p>`
-    : `<p class="hint">${esc(v.pr.why)}.</p>`}
+    : `<p class="hint">${esc(v.pr.why)}.</p><div class="row"><button id="copy-cmds" class="secondary" data-keep="1">Copy the commands</button></div>`}
   <pre class="out">${esc(v.pr.commands.join('\n'))}</pre>
   ${v.prOutput !== null ? `<pre class="out" role="status">${esc(v.prOutput)}</pre>` : ''}
 </div>` : '';

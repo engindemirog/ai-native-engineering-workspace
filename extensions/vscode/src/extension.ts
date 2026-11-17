@@ -235,7 +235,7 @@ class Start {
   constructor(root: string, read: (rel: string) => string) {
     this.root = root;
     this.read = read;
-    this.web = vscode.window.createWebviewPanel('anew.start', 'ANEW · new work', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
+    this.web = vscode.window.createWebviewPanel('anew.start', 'ANEW · new work', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [], retainContextWhenHidden: true });
     this.web.onDidDispose(() => { this.disposed = true; });
     this.web.webview.onDidReceiveMessage((m: { type: string; form?: Record<string, string> }) => this.on(m.type, m.form ?? {}).catch((e: Error) => {
       void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
@@ -263,6 +263,7 @@ class Start {
 
   private async on(type: string, form: Record<string, string>): Promise<void> {
     this.description = form.description ?? this.description;
+    if (type === 'input' || type === 'sync') return; // kept; the page already shows it
     if (type.startsWith('kind-')) {
       const k = start.KINDS.find((x) => x.id === type.slice(5)); // only a known kind
       if (k) this.kind = k.id;
@@ -318,7 +319,8 @@ class Triage {
     this.status = status;
     this.shell = shell;
     this.refresh = refresh;
-    this.web = vscode.window.createWebviewPanel('anew.triage', 'ANEW · triage', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
+    // kept alive while hidden: a pasted report and half-written notes survive a tab switch
+    this.web = vscode.window.createWebviewPanel('anew.triage', 'ANEW · triage', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [], retainContextWhenHidden: true });
     this.web.onDidDispose(() => { this.disposed = true; });
     execFile('git', ['config', 'user.name'], { cwd: root }, (_e, out) => { this.name = String(out ?? '').trim(); });
     this.web.webview.onDidReceiveMessage((m: { type: string; form?: Record<string, string> }) => this.on(m.type, m.form ?? {}).catch((e: Error) => {
@@ -374,6 +376,7 @@ class Triage {
       const sev = form[`sev-${i}`];
       if (sev !== undefined && ['', 'Critical', 'High', 'Medium', 'Low', 'Info'].includes(sev)) d.finding.severity = sev as Finding['severity'];
     });
+    if (type === 'input') return; // kept as typed; no redraw under the cursor
     const row = this.row();
     const v = /^v-(\d+)-(real|noise|defer|investigate)$/.exec(type);
     const rm = /^rm-(\d+)$/.exec(type);
@@ -521,6 +524,10 @@ class Ship {
     }
     if (type === 'ship') return this.ship();
     if (type === 'pr') return this.openPr();
+    if (type === 'copy-cmds' && this.pr) {
+      await vscode.env.clipboard.writeText(this.pr.commands.join('\n'));
+      void vscode.window.showInformationMessage('Copied the push and PR commands.');
+    }
   }
 
   private async ship(): Promise<void> {

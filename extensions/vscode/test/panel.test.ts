@@ -120,5 +120,12 @@ test('the approver is named, as gate will write it', () => {
 });
 
 test('a choice in a list is sent at once (a severity can unlock Save)', () => {
-  assert.ok(html(view()).includes("s.addEventListener('change', () => vscode.postMessage({ type: 'sync', form: form() }));"));
+  assert.ok(html(view()).includes("s.addEventListener('change', () => send('sync'));"));
+});
+
+test('F-2, F-3: focus comes back after a redraw; typing is sent as it goes; a field left is synced', () => {
+  const h = html(view());
+  assert.ok(h.includes("if (back) { const el = document.querySelector(back); if (el) el.focus(); vscode.setState({}); }"));
+  assert.ok(h.includes("vscode.postMessage({ type: 'input', form: form() })"));
+  assert.ok(h.includes("document.querySelectorAll('select[name], input[name], textarea[name]')"));
 });
