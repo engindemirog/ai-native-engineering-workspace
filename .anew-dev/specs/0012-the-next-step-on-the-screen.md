@@ -1,9 +1,9 @@
 # Spec 0012 — the VS Code extension: the agent's next step on the screen
 
-- Status: Draft
+- Status: Approved
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0012-plan.md`
-- Self-critique: pending
+- Self-critique: done (G-1–G-4 accepted as recommended, Engin Demiroğ, 2026-11-18)
 - Source: the human after 0011's SHIP: "BUILD: waiting for Developer. diyor. ama build yapmıyor gibi"
 
 ## Intent
@@ -75,7 +75,7 @@ Deliberately not done:
 - [ ] Docs updated (`docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
 - [ ] Spec moved to `.anew-dev/done/`
 
-## Self-critique
+## Self-critique (approved 2026-11-18)
 - **G-1 — the command from stage and who, not from status's text.** Status's `next` is prose for a
   human ("finish the plan's steps; record …"); parsing it would break on any wording change.
   Recommendation: a fixed table from stage + who to the segment, tested against status's JSON
