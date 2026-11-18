@@ -426,7 +426,11 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     A defer's `specs/backlog.md` entry is appended first, shown in the preview, left uncommitted;
   - **ship** (SHIP): criteria with their proof from the plan, the DoD, the evidence, the rounds →
     `scripts/gate ship NNNN`; then **Push and open PR**, after a confirmation naming branch and
-    remote (`git push -u`, `gh pr create --fill`), or the two commands to copy. Never a merge.
+    remote (`git push -u`, `gh pr create --fill`), or the two commands to copy. Never a merge;
+  - **the agent's next step** (a row at PLAN, BUILD, FIX ROUND, REVIEW or VERIFY, and after each
+    decision): the command that continues it (`/plan`, `/build`, `/review`, `/verify NNNN`, in
+    the agent's form) with Copy, and **Continue in Claude Code** under Start's rule — a fresh
+    session; the chat that asked for the decision is not told of it.
 - **When to use it:** when you follow the work in VS Code rather than the terminal.
 - **Reads / writes:** reads what `scripts/status` and the spec and plan files say; every decision
   is one `scripts/gate` call, every install one `scripts/init` call; the only file it writes itself
@@ -438,7 +442,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Refusal:** gate's message, unchanged; without a POSIX shell (Git for Windows' `bash.exe`, or
   the setting `anew.shell`) it reads and writes nothing and says so.
 - **Common mistake:** expecting it to drive the agent — it opens a session with your command and
-  shows the next step after each decision; the agent's segments and their stops are unchanged.
+  shows the next step on every row that waits for the agent; the agent's segments and their stops are unchanged.
 
 ## Recovery ramps
 

@@ -34,6 +34,23 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.29.1 — The VS Code extension: the agent's next step on the screen
+
+A current release (not in `1.24.x`). No rule changes: the extension stays a screen over
+`scripts/status --json`, `scripts/gate` and `scripts/init`.
+
+- **Extension 0.3.1** (the `.vsix` is attached to the release): a row that waits for the agent —
+  PLAN, BUILD, a fix round, REVIEW, VERIFY — shows the command that continues it (`/build NNNN`,
+  `/review NNNN`, … in the picked agent's form) with **Copy**, and **Continue in Claude Code**
+  where Start is offered (a fresh session); the same after every approval and triage. 0.3.0
+  showed "BUILD: waiting for Developer." once the screen was opened again, and no command.
+
+### Upgrading
+
+- `extensions/vscode/` (optional): replace the folder, or install the `.vsix` from the release.
+- `docs/commands.md` §F: intent: the extension shows the agent's next step.
+- Full diff: `/compare/v1.29...v1.29.1`.
+
 ## v1.29 — The VS Code extension, part 3: setting up a project on the screen
 
 A current release (not in `1.24.x`). No rule changes: the extension stays a screen over

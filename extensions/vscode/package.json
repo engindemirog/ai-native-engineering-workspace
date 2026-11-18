@@ -2,7 +2,7 @@
   "name": "anew",
   "displayName": "ANEW",
   "description": "The whole ANEW process on a screen — set up, start work, approve, triage, ship — over scripts/status, scripts/gate and scripts/init.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "anew",
   "license": "MIT",
   "type": "module",
