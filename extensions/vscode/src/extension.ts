@@ -20,6 +20,8 @@ import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
 import * as adopt from './adopt.ts';
 import * as boot from './bootstrap.ts';
+import * as up from './upgrade.ts';
+import { has as hasRef } from './repo.ts';
 import { esc } from './screens.ts';
 import { nextFor, canContinue, type Agent } from './next.ts';
 
@@ -116,7 +118,7 @@ function screens(ctx: vscode.ExtensionContext, root: string): void {
   // — Start alone: the other screens are not redrawn for these (review round 2, N-3)
   let bootTimer: NodeJS.Timeout | undefined;
   const bootSoon = () => { clearTimeout(bootTimer); bootTimer = setTimeout(() => starter?.refreshed(), 300); };
-  const bootWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{docs/**,scripts/**,workflows/**,prompts/**,.git/HEAD,.git/refs/**}'));
+  const bootWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{docs/**,scripts/**,workflows/**,prompts/**,.anew-version,.git/HEAD,.git/refs/**}'));
   bootWatcher.onDidChange(bootSoon); bootWatcher.onDidCreate(bootSoon); bootWatcher.onDidDelete(bootSoon);
   ctx.subscriptions.push(bootWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
@@ -428,6 +430,16 @@ class Start {
   private doctoring = false;
   private pushing = false;
   private prOutput: string | null = null;
+  // ANEW upgraded on the screen (spec 0015): the offer read once per panel from the network, the
+  // facts on each draw, the script's and the checks' last answers
+  private upOffer: up.Offer | null = null;
+  private upFacts: up.Facts | null = null;
+  private upPick = '';
+  private upScript: up.Script | null = null;
+  private upChecks: up.Checks | null = null;
+  private upBusy: up.View['busy'] = '';
+  private upPrOutput: string | null = null;
+  private upFolder = ''; // .git/anew-upgrade, as the last gather found it
   disposed = false;
   private readonly root: string;
   private readonly read: (rel: string) => string;
@@ -456,7 +468,13 @@ class Start {
   // already waiting (review round 2, N-4)
   show(): void {
     this.web.reveal();
-    void this.gather().catch((e: Error) => { void vscode.window.showErrorMessage(`ANEW: git could not be read: ${e.message}`); }).then(() => this.render()); // never blank (round 3, L-B)
+    void this.gather().catch((e: Error) => { void vscode.window.showErrorMessage(`ANEW: git could not be read: ${e.message}`); }).then(() => this.render()) // never blank (round 3, L-B)
+      // the offer from the network after the first draw, never before it (0015 review round 1, M-3)
+      .then(() => this.upLoadOffer()).then(() => {
+        // redrawn only when there is an upgrade to show: no lost focus for nothing (N-3)
+        const v = this.disposed ? null : this.upView(this.setup().agent);
+        if (v !== null && up.section(v) !== '') this.render();
+      });
   }
 
   private claude(): string | null {
@@ -483,10 +501,186 @@ class Start {
         seed: (gitIndex, to) => fs.copyFileSync(path.resolve(this.root, gitIndex), to),
       });
       if (n === this.gathering || this.facts === null) this.facts = facts; // the first facts kept (round 3, L-A)
+      if (setup.bootstrapped(this.read('AGENTS.md'))) {
+        const u = await this.upGather(index);
+        if (n === this.gathering || this.upFacts === null) this.upFacts = u;
+      }
       return facts;
     } finally {
       try { fs.rmSync(index, { force: true }); } catch { /* a temporary index; the OS cleans it */ }
     }
+  }
+
+  // — the upgrade (spec 0015) —
+  private gitRun = async (args: string[], env?: Record<string, string>) => { const r = await run('git', args, this.root, env); return r.code === 0 ? r.stdout : null; };
+
+  private async upDir(): Promise<string> {
+    const g = ((await this.gitRun(['rev-parse', '--absolute-git-dir'])) ?? '').trim();
+    return g ? path.join(g, up.DIR) : '';
+  }
+
+  private upTo(): string {
+    const t = this.memo.get<string>('anew.upgrade.to') ?? '';
+    return up.isTag(t) ? t : '';
+  }
+
+  // the release the upgrade started from, remembered with the tag: the working tree's .anew-version
+  // says the new one once the agent has written it (L-7)
+  private upBase(): string {
+    const t = this.memo.get<string>('anew.upgrade.base') ?? '';
+    return up.isTag(t) ? t : '';
+  }
+
+  private async upForget(): Promise<void> {
+    const dir = this.upFolder || (await this.upDir());
+    if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { output().appendLine(`not removed: ${dir} (${(e as Error).message})`); } }
+    await this.memo.update('anew.upgrade.to', undefined);
+    await this.memo.update('anew.upgrade.base', undefined);
+    this.upScript = null; this.upChecks = null; this.upPrOutput = null;
+  }
+
+  private async upGather(index: string): Promise<up.Facts> {
+    const to = this.upTo();
+    const version = this.read('.anew-version');
+    const dir = await this.upDir();
+    this.upFolder = dir;
+    const base = this.upBase() || version.replace(/\r/g, '').split('\n')[0].trim();
+    const fetched = !!(dir && to && fs.existsSync(path.join(dir, to)) && fs.existsSync(path.join(dir, base)));
+    const f = await up.gather({ git: this.gitRun, gh: async () => (await run('gh', ['auth', 'status'], this.root)).code === 0, version, to, fetched, index: `${index}-up`, seed: (gitIndex, i) => fs.copyFileSync(path.resolve(this.root, gitIndex), i) });
+    try { fs.rmSync(`${index}-up`, { force: true }); } catch { /* the OS cleans it */ }
+    // merged and pulled: the releases and the remembered tag go (Requirement 7)
+    if (up.cleanup(f)) {
+      await this.upForget();
+      return { ...f, to: '' };
+    }
+    return f;
+  }
+
+  // The release to offer, read once per panel: releases/latest and the tags (G-3); none offline.
+  private async upLoadOffer(): Promise<void> {
+    if (this.upOffer !== null || !setup.bootstrapped(this.read('AGENTS.md'))) return;
+    try {
+      const l = await latest();
+      const tags = await run('git', ['ls-remote', '--tags', l.url], this.root, { GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' }, 30_000);
+      this.upOffer = up.offer({ version: this.read('.anew-version'), latest: l.tag, tags: tags.code === 0 ? up.tagsFrom(tags.stdout) : [] });
+    } catch (e) {
+      output().appendLine(`upgrade: the latest release could not be read (${(e as Error).message})`);
+      this.upOffer = { choices: [], why: '', note: '' };
+    }
+  }
+
+  private upView(agent: setup.Tool): up.View | null {
+    const f = this.upFacts;
+    if (f === null || this.upOffer === null) return null;
+    const repo = adopt.repository(vscode.workspace.getConfiguration('anew').get<string>('templateRepository') ?? '');
+    // only releases newer than the working tree's: the offer is read once, the version may move on
+    const offer = { ...this.upOffer, choices: this.upOffer.choices.filter((c) => up.isTag(f.version) && up.cmpTag(c, f.version) > 0) };
+    const to = f.to || (offer.choices.includes(this.upPick) ? this.upPick : offer.note ? '' : offer.choices[0] ?? '');
+    const base = this.upBase() || f.version;
+    let changelog: string[] = [];
+    // the script's answer as it kept it (H-1): there after a reload too; a refusal only in memory
+    let script = this.upScript;
+    if (f.to && f.fetched && this.upFolder) {
+      try { changelog = up.headings(fs.readFileSync(path.join(this.upFolder, f.to, 'CHANGELOG.md'), 'utf8'), base, f.to); } catch { /* shown without */ }
+      if (script === null || script.code === 0) { try { script = up.readScript(0, fs.readFileSync(path.join(this.upFolder, up.outFile(f.to)), 'utf8')); } catch { /* not run yet */ } }
+    }
+    return {
+      facts: f, offer, base, pick: to,
+      compare: (a, b) => repo ? `https://github.com/${repo.owner}/${repo.name}/compare/${a}...${b}` : '',
+      changelog, script, agent: { agent, claude: this.claude() !== null, have: this.setup().have },
+      checks: this.upChecks, busy: this.upBusy, prOutput: this.upPrOutput, shell: this.shell() !== null,
+    };
+  }
+
+  // Fetch: after a confirmation, both releases cloned into .git/anew-upgrade/, chore/anew-<tag>
+  // created, the new release's scripts/upgrade run; its answer shown (Requirements 2, 3).
+  private async upFetch(): Promise<void> {
+    const shell = this.shell();
+    const v = this.upView(this.setup().agent);
+    // again when the branch or the folders went, or the script failed (M-2)
+    if (shell === null || v === null || this.upBusy || !v.pick || up.phase(v.facts, null) !== 'available') return this.render();
+    const base = this.upBase() || v.facts.version;
+    const to = v.facts.to || v.pick;
+    const l = await latest();
+    if ((await this.gitRun(['status', '--porcelain']))?.trim()) throw new Error('the working tree has uncommitted changes: commit or stash them first. Nothing was fetched.');
+    const k = up.confirm({ base, to, current: v.facts.current, from: l.from });
+    if ((await vscode.window.showWarningMessage(k.message, { modal: true, detail: k.detail }, 'Upgrade')) !== 'Upgrade') return this.render();
+    this.upBusy = 'fetching';
+    this.upScript = null;
+    this.render();
+    try {
+      const dir = await this.upDir();
+      if (!dir) throw new Error('this folder is not a git repository.');
+      for (const t of [base, to]) {
+        const d = path.join(dir, t);
+        if (fs.existsSync(path.join(d, '.anew-version'))) continue;
+        fs.rmSync(d, { recursive: true, force: true });
+        fs.mkdirSync(dir, { recursive: true });
+        const g = await run('git', adopt.cloneArgs(l.url, t, d), dir, { GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' });
+        if (g.code !== 0) throw new Error(`git clone of ${t} failed: ${g.out || 'git was not found'}. Nothing in the project was changed.`);
+      }
+      if (!fs.existsSync(path.join(dir, to, 'scripts', 'upgrade'))) throw new Error(`the release ${to} has no scripts/upgrade (needs v1.32 or later). Nothing in the project was changed.`);
+      const b = up.branchFor(to);
+      const sw = await run('git', (await hasRef(this.gitRun, `refs/heads/${b}`)) ? ['switch', b] : ['switch', '-c', b], this.root);
+      if (sw.code !== 0) throw new Error(`git switch ${b} failed: ${sw.out}`);
+      const r = await runScript(shell, path.join(dir, to), 'upgrade', [path.join(dir, base), this.root]);
+      output().appendLine(`$ ${to}/scripts/upgrade ${base} .`);
+      output().appendLine(`${r.stdout}${r.stderr}`.trimEnd());
+      this.upScript = up.readScript(r.code, `${r.stdout}${r.stderr}`);
+      // remembered only once the script did its part (M-2)
+      if (r.code === 0) { await this.memo.update('anew.upgrade.to', to); await this.memo.update('anew.upgrade.base', base); }
+      else output().show(true);
+    } finally {
+      this.upBusy = '';
+    }
+    await this.gather();
+    this.render();
+  }
+
+  // Run checks: doctor, then selftest, read-only; their answer kept with the state they ran on (G-7).
+  private async upRunChecks(): Promise<void> {
+    const shell = this.shell();
+    if (shell === null || this.upBusy) return this.render();
+    this.upBusy = 'checking';
+    this.render();
+    try {
+      await this.gather();
+      const state = this.upFacts?.state ?? '';
+      const d = await runScript(shell, this.root, 'doctor', []);
+      const s = await runScript(shell, this.root, 'selftest', []);
+      this.upChecks = up.readChecks({ code: d.code, out: `${d.stdout}${d.stderr}` }, { code: s.code, out: `${s.stdout}${s.stderr}` }, state);
+    } finally {
+      this.upBusy = '';
+    }
+    await this.gather();
+    this.render();
+  }
+
+  // Push chore/anew-<tag> and open its PR after a confirmation; never a merge (G-6).
+  private async upOpenPr(): Promise<void> {
+    await this.gather();
+    const f = this.upFacts;
+    if (f === null || !f.to || this.upBusy || !up.mergeStep(f).offered) return this.render();
+    const b = up.branchFor(f.to);
+    const ok = await vscode.window.showWarningMessage(`Push ${b} to ${f.remote} and open its PR?`, {
+      modal: true, detail: `git push -u ${f.remote} ${b}, then gh pr create --fill. The merge stays with the team: review and CI first.`,
+    }, 'Push and open PR');
+    if (ok !== 'Push and open PR') return this.render();
+    this.upBusy = 'pushing';
+    this.upPrOutput = null;
+    this.render();
+    try {
+      const push = await run('git', ['push', '-u', f.remote, b], this.root, { GIT_TERMINAL_PROMPT: '0' });
+      if (push.code !== 0) this.upPrOutput = `git push exited ${push.code}:\n${push.out}`;
+      else {
+        const pr = await run('gh', ['pr', 'create', '--fill'], this.root, { GH_PROMPT_DISABLED: '1' });
+        this.upPrOutput = pr.code === 0 ? `✓ ${pr.out}` : `gh pr create exited ${pr.code}:\n${pr.out}`;
+      }
+    } finally {
+      this.upBusy = '';
+    }
+    await this.gather();
+    this.render();
   }
 
   private typed(): { chat: string; docs: string } {
@@ -517,7 +711,7 @@ class Start {
 
   private shown = '';
   private keyNow(): string {
-    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null }) + (this.facts ? boot.key(this.facts, this.doctor) : '');
+    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null }) + (this.facts ? boot.key(this.facts, this.doctor) : '') + (this.upFacts ? up.key(this.upFacts, this.upChecks) : '');
   }
 
   // After a refresh: redrawn only when the setup it shows changed (review round 1, M-1).
@@ -533,7 +727,7 @@ class Start {
     this.web.webview.html = start.html({
       kind: this.kind, description: this.description, mode: start.mode(this.read('AGENTS.md')), number: start.nextNumber(names),
       ...this.setup(), started: this.started, shell: this.shell() !== null, installing: this.installing, installed: this.installed,
-      boot: this.bootView(this.setup().agent), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      boot: this.bootView(this.setup().agent), upgrade: this.upView(this.setup().agent), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
@@ -556,6 +750,22 @@ class Start {
     if (type === 'boot-doctor') return this.runDoctor();
     if (type === 'boot-reset') { await this.memo.update('anew.bootstrap.started', false); await this.gather(); return this.render(); }
     if (type === 'boot-pr') return this.openPr();
+    if (type.startsWith('up-pick-')) { this.upPick = type.slice(8); return this.render(); }
+    if (type === 'up-fetch') return this.upFetch();
+    if (type === 'up-reset') {
+      if (this.upBusy) return this.render(); // never mid-fetch (N-2)
+      const b = this.upTo() ? up.branchFor(this.upTo()) : '';
+      await this.upForget();
+      if (b) void vscode.window.showInformationMessage(`The fetched releases and the remembered tag are gone; ${b} and the script's changes in the working tree are kept — discard or stash them before you fetch again; switch back and delete the branch if you abandon the upgrade.`);
+      await this.gather();
+      return this.render();
+    }
+    if (type === 'up-checks') return this.upRunChecks();
+    if (type === 'up-pr') return this.upOpenPr();
+    if (type === 'up-copy' || type === 'up-continue') {
+      const to = this.upFacts?.to ?? '';
+      return to ? nextStep(type.slice(3), this.root, this.memo, `/upgrade ${to}`) : this.render();
+    }
     if (type.startsWith('kind-')) {
       const k = start.KINDS.find((x) => x.id === type.slice(5)); // only a known kind
       if (k) this.kind = k.id;
@@ -825,9 +1035,9 @@ class Triage {
 
 // A program's exit code, its stdout, and stdout with stderr (for showing), never through a shell
 // string.
-function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; out: string }> {
+function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}, timeout = 0): Promise<{ code: number; stdout: string; out: string }> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 }, (e, stdout, stderr) => {
+    execFile(cmd, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024, timeout }, (e, stdout, stderr) => {
       const code = e ? (typeof (e as { code?: unknown }).code === 'number' ? (e as { code: number }).code : 1) : 0;
       resolve({ code, stdout: String(stdout ?? ''), out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
     });

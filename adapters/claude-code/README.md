@@ -15,7 +15,7 @@ What it adds on top of the core:
 - **Change requests**: `/change` — runs the triage rubric of `workflows/change-request.md`
   (bug / trivial / change) with a reasoned verdict, then the lane the behavior demands; in strict
   mode it stops after the mini-spec, in lite it chains with gate approvals.
-- **Other commands**: `/bootstrap`, `/fix-bug`, `/refactor`, `/adr`, `/recover` — each loads the
+- **Other commands**: `/bootstrap`, `/upgrade`, `/fix-bug`, `/refactor`, `/adr`, `/recover` — each loads the
   matching workflow and honors the operating mode. All commands are thin by design: they point to
   `workflows/` and `prompts/`, they don't restate them.
 - **Read-only reviewer subagent** (`.claude/agents/reviewer.md`): the "producer never verifies its

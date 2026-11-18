@@ -1,0 +1,171 @@
+#!/bin/sh
+# ANEW upgrade — the mechanical part of an upgrade: run as the new release's own copy.
+# Usage: <new-release>/scripts/upgrade <base-release> <project>
+# Every ANEW file the project never changed (identical to the base release's copy) is replaced by
+# the new release's, added or removed; a file the project changed is never touched: listed "kept"
+# when the new release left it as it was, "merge" when both changed it (for /upgrade). Installed
+# adapters' files are included. .anew-version is not written and nothing is committed.
+set -e
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+usage() {
+  echo "Usage: <new-release>/scripts/upgrade <base-release> <project>"
+  echo ""
+  echo "Compares each ANEW file of <project> (a configured project, clean working tree) with"
+  echo "<base-release> (a clone of the tag in its .anew-version) and this release: unchanged files"
+  echo "are replaced, added or removed; files the project changed are kept, or listed 'merge' when"
+  echo "this release changed them too — /upgrade merges those and writes .anew-version."
+  echo "Installed adapters (as scripts/init places them) are included. Nothing is committed."
+}
+
+# The core, as scripts/adopt copies it (spec 0013), but .anew-version: /upgrade writes it last.
+FILES="AGENTS.md .gitattributes .gitignore .github/workflows/check.yml .github/pull_request_template.md
+specs/TEMPLATE.md specs/TEMPLATE-mini.md specs/backlog.md specs/active/README.md specs/done/README.md
+specs/plans/README.md specs/plans/TEMPLATE.md"
+DIRS="docs workflows prompts scripts adapters"
+
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+[ $# -eq 2 ] || { usage; exit 1; }
+[ -d "$1" ] || { echo "upgrade: $1 is not a folder" >&2; exit 1; }
+[ -d "$2" ] || { echo "upgrade: $2 is not a folder" >&2; exit 1; }
+B=$(CDPATH= cd -- "$1" && pwd)
+T=$(CDPATH= cd -- "$2" && pwd)
+[ "$T" != "$ROOT" ] && [ "$T" != "$B" ] || { echo "upgrade: the project is one of the releases" >&2; exit 1; }
+release() { grep -q 'STATUS: NOT CONFIGURED' "$1/AGENTS.md" 2>/dev/null && [ -f "$1/.anew-version" ]; }
+release "$ROOT" || { echo "upgrade: $ROOT is not an unconfigured ANEW release — run the new release's own scripts/upgrade" >&2; exit 1; }
+release "$B" || { echo "upgrade: $B is not an unconfigured ANEW release (AGENTS.md, .anew-version)" >&2; exit 1; }
+if [ ! -f "$T/AGENTS.md" ] || grep -q 'STATUS: NOT CONFIGURED' "$T/AGENTS.md"; then
+  echo "upgrade: $T is not bootstrapped (AGENTS.md) — run /bootstrap first" >&2; exit 1
+fi
+new=$(head -n 1 "$ROOT/.anew-version" | tr -d '\r')
+base=$(head -n 1 "$B/.anew-version" | tr -d '\r')
+have=$(head -n 1 "$T/.anew-version" 2>/dev/null | tr -d '\r')
+[ -n "$have" ] || { echo "upgrade: $T has no .anew-version — write the ANEW version it is based on" >&2; exit 1; }
+[ "$have" = "$base" ] || { echo "upgrade: the project is on $have, the base release is $base — fetch $have as the base" >&2; exit 1; }
+[ "$new" != "$base" ] || { echo "upgrade: the project is already on $new" >&2; exit 1; }
+git -C "$T" rev-parse --git-dir >/dev/null 2>&1 || { echo "upgrade: $T is not a git repository" >&2; exit 1; }
+[ -z "$(git -C "$T" status --porcelain)" ] || { echo "upgrade: $T has uncommitted changes — commit or stash them first" >&2; exit 1; }
+
+# same <a> <b>: both absent, or both present with the same contents — line endings aside, so a
+# working tree checked out with CRLF still matches the releases' LF (review round 1, L-8)
+same() {
+  if [ -e "$1" ]; then
+    [ -e "$2" ] || return 1
+    cmp -s "$1" "$2" && return 0
+    [ "$(tr -d '\r' < "$1" | cksum)" = "$(tr -d '\r' < "$2" | cksum)" ]
+  else
+    [ ! -e "$2" ]
+  fi
+}
+# ours <release dir or file> <project dir or file>: some file there is ANEW's copy (the base's or the
+# new release's) — an adapter counts by its own files, never by a file of the project's that happens
+# to have the name (review round 1, L-2), nor is it lost when one of them was customized (round 2, N-1)
+ours() {
+  for r in "$B" "$ROOT"; do
+    [ -e "$r/$1" ] || continue
+    find "$r/$1" -type f | while IFS= read -r f; do
+      rel=${f#"$r/$1"}
+      if [ -e "$T/$2$rel" ] && same "$T/$2$rel" "$f"; then echo yes; break; fi
+    done
+  done | grep -q yes
+}
+
+# Each path as "<release path>	<project path>": the core as it is, the installed adapters' files
+# where scripts/init puts them (keep in step with scripts/init; selftest checks it).
+TAB=$(printf '\t')
+# map <release dir or file> <project dir or file>: each file under it, in $r
+map() {
+  [ -e "$r/$1" ] || return 0
+  find "$r/$1" -type f | while IFS= read -r f; do
+    rel=${f#"$r/$1"}
+    printf '%s\t%s\n' "$1$rel" "$2$rel"
+  done
+}
+CC=0; GH=0; CU=0; CX=0
+{ ours adapters/claude-code/.claude .claude || ours adapters/claude-code/CLAUDE.md CLAUDE.md; } && CC=1
+{ ours adapters/github-copilot/prompts .github/prompts || ours adapters/github-copilot/agents .github/agents || ours adapters/github-copilot/instructions .github/instructions || ours adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md; } && GH=1
+{ ours adapters/cursor/commands .cursor/commands || ours adapters/cursor/rules .cursor/rules; } && CU=1
+ours adapters/codex/skills .agents/skills && CX=1
+paths() {
+  for f in $FILES; do printf '%s\t%s\n' "$f" "$f"; done
+  for r in "$ROOT" "$B"; do
+    for d in $DIRS; do map "$d" "$d"; done
+    if [ "$CC" -eq 1 ]; then
+      map adapters/claude-code/CLAUDE.md CLAUDE.md
+      map adapters/claude-code/.claude .claude
+    fi
+    if [ "$GH" -eq 1 ]; then
+      map adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md
+      for d in prompts agents instructions; do map "adapters/github-copilot/$d" ".github/$d"; done
+    fi
+    if [ "$CU" -eq 1 ]; then
+      map adapters/cursor/rules .cursor/rules
+      map adapters/cursor/commands .cursor/commands
+    fi
+    if [ "$CX" -eq 1 ]; then
+      map adapters/codex/skills .agents/skills
+    fi
+  done
+  return 0
+}
+
+# The answer is also kept in the git directory, for /upgrade in a fresh session: the tree is dirty
+# after this run, so a rerun is refused (review round 1, H-1).
+GD=$(git -C "$T" rev-parse --absolute-git-dir)
+mkdir -p "$GD/anew-upgrade"
+OUT="$GD/anew-upgrade/upgrade-$new.out"
+tmp=$(mktemp "${TMPDIR:-/tmp}/anew-upgrade.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+trap 'exit 130' INT TERM # stop on Ctrl-C: a killed cmp must never read as "different" (N-6)
+
+replaced=0; added=0; removed=0; kept=0; merges=0; exe=0
+{
+# a folder of an adapter's with none of ANEW's files in it: named, not upgraded (N-1)
+[ "$CC" -eq 1 ] || [ ! -d "$T/.claude" ] || echo "skipped  .claude/ (no ANEW claude-code adapter found there: if it is installed, upgrade it by hand)"
+[ "$GH" -eq 1 ] || [ ! -d "$T/.github/prompts" ] || echo "skipped  .github/prompts/ (no ANEW github-copilot adapter found there: if it is installed, upgrade it by hand)"
+[ "$CU" -eq 1 ] || [ ! -d "$T/.cursor" ] || echo "skipped  .cursor/ (no ANEW cursor adapter found there: if it is installed, upgrade it by hand)"
+[ "$CX" -eq 1 ] || [ ! -d "$T/.agents/skills" ] || echo "skipped  .agents/skills/ (no ANEW codex adapter found there: if it is installed, upgrade it by hand)"
+while IFS="$TAB" read -r src dst; do
+  [ -n "$src" ] || continue
+  n="$ROOT/$src"; b="$B/$src"; p="$T/$dst"
+  same "$p" "$n" && continue
+  if [ ! -e "$p" ] && [ -d "$(dirname "$b")" ] && [ ! -d "$(dirname "$p")" ]; then
+    # the base had the folder, the project removed it: nothing put back there, nothing to merge (L-3)
+    echo "kept     $dst (its folder was removed in the project)"; kept=$((kept + 1))
+  elif same "$p" "$b"; then
+    if [ -e "$n" ]; then
+      if [ -e "$p" ]; then echo "replaced $dst"; replaced=$((replaced + 1)); else echo "added    $dst"; added=$((added + 1)); fi
+      mkdir -p "$(dirname "$p")"
+      cp "$n" "$p"
+      case "$dst" in scripts/*.*) ;; scripts/*|.claude/hooks/*.sh) exe=1 ;; esac
+    else
+      rm -f "$p"
+      echo "removed  $dst"; removed=$((removed + 1))
+    fi
+  elif same "$n" "$b"; then
+    echo "kept     $dst (the project's change; $new left it as $base had it)"; kept=$((kept + 1))
+  else
+    echo "merge    $dst (changed by the project and by $new)"; merges=$((merges + 1))
+  fi
+done <<EOF
+$(paths | LC_ALL=C sort -u)
+EOF
+
+echo "Upgrade $base → $new in $T: $replaced replaced, $added added, $removed removed, $kept kept, $merges to merge."
+echo "Nothing is committed; .anew-version still says $base: /upgrade merges the files above and writes it last."
+echo "This answer is kept in $OUT for /upgrade."
+if [ "$exe" -eq 1 ]; then
+  echo "Git on Windows records no executable bit; when you commit, keep the scripts and hooks runnable:"
+  printf '  git add --chmod=+x'
+  for f in "$T"/scripts/*; do
+    [ -f "$f" ] || continue
+    case "$(basename "$f")" in *.*) ;; *) printf ' scripts/%s' "$(basename "$f")" ;; esac
+  done
+  for f in "$T"/.claude/hooks/*.sh; do
+    [ -f "$f" ] && printf ' .claude/hooks/%s' "$(basename "$f")"
+  done
+  echo ""
+fi
+} > "$tmp"
+cp "$tmp" "$OUT"
+cat "$tmp"

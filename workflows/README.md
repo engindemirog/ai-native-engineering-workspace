@@ -6,6 +6,7 @@ uses (`prompts/…`) — workflows never copy prompt text, so there is exactly o
 | Workflow | Use when |
 |---|---|
 | `bootstrap.md` | First run: adapt this workspace to your project (new or existing). |
+| `upgrade.md` | A newer ANEW release: the unchanged files by `scripts/upgrade`, the project's changed ones merged by the agent, checks, a PR. |
 | `feature-development.md` | Any new behavior. |
 | `segments.md` | The feature workflow one stage at a time: entry checks, gates, handoffs, the chainer rule. Adapters map their commands onto it. |
 | `bug-fix.md` | Something works incorrectly. Reproduction comes before the fix. |

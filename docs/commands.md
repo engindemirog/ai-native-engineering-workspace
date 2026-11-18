@@ -29,10 +29,10 @@ Always available, outside the loop:
 
 | Group | Commands |
 |---|---|
-| Terminal scripts | `scripts/adopt` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
+| Terminal scripts | `scripts/adopt` · `scripts/upgrade` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
-| Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
-| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init` and `scripts/adopt` |
+| Setup · record · recover | `/bootstrap` · `/upgrade` · `/adr` · `/recover` |
+| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init`, `scripts/adopt` and `scripts/upgrade` |
 
 ## How to read this page
 
@@ -73,6 +73,29 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   that is not an unconfigured template (a bootstrapped project is not a template).
 - **Common mistake:** expecting a kept file to be updated — `.gitignore`, README and any doc that
   exists stay yours; compare them with the template by hand.
+
+### `scripts/upgrade`
+- **What it does:** the mechanical part of an upgrade. Each ANEW file of the project — the core
+  as `scripts/adopt` copies it, but `.anew-version`, plus each installed adapter's files where
+  `scripts/init` put them — is compared with the base release's copy and the new release's:
+  unchanged by the project → `replaced`, `added` or `removed`; changed by the project, left by
+  the new release → `kept`; changed by both → `merge`.
+- **When to use it:** on a branch `chore/anew-<tag>`, with clones of the project's base tag and
+  the new tag: `<new>/scripts/upgrade <base> <project>` — the new release's own copy. Then
+  `/upgrade` merges the `merge` files and writes `.anew-version` (`workflows/upgrade.md`; the
+  VS Code extension does the clones, the branch and this run).
+- **Reads / writes:** reads both releases and the project; writes the replaced, added and removed
+  files, and its answer to `.git/anew-upgrade/upgrade-<tag>.out` (where `/upgrade` reads the
+  `merge` list). Nothing is staged or committed; `.anew-version` is left as it is. An adapter
+  counts as installed when its files are ANEW's (a project's own `CLAUDE.md` is not one); a folder
+  the project removed gets nothing back; line endings are not a change.
+- **Stops at:** no gate; one line per file it did not find the same, a summary, and the
+  `git add --chmod=+x` line when it wrote a script.
+- **Lite / Strict:** no difference.
+- **Refusal (exit 1):** a project not bootstrapped, without `.anew-version`, on another version than
+  the base, already on the new one, not a git repository, or with uncommitted changes; a base or
+  a script that is not an unconfigured ANEW release.
+- **Common mistake:** running the project's own (older) copy — run the new release's.
 
 ### `scripts/init`
 - **What it does:** installs one AI tool adapter into the repo root: `claude-code`,
@@ -409,7 +432,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Refusal:** none — but `./scripts/check` must be green before it starts.
 - **Common mistake:** editing a test — a needed test edit means behavior changed; stop.
 
-## E — Record and recover: `/adr`, `/recover`
+## E — Record, recover, upgrade: `/adr`, `/recover`, `/upgrade`
 
 ### `/adr`
 - **What it does:** discusses an architecture decision, then records it from
@@ -429,6 +452,23 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Lite / Strict:** no difference.
 - **Refusal:** none — no match is treated as R-10 (ambiguity).
 - **Common mistake:** improvising a fix instead of naming the ramp.
+
+### `/upgrade`
+- **What it does:** finishes an upgrade to a newer ANEW release (`workflows/upgrade.md`): applies
+  each CHANGELOG entry above the base, oldest first, to the files `scripts/upgrade` listed
+  `merge` — behavior lists to extended scripts, intents to documents in the project's words —
+  takes new `ANEW-*` decisions, writes `.anew-version` last, one commit.
+- **When to use it:** after `scripts/upgrade` ran on `chore/anew-<tag>` with both releases under
+  `.git/anew-upgrade/` (the VS Code extension prepares all three): `/upgrade v1.32`.
+- **Reads / writes:** `prompts/upgrade.md`, both releases, the new CHANGELOG, the script's answer
+  in `.git/anew-upgrade/upgrade-<tag>.out`; writes the `merge`
+  files and `.anew-version`, commits on `chore/anew-<tag>`. Never pushes or merges.
+- **Stops at:** each question, with its recommendation; a change it cannot apply without guessing
+  (a recovery ramp).
+- **Lite / Strict:** no difference.
+- **Refusal:** not on `chore/anew-<tag>`.
+- **Common mistake:** copying a newer script over one the project extended — the behavior list is
+  applied instead.
 
 ## F — Editor: the VS Code extension
 
@@ -456,6 +496,12 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     **Run doctor** (read-only); **Push and open PR** of `chore/bootstrap` after a confirmation,
     never the merge; merged on the remote but not pulled, it names the pull; **Start over** resets a
     start that went nowhere;
+  - **upgrade** (a bootstrapped project, a newer release): the phases — available · in the agent ·
+    upgraded · verified · merged — read from `.anew-version` and git; on `v1.24.x` (no
+    `scripts/upgrade` on that line) the latest only as an explicit choice; **Fetch and prepare** after a confirmation (both
+    releases into `.git/anew-upgrade/`, `chore/anew-<tag>`, the new release's `scripts/upgrade`);
+    `/upgrade <tag>` with Copy and Continue; **Run checks** (doctor, then selftest); **Push and open
+    PR**, never the merge;
   - **approve spec / plan** (ANALYZE, PLAN human): the file as cards; Approve after the full file
     was opened → `scripts/gate approve-spec|approve-plan NNNN`;
   - **triage** (REVIEW, VERIFY, an open investigate): paste the reviewer's report; it is split
@@ -493,6 +539,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 | Command | One line | Stops at | Lite | Strict |
 |---|---|---|---|---|
 | `scripts/adopt` | Bring the ANEW core into a project | Written / kept, next step | Same | Same |
+| `scripts/upgrade` | The unchanged ANEW files to a new release | Replaced / kept / merge, a summary | Same | Same |
 | `scripts/init` | Install an adapter | Prints next step | Same | Same |
 | `scripts/doctor` | Workspace health; `--strict` in CI | Exit 0 / 1 | Same | Same |
 | `scripts/check` | The verification contract; `--fast` to iterate | `CHECK GREEN` / `CHECK FAILED` | Same | Same |
@@ -510,6 +557,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 | `/refactor` | Behavior unchanged, proven | Approval · triage | Same | Same |
 | `/adr` | Record a decision | Your decision | Same | Same |
 | `/recover` | Run the matching ramp | Ramp confirmation | Same | Same |
+| `/upgrade <tag>` | Merge a newer ANEW release into the project's changed files | Questions · a guess it cannot make | Same | Same |
 
 ## Two golden rules
 

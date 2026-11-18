@@ -15,6 +15,7 @@ import { ADAPTERS, existsIn, initArgs, installed } from '../src/setup.ts';
 import { nextFor } from '../src/next.ts';
 import { cloneArgs, adoptArgs, newSteps } from '../src/adopt.ts';
 import { gather as bootGather, phase as bootPhase, readDoctor, mergeStep as bootMerge, offered as bootOffered } from '../src/bootstrap.ts';
+import * as up from '../src/upgrade.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -441,4 +442,95 @@ test('bootstrap: with a remote — the default branch from origin/HEAD, the push
   const pulled = await facts();
   assert.equal(bootPhase(pulled, null), 'merged');
   assert.equal(bootOffered({ facts: pulled, answers: { chat: '', docs: '', mode: '', trivial: '' }, agent: 'claude-code', doctor: null }).instead, '');
+});
+
+// Two fixture releases, v9.0 and v9.1 (this tree, then a change to a script and two documents),
+// tagged in one repository cloned over file:// as the extension clones them (spec 0015).
+function upgradeReleases(): string {
+  const dir = path.join(tmp, 'release-up');
+  if (fs.existsSync(dir)) return dir;
+  execFileSync('git', ['clone', '-q', fixtureRelease(), dir]);
+  const id = ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false'];
+  const g = (...args: string[]) => execFileSync('git', [...id, '-C', dir, ...args], { stdio: 'pipe' });
+  fs.writeFileSync(path.join(dir, '.anew-version'), 'v9.0\n');
+  g('commit', '-q', '-am', 'v9.0');
+  g('tag', 'v9.0');
+  fs.writeFileSync(path.join(dir, '.anew-version'), 'v9.1\n');
+  fs.appendFileSync(path.join(dir, 'scripts', 'doctor'), '\n# v9.1\n');
+  for (const f of ['docs/domain.md', 'docs/testing.md']) fs.appendFileSync(path.join(dir, f), '\nv9.1 text\n');
+  fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8').replace(/^## v/m, '## v9.1 — the fixture release\n\n## v'));
+  g('commit', '-q', '-am', 'v9.1');
+  g('tag', 'v9.1');
+  return dir;
+}
+
+// A project adopted from v9.0 and bootstrapped, upgraded the screen's way: the offer from the tags,
+// both releases cloned into .git/anew-upgrade/, chore/anew-v9.1, v9.1's scripts/upgrade, the
+// agent's merge and commit, doctor, a squash merge — the phase read from the real git at each step.
+test('upgrade: the offer, the fetch, the script, the phases through a squash merge (spec 0015)', { skip }, async () => {
+  const url = pathToFileURL(upgradeReleases()).href;
+  const p = path.join(tmp, 'up-project');
+  fs.mkdirSync(p);
+  const t = fs.mkdtempSync(path.join(tmp, 'clone-'));
+  execFileSync('git', cloneArgs(url, 'v9.0', path.join(t, 'template')), { cwd: t, stdio: 'pipe' });
+  assert.equal((await runScript(shell as string, path.join(t, 'template'), 'adopt', adoptArgs(p))).code, 0);
+  const id = ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false'];
+  const g = (...args: string[]) => execFileSync('git', [...id, ...args], { cwd: p, encoding: 'utf8', stdio: 'pipe' });
+  assert.equal((await runScript(shell as string, p, 'init', ['claude-code'])).code, 0);
+  fs.writeFileSync(path.join(p, 'AGENTS.md'), fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8').split('\n').filter((l) => !l.startsWith('>')).join('\n')
+    .replace('**Mode: unset**', '**Mode: lite**').replace('**Language: unset**', '**Language: chat=en · docs=en**'));
+  fs.appendFileSync(path.join(p, 'docs', 'domain.md'), '\nour domain\n');
+  for (const step of newSteps('v9.0', fs.readdirSync(path.join(p, 'scripts')).map((f) => `scripts/${f}`))) g(...step);
+  g('branch', '-M', 'main');
+  // the offer: from the tags, the base read from .anew-version
+  const tags = up.tagsFrom(execFileSync('git', ['ls-remote', '--tags', url], { encoding: 'utf8' }));
+  assert.deepEqual(up.offer({ version: fs.readFileSync(path.join(p, '.anew-version'), 'utf8'), latest: 'v9.1', tags }).choices, ['v9.1']);
+  let fetched = false;
+  const facts = (to: string) => up.gather({
+    git: async (args, env) => { try { return execFileSync('git', args, { cwd: p, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env } }); } catch { return null; } },
+    gh: async () => false, version: fs.readFileSync(path.join(p, '.anew-version'), 'utf8'), to, fetched, index: path.join(tmp, 'up-index'), seed: (i, x) => fs.copyFileSync(path.resolve(p, i), x),
+  });
+  assert.equal(up.phase(await facts(''), null), 'available');
+  assert.equal(up.phase(await facts('v9.1'), null), 'available');
+  // Fetch: both releases under the git directory, the branch, the new release's script
+  const dir = path.join(g('rev-parse', '--absolute-git-dir').trim(), up.DIR);
+  for (const tag of ['v9.0', 'v9.1']) execFileSync('git', cloneArgs(url, tag, path.join(dir, tag)), { stdio: 'pipe' });
+  fetched = true;
+  g('switch', '-q', '-c', up.branchFor('v9.1'));
+  const r = await runScript(shell as string, path.join(dir, 'v9.1'), 'upgrade', [path.join(dir, 'v9.0'), p]);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  const s = up.readScript(r.code, r.stdout);
+  assert.ok(s.replaced >= 2, r.stdout); // scripts/doctor, docs/testing.md
+  assert.deepEqual(s.merge, ['docs/domain.md']);
+  assert.ok(!g('status', '--porcelain').includes(up.DIR), 'the releases are never in the working tree');
+  // the answer kept for /upgrade in a fresh session (review round 1, H-1)
+  assert.deepEqual(up.readScript(0, fs.readFileSync(path.join(dir, up.outFile('v9.1')), 'utf8')).merge, ['docs/domain.md']);
+  assert.equal(fs.readFileSync(path.join(p, 'scripts', 'doctor'), 'utf8'), fs.readFileSync(path.join(dir, 'v9.1', 'scripts', 'doctor'), 'utf8'));
+  assert.deepEqual(up.headings(fs.readFileSync(path.join(dir, 'v9.1', 'CHANGELOG.md'), 'utf8'), 'v9.0', 'v9.1'), ['v9.1 — the fixture release']);
+  assert.equal(up.phase(await facts('v9.1'), null), 'in the agent');
+  // the agent: the merge file, .anew-version last, one commit
+  fs.appendFileSync(path.join(p, 'docs', 'domain.md'), '\nv9.1 text\n');
+  fs.writeFileSync(path.join(p, '.anew-version'), 'v9.1\n');
+  g('add', '-A');
+  g('commit', '-q', '-m', 'chore: ANEW v9.0 → v9.1');
+  const done = await facts('v9.1');
+  assert.equal(up.phase(done, null), 'upgraded');
+  assert.deepEqual(up.mergeStep(done).commands, ['git switch main', 'git merge --no-ff chore/anew-v9.1']); // no remote: the local merge, to copy
+  // the checks: the real doctor; selftest's own scenarios are scripts/selftest's (minutes), its
+  // result line stands in here
+  const d = await runScript(shell as string, p, 'doctor', []);
+  const c = up.readChecks({ code: d.code, out: `${d.stdout}${d.stderr}` }, { code: 0, out: '== selftest: 1 passed, 0 failed ==' }, done.state);
+  assert.deepEqual(c.doctor.fails, [], c.doctor.fails.join('\n'));
+  assert.equal(up.phase(done, c), 'verified');
+  fs.appendFileSync(path.join(p, 'docs', 'testing.md'), '\nafter the checks\n');
+  assert.equal(up.phase(await facts('v9.1'), c), 'upgraded', 'a change after the checks: run them again');
+  g('checkout', '-q', '--', 'docs/testing.md');
+  // a squash merge: the default branch says v9.1
+  g('switch', '-q', 'main');
+  g('merge', '-q', '--squash', up.branchFor('v9.1'));
+  g('commit', '-q', '-m', 'chore: ANEW v9.0 → v9.1 (#2)');
+  const merged = await facts('v9.1');
+  assert.equal(up.phase(merged, null), 'merged');
+  assert.equal(merged.version, 'v9.1');
+  assert.deepEqual(up.offer({ version: merged.version, latest: 'v9.1', tags }).choices, [], 'nothing more to offer');
 });

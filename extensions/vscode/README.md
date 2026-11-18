@@ -2,7 +2,7 @@
 
 The human's part of the ANEW process on a screen, inside VS Code — over the template's scripts:
 `scripts/status --json` (what it shows), `scripts/gate` (what it writes), `scripts/init` and
-`scripts/adopt` (what it installs):
+`scripts/adopt` (what it installs), `scripts/upgrade` (what an upgrade replaces):
 
 - **ANEW into a project** (the ANEW view, in a folder without ANEW): **Add ANEW to this project**
   copies the core of the latest release into the open folder — its own `scripts/adopt`, files
@@ -19,6 +19,14 @@ The human's part of the ANEW process on a screen, inside VS Code — over the te
   and WARN lines; **Push and open PR** pushes `chore/bootstrap` and opens its PR after a
   confirmation. The merge stays with the team. Merged on the remote but not pulled, the screen names
   the pull and offers no `/bootstrap`; **Start over** resets a start that went nowhere.
+- **Upgrade** (on the start screen of a bootstrapped project, when a newer release exists): ANEW
+  `<base>` → `<new>` from `.anew-version` and the release's tags (a project on `v1.24.x` — a line
+  without `scripts/upgrade` — gets the latest only as an explicit choice). **Fetch and prepare**, after a confirmation, clones both releases into
+  `.git/anew-upgrade/` (never committed), creates `chore/anew-<tag>` and runs the new release's
+  `scripts/upgrade`: the ANEW files the project never changed are replaced; the ones it changed are
+  listed for `/upgrade`, offered with Copy and Continue. **Run checks** runs doctor and selftest;
+  **Push and open PR** as for bootstrap. The merge stays with the team; once it is pulled, the
+  folders go.
 - **The sidebar** (the ANEW view in the activity bar): **+ New work**, then every spec as a card,
   grouped as *your turn* · *in progress* · *shipped*, each naming the decision it waits for. The
   view's badge and the status bar show how many decisions wait for you.
