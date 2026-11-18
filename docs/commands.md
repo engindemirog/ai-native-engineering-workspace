@@ -32,7 +32,7 @@ Always available, outside the loop:
 | Terminal scripts | `scripts/adopt` · `scripts/upgrade` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/upgrade` · `/adr` · `/recover` |
-| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init` and `scripts/adopt` |
+| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init`, `scripts/adopt` and `scripts/upgrade` |
 
 ## How to read this page
 
@@ -493,6 +493,12 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     **Run doctor** (read-only); **Push and open PR** of `chore/bootstrap` after a confirmation,
     never the merge; merged on the remote but not pulled, it names the pull; **Start over** resets a
     start that went nowhere;
+  - **upgrade** (a bootstrapped project, a newer release): the phases — available · in the agent ·
+    upgraded · verified · merged — read from `.anew-version` and git; on `v1.24.x` the newest
+    `v1.24.x` first, the latest as the other choice; **Fetch and prepare** after a confirmation (both
+    releases into `.git/anew-upgrade/`, `chore/anew-<tag>`, the new release's `scripts/upgrade`);
+    `/upgrade <tag>` with Copy and Continue; **Run checks** (doctor, then selftest); **Push and open
+    PR**, never the merge;
   - **approve spec / plan** (ANALYZE, PLAN human): the file as cards; Approve after the full file
     was opened → `scripts/gate approve-spec|approve-plan NNNN`;
   - **triage** (REVIEW, VERIFY, an open investigate): paste the reviewer's report; it is split

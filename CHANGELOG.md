@@ -34,6 +34,49 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+From v1.32 on, steps 3 and 6 have help: `<new>/scripts/upgrade <base> <project>` replaces every
+file you never changed and lists the rest, and `/upgrade <tag>` applies steps 2–6 to those
+(`workflows/upgrade.md`); the VS Code extension runs both from its Start screen.
+
+## v1.32 — Upgrade on the screen
+
+A current release (not in `1.24.x`). No rule changes: an upgrade is a chore on its own branch,
+checked and merged by the team like bootstrap.
+
+- **`scripts/upgrade`** (new): run as the new release's own copy, `<new>/scripts/upgrade <base>
+  <project>`. Each ANEW file of the project — the core as `scripts/adopt` copies it but
+  `.anew-version`, plus the installed adapters' files — compared with the base and the new
+  release: never changed by the project → `replaced`, `added` or `removed`; changed by the
+  project only → `kept`; by both → `merge`. Nothing committed; refuses a project not
+  bootstrapped, on another base, or with uncommitted changes.
+- **`/upgrade`** (new, every adapter; `prompts/upgrade.md`, `workflows/upgrade.md`): the agent
+  applies the CHANGELOG entries above the base to the `merge` files — behavior lists to extended
+  scripts, intents to documents in the project's words — writes `.anew-version` last and commits
+  on `chore/anew-<tag>`; never pushes or merges.
+- **Extension 0.6.0** (the `.vsix` is attached to the release): the Start screen offers a newer
+  release (on `v1.24.x`, the line's newest first), fetches both releases into `.git/anew-upgrade/`,
+  creates the branch, runs the script, offers `/upgrade`, runs doctor and selftest, pushes and opens
+  the PR; never the merge.
+
+### Upgrading
+
+- `scripts/upgrade` (new): take it as it is. Its behavior: above.
+- `scripts/doctor` (behavior): `scripts/upgrade` in the command reference it checks
+  (`docs/commands.md`).
+- `scripts/selftest` (behavior): a `scripts/upgrade` section (a base and a new release built from
+  the core; every adapter installed; each verdict, a rerun, the refusals).
+- `prompts/upgrade.md`, `workflows/upgrade.md` (new): take them as they are; `prompts/README.md`,
+  `workflows/README.md`: intent: the new rows.
+- `/upgrade` in each adapter you installed (`.claude/commands/upgrade.md`,
+  `.github/prompts/upgrade.prompt.md`, `.cursor/commands/upgrade.md`, `.agents/skills/upgrade/`):
+  `./scripts/init <tool>` adds it (existing files kept); the adapters' READMEs: intent: `/upgrade`
+  among the other commands.
+- `docs/commands.md` (`scripts/upgrade`, `/upgrade`, §F), `README.md` (the scripts table):
+  intent: the new script and command.
+- CHANGELOG, "How to upgrade": the note on `scripts/upgrade` and `/upgrade`.
+- `extensions/vscode/` (optional): replace the folder, or install the `.vsix` from the release.
+- Full diff: `/compare/v1.31...v1.32`.
+
 ## v1.31 — Bootstrap on the screen
 
 A current release (not in `1.24.x`). No rule changes: every gate stays; answers given with the
