@@ -1153,6 +1153,7 @@ case "$(printf '%s\n' "$out" | grep '^  git add --chmod=+x ')" in *" scripts/lib
 # a rerun: the files adopt wrote itself are the template's — nothing to merge; an .anew there is not replaced
 printf 'stale\n' > "$P/AGENTS.md.anew"
 run sh "$A/scripts/adopt" "$E"
+exits 0 "adopt: a rerun over its own files"
 hasnt "merge  " "adopt: a rerun over its own files asks for no merge"
 [ ! -e "$E/AGENTS.md.anew" ] && [ ! -e "$E/.gitignore.anew" ]; report $? "adopt: … and writes no .anew"
 run sh "$A/scripts/adopt" "$P"

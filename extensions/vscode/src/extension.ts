@@ -246,7 +246,7 @@ async function newProject(): Promise<void> {
       } catch (e) {
         // the folder New made goes again: nothing was written (L-1)
         if (made) {
-          try { fs.rmSync(target, { recursive: true, force: true }); } catch { throw new Error(`${(e as Error).message} The folder ${target} could not be removed.`); }
+          try { fs.rmSync(target, { recursive: true, force: true }); } catch { throw new Error(`${(e as Error).message} The folder ${target} could not be removed: delete it by hand.`); }
         }
         throw e;
       }
