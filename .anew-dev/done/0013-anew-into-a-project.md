@@ -1,6 +1,6 @@
 # Spec 0013 — ANEW into a project: add it to an existing one, or start a new one, from the screen
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0013-plan.md`
 - Self-critique: done (G-1–G-5 accepted as recommended, Engin Demiroğ, 2026-11-18)
@@ -71,27 +71,27 @@ Deliberately not done:
   repository (`file://`); the VS Code layer by the human's run at SHIP.
 
 ## Acceptance criteria
-- [ ] AC-1 — `scripts/adopt` into an empty folder writes exactly the core list, and doctor there
+- [x] AC-1 — `scripts/adopt` into an empty folder writes exactly the core list, and doctor there
   has no structure failure; into a folder with files it keeps every one and names it; the
   template's own files are never written; no git state changes (selftest).
-- [ ] AC-2 — `check.yml`'s `extension` job is guarded by `extensions/vscode/` (selftest).
-- [ ] AC-3 — without ANEW the view offers Add and New; the tag read from a `releases/latest`
+- [x] AC-2 — `check.yml`'s `extension` job is guarded by `extensions/vscode/` (selftest).
+- [x] AC-3 — without ANEW the view offers Add and New; the tag read from a `releases/latest`
   answer, the clone and adopt arguments, the confirmation's text (unit tests).
-- [ ] AC-4 — Add and New against a local fixture release leave the same files as the terminal
+- [x] AC-4 — Add and New against a local fixture release leave the same files as the terminal
   calls; New's commit holds the scripts as `100755` (integration).
-- [ ] AC-5 — on this machine the packaged `.vsix`: a folder without ANEW gets it from the screen,
+- [x] AC-5 — on this machine the packaged `.vsix`: a folder without ANEW gets it from the screen,
   a new project is created and opened, and each reaches the setup card; judged by the human at
   SHIP.
-- [ ] AC-6 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+- [x] AC-6 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; README, `docs/commands.md` (`scripts/adopt`, §F), `extensions/vscode/README.md`,
   CHANGELOG v1.30 and `.anew-version` v1.30.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-18)
 - **G-1 — two specs.** Adding ANEW is a file copy; bootstrap is the agent's interview.
