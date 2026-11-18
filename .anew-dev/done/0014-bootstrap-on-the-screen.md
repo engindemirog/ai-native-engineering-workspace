@@ -90,11 +90,11 @@ Deliberately not done:
   CHANGELOG v1.31 and `.anew-version` v1.31.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-18)
 - **G-1 — the answers reach the agent with the command.** The screen could write the Language and
