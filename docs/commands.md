@@ -29,7 +29,7 @@ Always available, outside the loop:
 
 | Group | Commands |
 |---|---|
-| Terminal scripts | `scripts/adopt` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
+| Terminal scripts | `scripts/adopt` · `scripts/upgrade` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
 | Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init` and `scripts/adopt` |
@@ -73,6 +73,27 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   that is not an unconfigured template (a bootstrapped project is not a template).
 - **Common mistake:** expecting a kept file to be updated — `.gitignore`, README and any doc that
   exists stay yours; compare them with the template by hand.
+
+### `scripts/upgrade`
+- **What it does:** the mechanical part of an upgrade. Each ANEW file of the project — the core
+  as `scripts/adopt` copies it, but `.anew-version`, plus each installed adapter's files where
+  `scripts/init` put them — is compared with the base release's copy and the new release's:
+  unchanged by the project → `replaced`, `added` or `removed`; changed by the project, left by
+  the new release → `kept`; changed by both → `merge`.
+- **When to use it:** on a branch `chore/anew-<tag>`, with clones of the project's base tag and
+  the new tag: `<new>/scripts/upgrade <base> <project>` — the new release's own copy. Then
+  `/upgrade` merges the `merge` files and writes `.anew-version` (`workflows/upgrade.md`; the
+  VS Code extension does the clones, the branch and this run).
+- **Reads / writes:** reads both releases and the project; writes the replaced, added and removed
+  files. Nothing is staged or committed; `.anew-version` is left as it is. Run again, it writes
+  nothing more and lists the same `merge` files.
+- **Stops at:** no gate; one line per file it did not find the same, a summary, and the
+  `git add --chmod=+x` line when it wrote a script.
+- **Lite / Strict:** no difference.
+- **Refusal (exit 1):** a project not bootstrapped, without `.anew-version`, on another version than
+  the base, already on the new one, not a git repository, or with uncommitted changes; a base or
+  a script that is not an unconfigured ANEW release.
+- **Common mistake:** running the project's own (older) copy — run the new release's.
 
 ### `scripts/init`
 - **What it does:** installs one AI tool adapter into the repo root: `claude-code`,
@@ -493,6 +514,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 | Command | One line | Stops at | Lite | Strict |
 |---|---|---|---|---|
 | `scripts/adopt` | Bring the ANEW core into a project | Written / kept, next step | Same | Same |
+| `scripts/upgrade` | The unchanged ANEW files to a new release | Replaced / kept / merge, a summary | Same | Same |
 | `scripts/init` | Install an adapter | Prints next step | Same | Same |
 | `scripts/doctor` | Workspace health; `--strict` in CI | Exit 0 / 1 | Same | Same |
 | `scripts/check` | The verification contract; `--fast` to iterate | `CHECK GREEN` / `CHECK FAILED` | Same | Same |

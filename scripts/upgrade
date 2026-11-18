@@ -1,0 +1,119 @@
+#!/bin/sh
+# ANEW upgrade — the mechanical part of an upgrade: run as the new release's own copy.
+# Usage: <new-release>/scripts/upgrade <base-release> <project>
+# Every ANEW file the project never changed (identical to the base release's copy) is replaced by
+# the new release's, added or removed; a file the project changed is never touched: listed "kept"
+# when the new release left it as it was, "merge" when both changed it (for /upgrade). Installed
+# adapters' files are included. .anew-version is not written and nothing is committed.
+set -e
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+usage() {
+  echo "Usage: <new-release>/scripts/upgrade <base-release> <project>"
+  echo ""
+  echo "Compares each ANEW file of <project> (a configured project, clean working tree) with"
+  echo "<base-release> (a clone of the tag in its .anew-version) and this release: unchanged files"
+  echo "are replaced, added or removed; files the project changed are kept, or listed 'merge' when"
+  echo "this release changed them too — /upgrade merges those and writes .anew-version."
+  echo "Installed adapters (as scripts/init places them) are included. Nothing is committed."
+}
+
+# The core, as scripts/adopt copies it (spec 0013), but .anew-version: /upgrade writes it last.
+FILES="AGENTS.md .gitattributes .gitignore .github/workflows/check.yml .github/pull_request_template.md
+specs/TEMPLATE.md specs/TEMPLATE-mini.md specs/backlog.md specs/active/README.md specs/done/README.md
+specs/plans/README.md specs/plans/TEMPLATE.md"
+DIRS="docs workflows prompts scripts adapters"
+
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+[ $# -eq 2 ] || { usage; exit 1; }
+[ -d "$1" ] || { echo "upgrade: $1 is not a folder" >&2; exit 1; }
+[ -d "$2" ] || { echo "upgrade: $2 is not a folder" >&2; exit 1; }
+B=$(CDPATH= cd -- "$1" && pwd)
+T=$(CDPATH= cd -- "$2" && pwd)
+[ "$T" != "$ROOT" ] && [ "$T" != "$B" ] || { echo "upgrade: the project is one of the releases" >&2; exit 1; }
+release() { grep -q 'STATUS: NOT CONFIGURED' "$1/AGENTS.md" 2>/dev/null && [ -f "$1/.anew-version" ]; }
+release "$ROOT" || { echo "upgrade: $ROOT is not an unconfigured ANEW release — run the new release's own scripts/upgrade" >&2; exit 1; }
+release "$B" || { echo "upgrade: $B is not an unconfigured ANEW release (AGENTS.md, .anew-version)" >&2; exit 1; }
+if [ ! -f "$T/AGENTS.md" ] || grep -q 'STATUS: NOT CONFIGURED' "$T/AGENTS.md"; then
+  echo "upgrade: $T is not bootstrapped (AGENTS.md) — run /bootstrap first" >&2; exit 1
+fi
+new=$(head -n 1 "$ROOT/.anew-version" | tr -d '\r')
+base=$(head -n 1 "$B/.anew-version" | tr -d '\r')
+have=$(head -n 1 "$T/.anew-version" 2>/dev/null | tr -d '\r')
+[ -n "$have" ] || { echo "upgrade: $T has no .anew-version — write the ANEW version it is based on" >&2; exit 1; }
+[ "$have" = "$base" ] || { echo "upgrade: the project is on $have, the base release is $base — fetch $have as the base" >&2; exit 1; }
+[ "$new" != "$base" ] || { echo "upgrade: the project is already on $new" >&2; exit 1; }
+git -C "$T" rev-parse --git-dir >/dev/null 2>&1 || { echo "upgrade: $T is not a git repository" >&2; exit 1; }
+[ -z "$(git -C "$T" status --porcelain)" ] || { echo "upgrade: $T has uncommitted changes — commit or stash them first" >&2; exit 1; }
+
+# Each path as "<release path>	<project path>": the core as it is, the installed adapters' files
+# where scripts/init puts them (keep in step with scripts/init; selftest checks it).
+TAB=$(printf '\t')
+# map <release dir or file> <project dir or file>: each file under it, in $r
+map() {
+  [ -e "$r/$1" ] || return 0
+  find "$r/$1" -type f | while IFS= read -r f; do
+    rel=${f#"$r/$1"}
+    printf '%s\t%s\n' "$1$rel" "$2$rel"
+  done
+}
+paths() {
+  for f in $FILES; do printf '%s\t%s\n' "$f" "$f"; done
+  for r in "$ROOT" "$B"; do
+    for d in $DIRS; do map "$d" "$d"; done
+    if [ -f "$T/CLAUDE.md" ] || [ -d "$T/.claude/commands" ]; then
+      map adapters/claude-code/CLAUDE.md CLAUDE.md
+      map adapters/claude-code/.claude .claude
+    fi
+    if [ -f "$T/.github/copilot-instructions.md" ] || [ -d "$T/.github/prompts" ]; then
+      map adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md
+      for d in prompts agents instructions; do map "adapters/github-copilot/$d" ".github/$d"; done
+    fi
+    if [ -d "$T/.cursor/commands" ] || [ -d "$T/.cursor/rules" ]; then
+      map adapters/cursor/rules .cursor/rules
+      map adapters/cursor/commands .cursor/commands
+    fi
+    if [ -d "$T/.agents/skills" ]; then
+      map adapters/codex/skills .agents/skills
+    fi
+  done
+  return 0
+}
+
+replaced=0; added=0; removed=0; kept=0; merges=0; scripts=0
+# same <a> <b>: both absent, or both present and identical
+same() { if [ -e "$1" ]; then [ -e "$2" ] && cmp -s "$1" "$2"; else [ ! -e "$2" ]; fi; }
+while IFS="$TAB" read -r src dst; do
+  [ -n "$src" ] || continue
+  n="$ROOT/$src"; b="$B/$src"; p="$T/$dst"
+  same "$p" "$n" && continue
+  if same "$p" "$b"; then
+    if [ -e "$n" ]; then
+      if [ -e "$p" ]; then echo "replaced $dst"; replaced=$((replaced + 1)); else echo "added    $dst"; added=$((added + 1)); fi
+      mkdir -p "$(dirname "$p")"
+      cp "$n" "$p"
+      case "$dst" in scripts/*.*) ;; scripts/*) scripts=1 ;; esac
+    else
+      rm -f "$p"
+      echo "removed  $dst"; removed=$((removed + 1))
+    fi
+  elif same "$n" "$b"; then
+    echo "kept     $dst (the project's change; $new left it as $base had it)"; kept=$((kept + 1))
+  else
+    echo "merge    $dst (changed by the project and by $new)"; merges=$((merges + 1))
+  fi
+done <<EOF
+$(paths | LC_ALL=C sort -u)
+EOF
+
+echo "Upgrade $base → $new in $T: $replaced replaced, $added added, $removed removed, $kept kept, $merges to merge."
+echo "Nothing is committed; .anew-version still says $base: /upgrade merges the files above and writes it last."
+if [ "$scripts" -eq 1 ]; then
+  echo "Git on Windows records no executable bit; when you commit, keep the scripts runnable:"
+  printf '  git add --chmod=+x'
+  for f in "$T"/scripts/*; do
+    [ -f "$f" ] || continue
+    case "$(basename "$f")" in *.*) ;; *) printf ' scripts/%s' "$(basename "$f")" ;; esac
+  done
+  echo ""
+fi

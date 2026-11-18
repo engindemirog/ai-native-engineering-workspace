@@ -488,7 +488,7 @@ if [ -d "$ROOT/adapters/claude-code/.claude/commands" ]; then
     x=/$(basename "$c" .md)
     grep -qF "### \`$x\`" "$ROOT/docs/commands.md" 2>/dev/null || { fail "command reference out of date: $x missing from docs/commands.md"; ref_fails=$((ref_fails + 1)); }
   done
-  for s in init adopt doctor check residue selftest; do
+  for s in init adopt upgrade doctor check residue selftest; do
     grep -qF "### \`scripts/$s\`" "$ROOT/docs/commands.md" 2>/dev/null || { fail "command reference out of date: scripts/$s missing from docs/commands.md"; ref_fails=$((ref_fails + 1)); }
   done
   [ "$ref_fails" -eq 0 ] && ok "command reference covers every command (docs/commands.md)"
