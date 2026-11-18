@@ -1,9 +1,9 @@
 # Spec 0013 — ANEW into a project: add it to an existing one, or start a new one, from the screen
 
-- Status: Draft
+- Status: Approved
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0013-plan.md`
-- Self-critique: pending
+- Self-critique: done (G-1–G-5 accepted as recommended, Engin Demiroğ, 2026-11-18)
 - Source: the human after 0012's SHIP: "projede anew yoksa githubdan anew entegre etmek, yepyeni
   proje oluşturmak, bootstrap yapılmamışsa bootstrap işini de uçtan uca ekrandan yapmak
   istiyorum" — the first two here; bootstrap on the screen is spec 0014.
@@ -93,7 +93,7 @@ Deliberately not done:
 - [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
 - [ ] Spec moved to `.anew-dev/done/`
 
-## Self-critique
+## Self-critique (approved 2026-11-18)
 - **G-1 — two specs.** Adding ANEW is a file copy; bootstrap is the agent's interview.
   Recommendation: this spec for the copy, 0014 for bootstrap, each shipped on its own.
 - **G-2 — the list lives in the template, in `scripts/adopt`.** Embedded in the extension it would
