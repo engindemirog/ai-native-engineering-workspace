@@ -1,6 +1,6 @@
 # Spec 0015 — ANEW upgraded on the screen: the newer release, the unchanged files, the agent for the rest, the merge
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0015-plan.md`
 - Self-critique: done (G-1–G-7 accepted as recommended, Engin Demiroğ, 2026-11-18)
@@ -85,32 +85,33 @@ Deliberately not done:
   against fixture repositories; the VS Code layer by the human's run at SHIP.
 
 ## Acceptance criteria
-- [ ] AC-1 — `scripts/upgrade` on fixtures: unchanged files replaced, new added, removed removed,
+- [x] AC-1 — `scripts/upgrade` on fixtures: unchanged files replaced, new added, removed removed,
   changed-on-both listed `merge`, project-only changes untouched, installed adapter files
   included, `.anew-version` not written, the refusals (selftest).
-- [ ] AC-2 — the offer: base and release read, the headings between them, the LTS rule (G-3),
+- [x] AC-2 — the offer: base and release read, the headings between them, the LTS rule (G-3),
   `.anew-version` missing or unknown (unit).
-- [ ] AC-3 — `prompts/upgrade.md`, `workflows/upgrade.md` and each adapter's `/upgrade` exist and
+- [x] AC-3 — `prompts/upgrade.md`, `workflows/upgrade.md` and each adapter's `/upgrade` exist and
   agree (unit test reading the files; doctor's adapter parity stays green).
-- [ ] AC-4 — the phases for: a newer release (available), started (in the agent), `.anew-version`
+- [x] AC-4 — the phases for: a newer release (available), started (in the agent), `.anew-version`
   at the new tag on `chore/anew-<tag>` (upgraded), checks green (verified), merged — through a
   squash merge (unit + integration on fixture repos).
-- [ ] AC-5 — the merge step offered only for an unmerged `chore/anew-<tag>`; no merge is ever run;
+- [x] AC-5 — the merge step offered only for an unmerged `chore/anew-<tag>`; no merge is ever run;
   the release folders removed once merged (unit + integration).
 - [ ] AC-6 — on this machine the packaged `.vsix`: a project on an older release (one made with
   0013 from v1.31) is upgraded to v1.32 from the screen — fetched, the script run, `/upgrade`
-  done, checks green, the PR opened; judged by the human at SHIP.
-- [ ] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+  done, checks green, the PR opened; judged by the human at SHIP. Run on the published v1.32
+  right after its release (plan, Risk 1): the verdict is recorded in the plan's Build evidence.
+- [x] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; README, `docs/commands.md` (`/upgrade`, `scripts/upgrade`, §F),
   `extensions/vscode/README.md`, CHANGELOG v1.32 ("How to upgrade" names the screen and the
   script) and `.anew-version` v1.32.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-18)
 - **G-1 — the unchanged files by a script, not the agent.** A file identical to the base release's
