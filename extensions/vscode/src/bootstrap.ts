@@ -19,12 +19,19 @@ export const NO_ANSWERS: Answers = { chat: '', docs: '', mode: '', trivial: '' }
 // A language code as bootstrap records it: `tr`, `en`, `pt-BR`.
 export const langOk = (s: string) => /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(s);
 
+// What was typed, as a code: `TR` → `tr`, `en_US` → `en-US`; '' when it is none (review round 1, L-2).
+export function lang(typed: string): string {
+  const [l, ...rest] = typed.trim().split(/[-_]/);
+  const code = [l.toLowerCase(), ...rest].join('-');
+  return langOk(code) ? code : '';
+}
+
 // The answers kept per workspace (or typed), each checked; anything else is not given.
 export function answers(raw: unknown): Answers {
   const r = (raw ?? {}) as Record<string, unknown>;
   const s = (k: string) => (typeof r[k] === 'string' ? (r[k] as string).trim() : '');
-  const chat = s('chat');
-  const docs = s('docs');
+  const chat = lang(s('chat'));
+  const docs = lang(s('docs'));
   const mode = s('mode');
   const trivial = s('trivial');
   return {
@@ -93,12 +100,12 @@ export interface Facts {
   gh: boolean; // gh is signed in
   started: boolean; // /bootstrap was started from this screen
   checkConf: boolean;
-  state: string; // HEAD and `git status --porcelain` now
+  state: string; // HEAD and the working tree's contents now (a tree id); '' once merged
 }
 
 // The facts from git: AGENTS.md on chore/bootstrap and on the default branch (the remote's, else a
 // local main or master), the branch checked out, the remote, the state doctor's answer is kept with.
-export async function gather(o: { git: (args: string[]) => Promise<string | null>; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean }): Promise<Facts> {
+export async function gather(o: { git: (args: string[], env?: Record<string, string>) => Promise<string | null>; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean; index: string }): Promise<Facts> {
   const { git } = o;
   const has = async (ref: string) => (await git(['rev-parse', '--verify', '--quiet', ref])) !== null;
   const current = (await git(['rev-parse', '--abbrev-ref', 'HEAD']))?.trim() ?? '';
@@ -109,18 +116,25 @@ export async function gather(o: { git: (args: string[]) => Promise<string | null
   for (const b of ['main', 'master']) if (!defaultBranch && (await has(`refs/heads/${b}`))) defaultBranch = b;
   const ref = defaultBranch && remote && (await has(`refs/remotes/${remote}/${defaultBranch}`)) ? `${remote}/${defaultBranch}` : defaultBranch;
   const base = ref ? (await git(['show', `${ref}:AGENTS.md`])) ?? '' : null;
-  const state = `${(await git(['rev-parse', 'HEAD'])) ?? ''}${(await git(['status', '--porcelain'])) ?? ''}`;
-  const gh = branch !== null && remote !== '' ? await o.gh() : false;
-  return { here: o.here, branch, base, defaultBranch, current, remote, gh, started: o.started, checkConf: o.checkConf, state };
+  const f: Facts = { here: o.here, branch, base, defaultBranch, current, remote, gh: false, started: o.started, checkConf: o.checkConf, state: '' };
+  // merged: nothing more to read — a bootstrapped project pays for no tree and no gh (L-3)
+  if (phase(f, null) === 'merged') return f;
+  // the contents, not the names: a temporary index of the whole working tree (review round 1, M-1)
+  const env = { GIT_INDEX_FILE: o.index };
+  const tree = (await git(['add', '--all'], env)) !== null ? ((await git(['write-tree'], env)) ?? '').trim() : '';
+  f.state = `${((await git(['rev-parse', 'HEAD'])) ?? '').trim()} ${tree}`;
+  f.gh = branch !== null && remote !== '' && bootstrapped(branch) ? await o.gh() : false;
+  return f;
 }
 
 export type Phase = 'not started' | 'in the agent' | 'generated' | 'verified' | 'merged';
 export const PHASES: Phase[] = ['not started', 'in the agent', 'generated', 'verified', 'merged'];
 
 // Merged: the default branch holds a configured AGENTS.md — a squash-merged PR included (plan
-// 0014, Risk 1). Without a known default branch: no chore/bootstrap and a configured working tree.
+// 0014, Risk 1). Without a known default branch: a configured working tree, chore/bootstrap not
+// checked out (review round 1, L-8).
 export function phase(f: Facts, doctor: Doctor | null): Phase {
-  if (f.base !== null ? bootstrapped(f.base) : f.branch === null && bootstrapped(f.here)) return 'merged';
+  if (f.base !== null ? bootstrapped(f.base) : bootstrapped(f.here) && (f.branch === null || f.current !== BRANCH)) return 'merged';
   if (!bootstrapped(f.branch ?? f.here)) return f.started || f.branch !== null ? 'in the agent' : 'not started';
   return doctor && green(doctor) && doctor.state === f.state && bootstrapped(f.here) ? 'verified' : 'generated';
 }
@@ -149,9 +163,19 @@ export function key(f: Facts, doctor: Doctor | null): string {
   return JSON.stringify([phase(f, doctor), f.branch !== null, f.current, f.remote, f.gh, f.checkConf, doctor ? doctor.state === f.state : null]);
 }
 
+// The command the screen offers, or null with what to do instead: bootstrap's output already waits
+// on chore/bootstrap (L-1), or it is merged and this working tree is not pulled (M-3).
+export function offered(v: { facts: Facts; answers: Answers; agent: Tool; doctor: Doctor | null }): { cmd: string | null; instead: string } {
+  const p = phase(v.facts, v.doctor);
+  if (p === 'not started' || p === 'in the agent') return { cmd: command(v.answers, v.agent), instead: '' };
+  if (p === 'merged') return { cmd: null, instead: bootstrapped(v.facts.here) ? '' : `bootstrap is merged on ${v.facts.defaultBranch || 'the default branch'}: git pull — this working tree still has the template's AGENTS.md` };
+  return { cmd: null, instead: bootstrapped(v.facts.here) ? 'bootstrap has run: its output is in this working tree' : `bootstrap's output waits on ${BRANCH}: git switch ${BRANCH}` };
+}
+
 export interface BootView {
   facts: Facts;
   answers: Answers;
+  typed: { chat: string; docs: string }; // as typed, kept on a redraw (L-2)
   suggested: string;
   agent: Tool;
   doctor: Doctor | null;
@@ -169,22 +193,27 @@ const LINE: Record<Phase, string> = {
   merged: 'Bootstrap is merged.',
 };
 
-// The bootstrap section of the Start screen; '' once merged.
+// The bootstrap section of the Start screen; '' once merged and pulled.
 export function section(v: BootView): string {
   const p = phase(v.facts, v.doctor);
-  if (p === 'merged') return '';
+  if (p === 'merged') {
+    const o = offered(v);
+    return o.instead ? `<section class="card boot" aria-label="Set up the project"><span class="label">Set up the project — bootstrap</span><p class="prose" role="status">${esc(o.instead.charAt(0).toUpperCase() + o.instead.slice(1))}.</p></section>` : '';
+  }
   const at = PHASES.indexOf(p);
-  const strip = `<nav class="strip" aria-label="Bootstrap">${PHASES.map((s, i) => `<span class="step${i < at ? ' done' : i === at ? ' now' : ''}">${i < at ? '✓ ' : i === at ? '● ' : ''}${esc(s)}</span>`).join('')}</nav>`;
+  const strip = `<ol class="strip" aria-label="Bootstrap">${PHASES.map((s, i) => `<li class="step${i < at ? ' done' : i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}>${i < at ? '✓ ' : i === at ? '● ' : ''}${esc(s)}</li>`).join('')}</ol>`;
   const configured = bootstrapped(v.facts.branch ?? v.facts.here);
   const pick = (name: string, id: string, label: string, on: boolean, rec?: boolean) =>
     `<button id="boot-${name}-${id || 'ask'}" class="secondary small" data-keep="1" aria-pressed="${on}">${esc(label)}${rec ? ' <span class="rec">recommended</span>' : ''}</button>`;
   const ask = configured ? '' : `<div class="answers">
-  <label class="field"><span class="label">Chat language</span><input name="chat" value="${esc(v.answers.chat)}" placeholder="${esc(v.suggested)} (recommended: your VS Code language); empty: asked"></label>
-  <label class="field"><span class="label">Document language</span><input name="docs" value="${esc(v.answers.docs)}" placeholder="${esc(v.suggested)} (recommended: the chat language, unless the team is international); empty: asked"></label>
+  <label class="field"><span class="label">Chat language</span><input name="chat" value="${esc(v.typed.chat)}" placeholder="${esc(v.suggested)} (recommended: your VS Code language); empty: asked"></label>
+  <label class="field"><span class="label">Document language</span><input name="docs" value="${esc(v.typed.docs)}" placeholder="${esc(v.suggested)} (recommended: the chat language, unless the team is international); empty: asked"></label>
   <div><span class="label">Mode</span><div class="row" role="group" aria-label="Mode">${MODES.map((m) => pick('mode', m.id, m.label, v.answers.mode === m.id, m.recommended)).join('')}</div>
   <p class="muted small">${esc(MODES.map((m) => `${m.label}: ${m.hint}`).join(' · '))}</p></div>
   <div><span class="label">Trivial changes (labels, typos)</span><div class="row" role="group" aria-label="Trivial changes">${TRIVIAL.map((t) => pick('trivial', t.id, t.label, v.answers.trivial === t.id, t.recommended)).join('')}</div></div>
+  ${(['chat', 'docs'] as const).filter((k) => v.typed[k].trim() && !v.answers[k]).map((k) => `<p class="missing small" role="note">“${esc(v.typed[k].trim())}” is not a language code: the ${k === 'chat' ? 'chat' : 'document'} language will be asked in the interview.</p>`).join('')}
   <p class="foot">Given answers ride on the command and are not asked again; codes like <code>tr</code>, <code>en</code>, <code>pt-BR</code>.</p>
+  ${p === 'in the agent' && v.facts.branch === null && v.facts.started ? '<p class="muted small">Not running after all? <button id="boot-reset" class="link" data-keep="1">Start over</button> — the phase goes back to “not started”.</p>' : ''}
 </div>`;
   const w = configured ? written(v.facts.branch ?? v.facts.here) : null;
   const made = w ? `<ul class="facts"><li>${esc(w.mode || 'no Mode line')}</li><li>${esc(w.language || 'no Language line')}</li><li>${v.facts.checkConf ? 'scripts/check.conf written' : 'no scripts/check.conf yet'}</li></ul>` : '';
@@ -207,5 +236,6 @@ ${ask}${made}${doctorBox}${merge}
 }
 
 export const CSS = `.boot .answers { display: flex; flex-direction: column; gap: 12px; }
+.boot ol.strip { list-style: none; margin: 0; padding: 0; }
 .boot .rec { font-size: 11px; opacity: .8; }
 .boot input { width: 100%; }`;

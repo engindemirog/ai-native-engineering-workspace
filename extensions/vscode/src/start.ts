@@ -124,7 +124,9 @@ ${answer}
 
 export function html(v: StartView): string {
   const setup = !v.bootstrapped;
-  const cmd = setup ? (v.boot ? boot.command(v.boot.answers, v.agent) : bootstrap(v.agent)) : command(v.kind, v.description, v.mode, v.agent);
+  // bootstrap's command, or none while its output waits on chore/bootstrap or is merged unpulled
+  const offer = setup && v.boot ? boot.offered(v.boot) : null;
+  const cmd = setup ? (offer ? offer.cmd : bootstrap(v.agent)) : command(v.kind, v.description, v.mode, v.agent);
   const base = setup ? '' : (command(v.kind, 'x', v.mode, v.agent) as string).slice(0, -2);
   const kinds = KINDS.map((k) => `<button id="kind-${k.id}" class="kind" aria-pressed="${k.id === v.kind}" data-keep="1">
   <strong>${esc(k.label)}</strong><span>${esc(k.hint)}</span><code>${esc(forAgent(k.id === 'feature' && v.mode === 'strict' ? '/analyze' : k.cmd, v.agent))}</code>
@@ -168,7 +170,7 @@ ${agents(v)}
 ${work}
 <div class="decide">
   <span class="label">Goes to the agent</span>
-  <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : EMPTY}</pre>
+  <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : offer?.instead ? esc(offer.instead) : EMPTY}</pre>
   <ul class="facts"><li>A new session — no context carried over</li><li>${esc(modeLine)}</li><li>${setup ? 'It stops for your approval of what bootstrap writes' : 'First stop: the spec approval is yours'}</li></ul>
   <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${v.installing ? ' data-hold="1"' : ''}${cmd && !v.installing ? '' : ' disabled'}>Copy command</button></div>
   <p class="foot">${esc(canStart && !ready ? 'Start waits for the Claude Code adapter: install it above, or copy the command.' : foot)}</p>
