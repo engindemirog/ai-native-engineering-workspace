@@ -1,8 +1,17 @@
 # ANEW for VS Code
 
-The human's part of the ANEW process on a screen, inside VS Code — over two scripts,
-`scripts/status --json` (what it shows) and `scripts/gate` (what it writes):
+The human's part of the ANEW process on a screen, inside VS Code — over the template's scripts:
+`scripts/status --json` (what it shows), `scripts/gate` (what it writes), `scripts/init` and
+`scripts/adopt` (what it installs):
 
+- **ANEW into a project** (the ANEW view, in a folder without ANEW): **Add ANEW to this project**
+  copies the core of the latest release into the open folder — its own `scripts/adopt`, files
+  that exist kept, nothing committed; **New ANEW project** (also with no folder open) creates a
+  folder with the core, a git repository and one commit `chore: ANEW <tag>`, and opens it. Both
+  name the folder and the version first; the setting `anew.templateRepository` (user or machine
+  settings only) points them at a fork, named in the confirmation. A kept `AGENTS.md`,
+  `.gitattributes` or `.gitignore` gets ANEW's beside it as `<name>.anew`, to merge; on Windows
+  the notification copies the `git add --chmod=+x` line for your commit.
 - **The sidebar** (the ANEW view in the activity bar): **+ New work**, then every spec as a card,
   grouped as *your turn* · *in progress* · *shipped*, each naming the decision it waits for. The
   view's badge and the status bar show how many decisions wait for you.
@@ -45,8 +54,10 @@ by hand.
 ## Install
 
 From the GitHub release: download `anew-<version>.vsix`, then in VS Code: Extensions view → `…` →
-**Install from VSIX…**. It activates in a workspace whose root holds `scripts/status` and
-`AGENTS.md`, and stays silent anywhere else.
+**Install from VSIX…**. Its screens work in a workspace whose root holds `scripts/status` and
+`AGENTS.md`; anywhere else the ANEW view offers only **Add ANEW to this project** and **New ANEW
+project**. Those two reach the network: GitHub's `releases/latest` answer and a `git clone` of
+that tag — nothing is sent.
 
 ## The shell
 

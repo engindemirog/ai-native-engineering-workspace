@@ -29,10 +29,10 @@ Always available, outside the loop:
 
 | Group | Commands |
 |---|---|
-| Terminal scripts | `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
+| Terminal scripts | `scripts/adopt` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
-| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status` and `scripts/gate` |
+| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init` and `scripts/adopt` |
 
 ## How to read this page
 
@@ -49,6 +49,30 @@ Every command has the same fields:
 Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`, Modes).
 
 ## A — Terminal scripts
+
+### `scripts/adopt`
+- **What it does:** copies the ANEW core from a template copy into a project folder:
+  `AGENTS.md`, `.anew-version`, `docs/`, `workflows/`, `prompts/`, `scripts/`, `adapters/`,
+  `specs/` (templates, READMEs, `backlog.md`), `.gitattributes`, `.gitignore`,
+  `.github/workflows/check.yml`, `.github/pull_request_template.md`, and a three-line
+  `README.md` when the project has none. Never the template's own files (`.anew-dev/`,
+  `extensions/`, its README, `CHANGELOG.md`, `LICENSE`, `.claude/`).
+- **When to use it:** once, to bring ANEW into an existing project or an empty folder — run from a
+  clone of the release tag: `<template>/scripts/adopt <project>`. Then `scripts/init`, then
+  `/bootstrap`.
+- **Reads / writes:** reads the template it runs from — a clean clone of a release tag, since it
+  copies every file it finds in the folders; writes the core into the target. Files that exist
+  are kept and named (`kept   <path> (exists)`), never overwritten or merged; a kept `AGENTS.md`,
+  `.gitattributes` or `.gitignore` gets the template's beside it as `<name>.anew` and a
+  `merge  …` line — an `AGENTS.md` without ANEW's invariant rules fails doctor. No git call:
+  nothing is staged or committed; it prints the `git add --chmod=+x scripts/…` line that keeps
+  the scripts executable in a commit made on Windows.
+- **Stops at:** no gate; it prints what was written and kept, and the next step.
+- **Lite / Strict:** no difference — it runs before a mode exists.
+- **Refusal (exit 1):** no target, a target that is not a folder, the template itself, or a source
+  that is not an unconfigured template (a bootstrapped project is not a template).
+- **Common mistake:** expecting a kept file to be updated — `.gitignore`, README and any doc that
+  exists stay yours; compare them with the template by hand.
 
 ### `scripts/init`
 - **What it does:** installs one AI tool adapter into the repo root: `claude-code`,
@@ -406,7 +430,12 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ## F — Editor: the VS Code extension
 
 ### The VS Code extension (`extensions/vscode/`)
-- **What it does:** the human's part of the process on a screen, over two scripts:
+- **What it does:** the human's part of the process on a screen, over the template's scripts:
+  - **ANEW into a project** (a folder without ANEW): **Add ANEW to this project** — the latest
+    release cloned, its `scripts/adopt` run into the open folder (existing files kept, nothing
+    committed); **New ANEW project** — a new folder, `git init`, `scripts/adopt`, one commit
+    `chore: ANEW <tag>` with the scripts executable, opened; both after a confirmation naming the
+    folder and the version;
   - the sidebar: **+ New work**, then the work as cards (your turn · in progress · shipped), each
     naming the decision it waits for; a waiting badge and a status bar count — all from
     `scripts/status --json`;
@@ -454,6 +483,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 
 | Command | One line | Stops at | Lite | Strict |
 |---|---|---|---|---|
+| `scripts/adopt` | Bring the ANEW core into a project | Written / kept, next step | Same | Same |
 | `scripts/init` | Install an adapter | Prints next step | Same | Same |
 | `scripts/doctor` | Workspace health; `--strict` in CI | Exit 0 / 1 | Same | Same |
 | `scripts/check` | The verification contract; `--fast` to iterate | `CHECK GREEN` / `CHECK FAILED` | Same | Same |

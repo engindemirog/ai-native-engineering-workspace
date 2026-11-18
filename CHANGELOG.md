@@ -34,6 +34,42 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.30 — ANEW into a project: scripts/adopt, and Add / New on the screen
+
+A current release (not in `1.24.x`). No rule changes.
+
+- **`scripts/adopt <target>`** (new): copies the ANEW core from a template copy into a project —
+  `AGENTS.md`, `.anew-version`, `docs/`, `workflows/`, `prompts/`, `scripts/`, `adapters/`,
+  `specs/` (templates, READMEs, `backlog.md`), `.gitattributes`, `.gitignore`,
+  `.github/workflows/check.yml`, `.github/pull_request_template.md`, and a three-line
+  `README.md` when there is none. Never the template's own files (`.anew-dev/`, `extensions/`,
+  its README, `CHANGELOG.md`, `LICENSE`, `.claude/`). Existing files are kept and named; a kept
+  `AGENTS.md`, `.gitattributes` or `.gitignore` gets the template's beside it as `<name>.anew`,
+  to merge; no git call; it prints the `git add --chmod=+x` line for a Windows commit. Refused from a configured
+  project (only a template copies).
+- **`check.yml`:** each step of the `extension` job runs only where `extensions/vscode/` exists,
+  so an adopted project's CI is green before bootstrap.
+- **`scripts/doctor`:** `scripts/adopt` joins the scripts the command reference must cover.
+- **Extension 0.4.0** (the `.vsix` is attached to the release): in a folder without ANEW the view
+  offers **Add ANEW to this project** and **New ANEW project** (with no folder open, New) — the
+  latest release of `anew.templateRepository` cloned, its `scripts/adopt` run; New also makes
+  the repository and one commit `chore: ANEW <tag>`, then opens the folder. After an Add the
+  screens start in the same window.
+
+### Upgrading
+
+- `scripts/adopt`: new — copy it.
+- `scripts/doctor`, behavior: the command reference must also name `scripts/adopt` (a copy of
+  `docs/commands.md` without its section fails doctor).
+- `scripts/selftest`: the adopt scenarios and `check.yml`'s guard — copy it.
+- `.github/workflows/check.yml`: intent: the `extension` job's steps guarded by
+  `hashFiles('extensions/vscode/package.json')`; a project without `extensions/` may also delete
+  the job.
+- `docs/commands.md` (`scripts/adopt`, §F), `README.md` (Quickstart): intent: the way into an
+  existing project.
+- `extensions/vscode/` (optional): replace the folder, or install the `.vsix` from the release.
+- Full diff: `/compare/v1.29.1...v1.30`.
+
 ## v1.29.1 — The VS Code extension: the agent's next step on the screen
 
 A current release (not in `1.24.x`). No rule changes: the extension stays a screen over

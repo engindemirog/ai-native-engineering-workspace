@@ -1,0 +1,91 @@
+#!/bin/sh
+# ANEW adopt — copies the ANEW core from this template into a project folder.
+# Usage: ./scripts/adopt <target>
+# Files that exist in the target are kept (never overwritten); a kept AGENTS.md, .gitattributes or
+# .gitignore gets the template's beside it as <name>.anew, to merge by hand. Nothing is committed.
+# The template's own files (.anew-dev/, extensions/, its README, CHANGELOG.md, LICENSE, .claude/)
+# are never copied.
+set -e
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+usage() {
+  echo "Usage: ./scripts/adopt <target>"
+  echo ""
+  echo "Copies the ANEW core into <target> (an existing folder): AGENTS.md, .anew-version, docs/,"
+  echo "workflows/, prompts/, scripts/, adapters/, specs/ (templates and READMEs), .gitattributes,"
+  echo ".gitignore, .github/workflows/check.yml, .github/pull_request_template.md, and a short"
+  echo "README.md when the target has none. Existing files are kept; a kept AGENTS.md, .gitattributes or"
+  echo ".gitignore gets the template's beside it as <name>.anew, to merge. Nothing is committed."
+  echo "Run it from a clean clone of a release tag: it copies the files it finds in the folders."
+}
+
+# The core: single files, and folders copied whole (spec 0013, R1).
+FILES="AGENTS.md .anew-version .gitattributes .gitignore .github/workflows/check.yml .github/pull_request_template.md
+specs/TEMPLATE.md specs/TEMPLATE-mini.md specs/backlog.md specs/active/README.md specs/done/README.md
+specs/plans/README.md specs/plans/TEMPLATE.md"
+DIRS="docs workflows prompts scripts adapters"
+
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+[ $# -eq 1 ] || { usage; exit 1; }
+[ -d "$1" ] || { echo "adopt: $1 is not a folder" >&2; exit 1; }
+T=$(CDPATH= cd -- "$1" && pwd)
+[ "$T" != "$ROOT" ] || { echo "adopt: the target is this template itself" >&2; exit 1; }
+grep -q 'STATUS: NOT CONFIGURED' "$ROOT/AGENTS.md" 2>/dev/null \
+  || { echo "adopt: $ROOT is not an unconfigured ANEW template (AGENTS.md) — adopt from a template copy" >&2; exit 1; }
+version=$(head -n 1 "$ROOT/.anew-version" 2>/dev/null | tr -d '\r')
+
+written=0
+kept=0
+merges=0
+# put <relpath>: copy one file unless it exists in the target. A kept AGENTS.md, .gitattributes or
+# .gitignore gets the template's beside it as <path>.anew, to merge: ANEW's invariant rules, its
+# scripts kept LF, its ignores (review round 1, M-1).
+put() {
+  if [ -e "$T/$1" ]; then
+    echo "kept   $1 (exists)"
+    kept=$((kept + 1))
+    case "$1" in AGENTS.md|.gitattributes|.gitignore)
+      # the same as the template's (a rerun): nothing to merge (review round 2, R2-1)
+      cmp -s "$ROOT/$1" "$T/$1" && return 0
+      if [ -e "$T/$1.anew" ]; then
+        echo "merge  $1.anew into $1 ($1.anew exists, not replaced: compare it with the template's), then delete $1.anew"
+      else
+        cp "$ROOT/$1" "$T/$1.anew"; written=$((written + 1))
+        echo "merge  $1.anew into $1 (ANEW's version of it), then delete $1.anew"
+      fi
+      merges=$((merges + 1)) ;;
+    esac
+  else
+    mkdir -p "$(dirname "$T/$1")"
+    cp "$ROOT/$1" "$T/$1"
+    written=$((written + 1))
+  fi
+}
+
+for f in $FILES; do put "$f"; done
+for d in $DIRS; do
+  # a here-document, not a pipe: put's counters stay in this shell
+  while IFS= read -r f; do
+    [ -n "$f" ] && put "${f#"$ROOT"/}"
+  done <<EOF
+$(find "$ROOT/$d" -type f | LC_ALL=C sort)
+EOF
+done
+if [ -e "$T/README.md" ]; then
+  echo "kept   README.md (exists)"
+  kept=$((kept + 1))
+else
+  printf '# %s\n\nBuilt with ANEW %s — the rules are in AGENTS.md.\n' "$(basename "$T")" "${version:-(version unknown)}" > "$T/README.md"
+  written=$((written + 1))
+fi
+
+echo "Adopted ANEW ${version:-(version unknown)} into $T: $written written, $kept kept."
+[ "$merges" -eq 0 ] || echo "To merge: $merges file(s) above (merge … .anew). AGENTS.md without ANEW's invariant rules fails doctor."
+echo "Nothing is committed. Git on Windows records no executable bit; when you commit, keep the scripts runnable:"
+printf '  git add --chmod=+x'
+for f in "$T"/scripts/*; do
+  [ -f "$f" ] || continue
+  case "$(basename "$f")" in *.*) ;; *) printf ' scripts/%s' "$(basename "$f")" ;; esac
+done
+echo ""
+echo "Next: ./scripts/init <tool>, then /bootstrap (\$bootstrap in Codex)."
