@@ -470,7 +470,11 @@ class Start {
     this.web.reveal();
     void this.gather().catch((e: Error) => { void vscode.window.showErrorMessage(`ANEW: git could not be read: ${e.message}`); }).then(() => this.render()) // never blank (round 3, L-B)
       // the offer from the network after the first draw, never before it (0015 review round 1, M-3)
-      .then(() => this.upLoadOffer()).then(() => { if (!this.disposed && this.upFacts !== null) this.render(); });
+      .then(() => this.upLoadOffer()).then(() => {
+        // redrawn only when there is an upgrade to show: no lost focus for nothing (N-3)
+        const v = this.disposed ? null : this.upView(this.setup().agent);
+        if (v !== null && up.section(v) !== '') this.render();
+      });
   }
 
   private claude(): string | null {
@@ -749,9 +753,10 @@ class Start {
     if (type.startsWith('up-pick-')) { this.upPick = type.slice(8); return this.render(); }
     if (type === 'up-fetch') return this.upFetch();
     if (type === 'up-reset') {
+      if (this.upBusy) return this.render(); // never mid-fetch (N-2)
       const b = this.upTo() ? up.branchFor(this.upTo()) : '';
       await this.upForget();
-      if (b) void vscode.window.showInformationMessage(`The fetched releases and the remembered tag are gone; ${b} is kept — switch back and delete it yourself if you abandon the upgrade.`);
+      if (b) void vscode.window.showInformationMessage(`The fetched releases and the remembered tag are gone; ${b} and the script's changes in the working tree are kept — discard or stash them before you fetch again; switch back and delete the branch if you abandon the upgrade.`);
       await this.gather();
       return this.render();
     }

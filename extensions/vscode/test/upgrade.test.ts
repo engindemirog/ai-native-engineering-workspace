@@ -31,6 +31,7 @@ test('AC-2: the release offered from the base, the LTS line, the base never gues
   assert.deepEqual(offer({ version: 'v1.30', latest: 'v1.31', tags }).choices, [], 'a latest without scripts/upgrade is not offered');
   // G-3, review round 1 M-1 and L-1: the LTS line has no scripts/upgrade — the latest only as an
   // explicit choice, with a note; never a v1.24.x, tags read or not
+  assert.match(offer({ version: 'v1.24', latest: 'v1.32', tags: [] }).note, /LTS line/, 'v1.24 itself (N-7a)');
   for (const t of [tags, []]) {
     const o = offer({ version: 'v1.24.1', latest: 'v1.32', tags: t });
     assert.deepEqual(o.choices, ['v1.32']);
@@ -71,6 +72,7 @@ test('AC-4: the phases — available, in the agent, upgraded, verified, merged (
   assert.equal(phase(facts({ to: '' }), null), 'available');
   assert.equal(phase(facts(), null), 'available');
   assert.equal(phase(facts({ fetched: true, branch: 'v1.31', current: 'chore/anew-v1.32' }), null), 'in the agent');
+  assert.equal(phase(facts({ fetched: false, branch: 'v1.31', current: 'chore/anew-v1.32' }), null), 'available', 'the releases gone: Fetch again (N-4)');
   const up = facts({ fetched: true, branch: 'v1.32', current: 'chore/anew-v1.32', version: 'v1.32' });
   assert.equal(phase(up, null), 'upgraded');
   assert.equal(phase(up, ok), 'verified');
@@ -117,6 +119,8 @@ test('AC-5: the merge step only for chore/anew-<tag>; never a merge; the section
   assert.ok(section(view(facts({ fetched: false }))).includes('id="up-reset"'));
   assert.ok(section(view(facts({ fetched: true, branch: 'v1.31', current: 'chore/anew-v1.32' }))).includes('id="up-reset"'));
   assert.ok(!section(view(up)).includes('id="up-reset"'));
+  assert.ok(!section(view(facts({ fetched: false }), { busy: 'fetching' })).includes('id="up-reset"'), 'not while a fetch runs (N-2)');
+  assert.ok(section(view(facts({ fetched: false }))).includes('discard or stash them before you fetch again'));
   // the cleanup decision: merged and pulled only
   assert.equal(cleanup({ ...up, base: 'v1.32' }), true);
   assert.equal(cleanup({ ...up, base: 'v1.32', version: 'v1.31' }), false, 'merged, not pulled: kept');

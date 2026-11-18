@@ -1204,6 +1204,7 @@ for a in claude-code github-copilot cursor codex; do sh "$UP/scripts/init" "$a" 
 grep -v 'STATUS: NOT CONFIGURED' "$UP/AGENTS.md" > "$TMP/agents" && cp "$TMP/agents" "$UP/AGENTS.md"
 printf '\nour domain\n' >> "$UP/docs/domain.md"; printf '\nour architecture\n' >> "$UP/docs/architecture.md"
 printf 'ours\n' > "$UP/docs/new-doc.md"; rm "$UP/docs/security.md"; rm -rf "$UP/adapters/cursor"
+printf '\nour step\n' >> "$UP/.claude/commands/new-feature.md"   # a customized adapter file (N-1)
 ug() { git -C "$UP" -c core.safecrlf=false -c user.name=selftest -c user.email=selftest@example.invalid "$@"; }
 ug init -q; ug config core.autocrlf false; ug add -A; ug commit -qm bootstrapped
 head0=$(ug rev-parse HEAD)
@@ -1221,13 +1222,15 @@ report $? "upgrade: … each written as the new release has it"
 grep -q '^our domain$' "$UP/docs/domain.md" && ! grep -q 'v9.1 text' "$UP/docs/domain.md" && grep -q '^our architecture$' "$UP/docs/architecture.md"
 report $? "upgrade: a file the project changed is never touched"
 missed=$(for d in CLAUDE.md .claude .github/copilot-instructions.md .github/prompts .github/agents .github/instructions .cursor .agents; do
-  [ -e "$UP/$d" ] && find "$UP/$d" -type f ! -name settings.local.json; done | while IFS= read -r f; do grep -q '^# v9.1$' "$f" || echo "$f"; done)
+  [ -e "$UP/$d" ] && find "$UP/$d" -type f ! -name settings.local.json ! -path '*/.claude/commands/new-feature.md'; done | while IFS= read -r f; do grep -q '^# v9.1$' "$f" || echo "$f"; done)
 [ -z "$missed" ] && [ -f "$UP/.cursor/commands/review.md" ] && [ -f "$UP/.agents/skills/review/SKILL.md" ]
 report $? "upgrade: every file scripts/init installed, for each adapter, is upgraded${missed:+ — missed: $missed}"
 [ "$(head -n 1 "$UP/.anew-version")" = "v9.0" ]; report $? "upgrade: .anew-version is not written"
 [ "$(ug rev-parse HEAD)" = "$head0" ]; report $? "upgrade: nothing is committed"
 has "git add --chmod=+x" "upgrade: names the chmod line when it wrote a script"
 has " .claude/hooks/new-hook.sh" "upgrade: … and the hooks, run directly too (review round 1, L-4)"
+has "merge    .claude/commands/new-feature.md" "upgrade: a customized adapter file is listed to merge, the adapter still upgraded (N-1)"
+grep -q '^our step$' "$UP/.claude/commands/new-feature.md"; report $? "upgrade: … and left as the project wrote it"
 has "to merge." "upgrade: a summary line"
 has "added    .cursor/commands/new-cmd.md" "upgrade: an installed adapter gets a file new upstream"
 has "removed  .cursor/commands/adr.md" "upgrade: … and loses one removed upstream"
@@ -1248,7 +1251,7 @@ exits 1 "upgrade: refused on uncommitted changes";   has "has uncommitted change
 U2="$TMP/up-project-2"; mkdir -p "$U2"
 sh "$UB/scripts/adopt" "$U2" >/dev/null
 grep -v 'STATUS: NOT CONFIGURED' "$U2/AGENTS.md" > "$TMP/agents" && cp "$TMP/agents" "$U2/AGENTS.md"
-printf 'our own notes\n' > "$U2/CLAUDE.md"
+printf 'our own notes\n' > "$U2/CLAUDE.md"; mkdir -p "$U2/.cursor/commands"; printf 'ours\n' > "$U2/.cursor/commands/own.md"
 sed 's/$/\r/' "$U2/docs/testing.md" > "$TMP/crlf" && cp "$TMP/crlf" "$U2/docs/testing.md"
 git -C "$U2" init -q; git -C "$U2" config core.autocrlf false; git -C "$U2" -c core.safecrlf=false add -A
 git -C "$U2" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm own
@@ -1257,6 +1260,8 @@ exits 0 "upgrade: a project with no adapter installed"
 hasnt " CLAUDE.md" "upgrade: a file of the project's own is no adapter: not touched, not listed"
 hasnt " .claude/" "upgrade: … and no adapter is half-installed"
 [ "$(cat "$U2/CLAUDE.md")" = "our own notes" ]; report $? "upgrade: … CLAUDE.md as it was"
+has "skipped  .cursor/ (no file there is ANEW's copy" "upgrade: an adapter folder with none of ANEW's files is named, not upgraded (N-1)"
+[ "$(ls "$U2/.cursor/commands")" = "own.md" ]; report $? "upgrade: … and nothing is added to it"
 has "replaced docs/testing.md" "upgrade: a CRLF copy of an unchanged file is still unchanged"
 cmp -s "$U2/docs/testing.md" "$UN/docs/testing.md"; report $? "upgrade: … and gets the new release's bytes"
 mkdir -p "$TMP/up-fake/scripts"; cp "$UN/scripts/upgrade" "$TMP/up-fake/scripts/"

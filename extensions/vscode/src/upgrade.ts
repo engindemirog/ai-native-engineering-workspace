@@ -38,7 +38,7 @@ export function offer(o: { version: string; latest: string; tags: string[] }): O
   if (!isTag(v)) return { note: '', choices: [], why: `.anew-version says “${v}”, not a release tag (e.g. v1.31): write the version this project is based on.` };
   if (o.tags.length && !o.tags.includes(v)) return { note: '', choices: [], why: `no release ${v} in the template repository: the base cannot be fetched. Write the version this project is based on into .anew-version.` };
   const latest = isTag(o.latest) && cmpTag(o.latest, v) > 0 && cmpTag(o.latest, FIRST) >= 0 ? [o.latest] : [];
-  if (v.startsWith(LTS)) {
+  if (v === LTS.slice(0, -1) || v.startsWith(LTS)) { // v1.24 itself too (N-7a)
     return latest.length ? { choices: latest, why: '', note: `This project is on the LTS line (${LTS}x), which has no scripts/upgrade: upgrade within the line by hand (CHANGELOG, "How to upgrade"). ${latest[0]} leaves the line — pick it only if you mean to.` } : { choices: [], why: '', note: '' };
   }
   return { choices: latest, why: '', note: '' };
@@ -124,7 +124,8 @@ export const PHASES: Phase[] = ['available', 'in the agent', 'upgraded', 'verifi
 export function phase(f: Facts, checks: Checks | null): Phase {
   if (!f.to) return 'available';
   if (f.base !== null ? f.base === f.to : f.version === f.to && (f.branch === null || f.current !== branchFor(f.to))) return 'merged';
-  if (f.branch !== f.to) return f.branch !== null || f.fetched ? 'in the agent' : 'available';
+  // the releases gone (Start over, a removed folder): Fetch again, the branch there or not (N-4)
+  if (f.branch !== f.to) return f.fetched ? 'in the agent' : 'available';
   return checks && green(checks) && checks.state === f.state && !f.state.startsWith(UNREAD) && f.version === f.to ? 'verified' : 'upgraded';
 }
 
@@ -190,7 +191,7 @@ export function section(v: View): string {
   const agentBox = p === 'in the agent' ? `<div class="row"><span>Run in your agent:</span><code class="cmd">${esc(cmd)}</code><button id="up-copy" class="secondary" data-keep="1">Copy</button>${canContinue(v.agent) ? '<button id="up-continue" class="primary" data-keep="1">Continue in Claude Code</button>' : ''}</div>
   <p class="muted small">${esc(canContinue(v.agent) ? 'Continue opens a fresh session with the command.' : v.agent.agent !== 'claude-code' ? `Copy it into ${adapter(v.agent.agent).label}'s chat.` : 'Copy the command into your agent.')}</p>` : '';
   // a start that went nowhere, or one to begin again: the releases and the tag forgotten; the branch kept (M-2)
-  const reset = f.to && (p === 'available' || p === 'in the agent') ? `<p class="muted small">Not going on, or starting again? <button id="up-reset" class="link" data-keep="1">Start over</button> — the fetched releases and the remembered tag are removed; ${esc(branchFor(f.to))} is kept.</p>` : '';
+  const reset = f.to && !v.busy && (p === 'available' || p === 'in the agent') ? `<p class="muted small">Not going on, or starting again? <button id="up-reset" class="link" data-keep="1">Start over</button> — the fetched releases and the remembered tag are removed; ${esc(branchFor(f.to))} and the script's changes in the working tree are kept: discard or stash them before you fetch again.</p>` : '';
   const c = v.checks;
   const stale = c && c.state !== f.state;
   const onBranch = f.current === branchFor(to);

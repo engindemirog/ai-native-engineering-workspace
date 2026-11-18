@@ -57,9 +57,18 @@ same() {
     [ ! -e "$2" ]
   fi
 }
-# installed <release marker> <project marker>: an adapter counts when its marker is ANEW's copy,
-# never by a file of the project's own that happens to have the name (L-2)
-installed() { [ -e "$T/$2" ] && { same "$T/$2" "$B/$1" || same "$T/$2" "$ROOT/$1"; }; }
+# ours <release dir or file> <project dir or file>: some file there is ANEW's copy (the base's or the
+# new release's) — an adapter counts by its own files, never by a file of the project's that happens
+# to have the name (review round 1, L-2), nor is it lost when one of them was customized (round 2, N-1)
+ours() {
+  for r in "$B" "$ROOT"; do
+    [ -e "$r/$1" ] || continue
+    find "$r/$1" -type f | while IFS= read -r f; do
+      rel=${f#"$r/$1"}
+      if [ -e "$T/$2$rel" ] && same "$T/$2$rel" "$f"; then echo yes; break; fi
+    done
+  done | grep -q yes
+}
 
 # Each path as "<release path>	<project path>": the core as it is, the installed adapters' files
 # where scripts/init puts them (keep in step with scripts/init; selftest checks it).
@@ -73,10 +82,10 @@ map() {
   done
 }
 CC=0; GH=0; CU=0; CX=0
-installed adapters/claude-code/.claude/commands/new-feature.md .claude/commands/new-feature.md && CC=1
-installed adapters/github-copilot/prompts/new-feature.prompt.md .github/prompts/new-feature.prompt.md && GH=1
-installed adapters/cursor/commands/new-feature.md .cursor/commands/new-feature.md && CU=1
-installed adapters/codex/skills/new-feature/SKILL.md .agents/skills/new-feature/SKILL.md && CX=1
+{ ours adapters/claude-code/.claude .claude || ours adapters/claude-code/CLAUDE.md CLAUDE.md; } && CC=1
+{ ours adapters/github-copilot/prompts .github/prompts || ours adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md; } && GH=1
+{ ours adapters/cursor/commands .cursor/commands || ours adapters/cursor/rules .cursor/rules; } && CU=1
+ours adapters/codex/skills .agents/skills && CX=1
 paths() {
   for f in $FILES; do printf '%s\t%s\n' "$f" "$f"; done
   for r in "$ROOT" "$B"; do
@@ -106,10 +115,16 @@ GD=$(git -C "$T" rev-parse --absolute-git-dir)
 mkdir -p "$GD/anew-upgrade"
 OUT="$GD/anew-upgrade/upgrade-$new.out"
 tmp=$(mktemp "${TMPDIR:-/tmp}/anew-upgrade.XXXXXX")
-trap 'rm -f "$tmp"' EXIT INT TERM
+trap 'rm -f "$tmp"' EXIT
+trap 'exit 130' INT TERM # stop on Ctrl-C: a killed cmp must never read as "different" (N-6)
 
 replaced=0; added=0; removed=0; kept=0; merges=0; exe=0
 {
+# a folder of an adapter's with none of ANEW's files in it: named, not upgraded (N-1)
+[ "$CC" -eq 1 ] || [ ! -d "$T/.claude" ] || echo "skipped  .claude/ (no file there is ANEW's copy: the claude-code adapter is not upgraded)"
+[ "$GH" -eq 1 ] || [ ! -d "$T/.github/prompts" ] || echo "skipped  .github/prompts/ (no file there is ANEW's copy: the github-copilot adapter is not upgraded)"
+[ "$CU" -eq 1 ] || [ ! -d "$T/.cursor" ] || echo "skipped  .cursor/ (no file there is ANEW's copy: the cursor adapter is not upgraded)"
+[ "$CX" -eq 1 ] || [ ! -d "$T/.agents/skills" ] || echo "skipped  .agents/skills/ (no file there is ANEW's copy: the codex adapter is not upgraded)"
 while IFS="$TAB" read -r src dst; do
   [ -n "$src" ] || continue
   n="$ROOT/$src"; b="$B/$src"; p="$T/$dst"
