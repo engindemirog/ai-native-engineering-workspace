@@ -1,7 +1,8 @@
 #!/bin/sh
 # ANEW adopt — copies the ANEW core from this template into a project folder.
 # Usage: ./scripts/adopt <target>
-# Files that exist in the target are kept (never overwritten, never merged); nothing is committed.
+# Files that exist in the target are kept (never overwritten); a kept AGENTS.md, .gitattributes or
+# .gitignore gets the template's beside it as <name>.anew, to merge by hand. Nothing is committed.
 # The template's own files (.anew-dev/, extensions/, its README, CHANGELOG.md, LICENSE, .claude/)
 # are never copied.
 set -e
@@ -13,7 +14,8 @@ usage() {
   echo "Copies the ANEW core into <target> (an existing folder): AGENTS.md, .anew-version, docs/,"
   echo "workflows/, prompts/, scripts/, adapters/, specs/ (templates and READMEs), .gitattributes,"
   echo ".gitignore, .github/workflows/check.yml, .github/pull_request_template.md, and a short"
-  echo "README.md when the target has none. Existing files are kept. Nothing is committed."
+  echo "README.md when the target has none. Existing files are kept; a kept AGENTS.md, .gitattributes or"
+  echo ".gitignore gets the template's beside it as <name>.anew, to merge. Nothing is committed."
   echo "Run it from a clean clone of a release tag: it copies the files it finds in the folders."
 }
 
@@ -43,8 +45,14 @@ put() {
     echo "kept   $1 (exists)"
     kept=$((kept + 1))
     case "$1" in AGENTS.md|.gitattributes|.gitignore)
-      if [ ! -e "$T/$1.anew" ]; then cp "$ROOT/$1" "$T/$1.anew"; written=$((written + 1)); fi
-      echo "merge  $1.anew into $1 (ANEW's version of it), then delete $1.anew"
+      # the same as the template's (a rerun): nothing to merge (review round 2, R2-1)
+      cmp -s "$ROOT/$1" "$T/$1" && return 0
+      if [ -e "$T/$1.anew" ]; then
+        echo "merge  $1.anew into $1 ($1.anew exists, not replaced: compare it with the template's), then delete $1.anew"
+      else
+        cp "$ROOT/$1" "$T/$1.anew"; written=$((written + 1))
+        echo "merge  $1.anew into $1 (ANEW's version of it), then delete $1.anew"
+      fi
       merges=$((merges + 1)) ;;
     esac
   else

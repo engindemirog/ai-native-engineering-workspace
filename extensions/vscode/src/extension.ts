@@ -170,7 +170,8 @@ async function adoptInto(shell: string, url: string, tag: string, target: string
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'anew-release-'));
   try {
     const dir = path.join(tmp, 'template');
-    const g = await run('git', adopt.cloneArgs(url, tag, dir), tmp, { GIT_TERMINAL_PROMPT: '0' });
+    // no prompt from git, nor a credential window (a wrong or private repository) — review round 2, R2-4
+    const g = await run('git', adopt.cloneArgs(url, tag, dir), tmp, { GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' });
     if (g.code !== 0) throw new Error(`git clone of ${tag} failed: ${g.out || 'git was not found'}; nothing was written.`);
     if (!fs.existsSync(path.join(dir, 'scripts', 'adopt'))) throw new Error(`${adopt.NO_ADOPT(tag)}; nothing was written.`);
     const r = await runScript(shell, dir, 'adopt', adopt.adoptArgs(target));
@@ -244,7 +245,9 @@ async function newProject(): Promise<void> {
         await adoptInto(shell, url, tag, target);
       } catch (e) {
         // the folder New made goes again: nothing was written (L-1)
-        if (made) { try { fs.rmSync(target, { recursive: true, force: true }); } catch { /* left; named below */ } }
+        if (made) {
+          try { fs.rmSync(target, { recursive: true, force: true }); } catch { throw new Error(`${(e as Error).message} The folder ${target} could not be removed.`); }
+        }
         throw e;
       }
       const files = fs.readdirSync(path.join(target, 'scripts'), { withFileTypes: true }).filter((f) => f.isFile()).map((f) => `scripts/${f.name}`);
