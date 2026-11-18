@@ -3,7 +3,9 @@
 // and opened as a PR, never merged here. Pure: the VS Code layer gathers the facts.
 import { esc } from './screens.ts';
 import { bootstrapped, forAgent, type Tool } from './setup.ts';
-import { prStep, defaultBranch as defaultOf } from './ship.ts';
+import { has, branches, treeState, mergeStep as choreMerge, UNREAD, type Git } from './repo.ts';
+
+export { UNREAD };
 
 export const BRANCH = 'chore/bootstrap';
 
@@ -105,35 +107,19 @@ export interface Facts {
 
 // The facts from git: AGENTS.md on chore/bootstrap and on the default branch (the remote's, else a
 // local main or master), the branch checked out, the remote, the state doctor's answer is kept with.
-export async function gather(o: { git: (args: string[], env?: Record<string, string>) => Promise<string | null>; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean; index: string; seed: (gitIndex: string, to: string) => void }): Promise<Facts> {
+export async function gather(o: { git: Git; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean; index: string; seed: (gitIndex: string, to: string) => void }): Promise<Facts> {
   const { git } = o;
-  const has = async (ref: string) => (await git(['rev-parse', '--verify', '--quiet', ref])) !== null;
-  const current = (await git(['rev-parse', '--abbrev-ref', 'HEAD']))?.trim() ?? '';
-  const branch = (await has(`refs/heads/${BRANCH}`)) ? (await git(['show', `${BRANCH}:AGENTS.md`])) ?? '' : null;
-  const remotes = ((await git(['remote'])) ?? '').split('\n').map((x) => x.trim()).filter(Boolean);
-  const remote = remotes.includes('origin') ? 'origin' : remotes[0] ?? '';
-  let defaultBranch = remote ? defaultOf(((await git(['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`])) ?? '').trim(), remote) : '';
-  for (const b of ['main', 'master']) if (!defaultBranch && (await has(`refs/heads/${b}`))) defaultBranch = b;
-  const ref = defaultBranch && remote && (await has(`refs/remotes/${remote}/${defaultBranch}`)) ? `${remote}/${defaultBranch}` : defaultBranch;
+  const { current, remote, defaultBranch, ref } = await branches(git);
+  const branch = (await has(git, `refs/heads/${BRANCH}`)) ? (await git(['show', `${BRANCH}:AGENTS.md`])) ?? '' : null;
   const base = ref ? (await git(['show', `${ref}:AGENTS.md`])) ?? '' : null;
   const f: Facts = { here: o.here, branch, base, defaultBranch, current, remote, gh: false, started: o.started, checkConf: o.checkConf, state: '' };
   // merged: nothing more to read — a bootstrapped project pays for no tree and no gh (L-3)
   if (phase(f, null) === 'merged') return f;
-  // the contents, not the names: a temporary index of the whole working tree (review round 1, M-1),
-  // seeded from the real one so only changed files are hashed (round 2, N-5); no line-ending
-  // warnings, which could fill the output (N-1)
-  const real = ((await git(['rev-parse', '--git-path', 'index'])) ?? '').trim();
-  if (real) { try { o.seed(real, o.index); } catch { /* an empty index: every file is hashed */ } }
-  const env = { GIT_INDEX_FILE: o.index };
-  const tree = (await git(['-c', 'core.safecrlf=false', 'add', '--all'], env)) !== null ? ((await git(['write-tree'], env)) ?? '').trim() : '';
-  // a tree not read is a state no doctor answer can match (N-1)
-  f.state = tree ? `${((await git(['rev-parse', 'HEAD'])) ?? '').trim()} ${tree}` : `${UNREAD}${Date.now()}-${Math.random()}`;
+  // the contents, not the names (review rounds 1 and 2: M-1, N-1, N-5)
+  f.state = await treeState(git, o.index, o.seed);
   f.gh = branch !== null && remote !== '' && bootstrapped(branch) ? await o.gh() : false;
   return f;
 }
-
-// The prefix of a state whose contents could not be read: never verified.
-export const UNREAD = 'unread:';
 
 export type Phase = 'not started' | 'in the agent' | 'generated' | 'verified' | 'merged';
 export const PHASES: Phase[] = ['not started', 'in the agent', 'generated', 'verified', 'merged'];
@@ -149,16 +135,7 @@ export function phase(f: Facts, doctor: Doctor | null): Phase {
 
 // The merge step: Push and open PR from chore/bootstrap (Ship's rule), or the commands to copy;
 // with no remote, the local merge to copy. Never run here (G-5).
-export function mergeStep(f: Facts): { offered: boolean; why: string; commands: string[] } {
-  if (!f.remote) {
-    const into = f.defaultBranch || 'main';
-    return { offered: false, why: 'no remote: merge it here when you have approved it', commands: [`git switch ${into}`, `git merge --no-ff ${BRANCH}`] };
-  }
-  if (f.current !== BRANCH) {
-    return { offered: false, why: `${BRANCH} is not checked out (you are on ${f.current || 'no branch'}): git switch ${BRANCH}`, commands: [`git switch ${BRANCH}`, `git push -u ${f.remote} ${BRANCH}`, 'gh pr create --fill'] };
-  }
-  return prStep({ branch: f.current, defaultBranch: f.defaultBranch, remote: f.remote, gh: f.gh });
-}
+export const mergeStep = (f: Facts) => choreMerge(BRANCH, f);
 
 // The Mode and Language lines bootstrap wrote.
 export function written(agents: string): { mode: string; language: string } {
