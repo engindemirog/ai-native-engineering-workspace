@@ -271,7 +271,10 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   interview, generate, verify, report (`workflows/bootstrap.md`). An empty tree takes the
   greenfield flow; existing code takes the adoption flow (stack and conventions detected from the
   code, confirmed rather than asked; flag changes proposed, never imposed).
-- **When to use it:** once per project, right after `scripts/init`; rerun to revise.
+- **When to use it:** once per project, right after `scripts/init`; rerun to revise. Answers may
+  ride on the command — `/bootstrap chat=tr docs=en mode=lite trivial=1` (the VS Code extension's
+  Start screen builds it): each is your decision at its gate, confirmed in one line and not asked
+  again (`prompts/bootstrap.md`, "ANSWERS GIVEN WITH THE COMMAND").
 - **Reads / writes:** reads `AGENTS.md`, `prompts/bootstrap.md` and the working tree; writes
   `docs/*.md`, `scripts/check.conf`, the `Mode` and `Language` lines and the project summary in
   `AGENTS.md` (invariant rules kept verbatim).
@@ -446,7 +449,12 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
   - **setup** (on the start screen, and a sidebar card while something is missing): each adapter
     installed or not, as `scripts/doctor` reads it; **Install** for a missing one, after a
     confirmation naming the files → `./scripts/init <tool>` (never `--force`; existing files kept,
-    nothing committed); while AGENTS.md is not configured the one work offered is `/bootstrap`;
+    nothing committed);
+  - **bootstrap** (until `chore/bootstrap` is merged): the phases — not started · in the agent ·
+    generated · verified · merged — read from AGENTS.md and git; the chat and document languages,
+    the mode and the trivial-change policy answered on the screen and carried in `/bootstrap`;
+    **Run doctor** (read-only); **Push and open PR** of `chore/bootstrap` after a confirmation,
+    never the merge;
   - **approve spec / plan** (ANALYZE, PLAN human): the file as cards; Approve after the full file
     was opened → `scripts/gate approve-spec|approve-plan NNNN`;
   - **triage** (REVIEW, VERIFY, an open investigate): paste the reviewer's report; it is split

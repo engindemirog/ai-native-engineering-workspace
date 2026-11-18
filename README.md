@@ -53,6 +53,7 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 
 # 2. Open your AI tool and run the bootstrap workflow
 #    Claude Code / Cursor / Copilot:  /bootstrap    Codex:  $bootstrap
+#    (VS Code: the extension's Start screen answers the fixed questions and follows each step)
 #    Other tools:  paste prompts/bootstrap.md
 
 # 3. The AI first asks two things: interview language and document language (recorded in
