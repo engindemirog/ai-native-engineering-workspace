@@ -42,7 +42,8 @@ A current release (not in `1.24.x`). No rule changes: the extension stays a scre
 - **Extension 0.3.1** (the `.vsix` is attached to the release): a row that waits for the agent —
   PLAN, BUILD, a fix round, REVIEW, VERIFY — shows the command that continues it (`/build NNNN`,
   `/review NNNN`, … in the picked agent's form) with **Copy**, and **Continue in Claude Code**
-  where Start is offered (a fresh session); the same after every approval and triage. 0.3.0
+  when `claude` is found, Claude Code is picked and its adapter is installed (a fresh session); the
+  same in gate's answer after an approval or a triage that leads to the agent. 0.3.0
   showed "BUILD: waiting for Developer." once the screen was opened again, and no command.
 
 ### Upgrading

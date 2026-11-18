@@ -150,8 +150,12 @@ async function nextStep(type: string, root: string, memo: vscode.Memento, cmd: s
     void vscode.window.showInformationMessage(`Copied: ${c}`);
     return;
   }
+  if (type !== 'continue') return;
   const exe = claudeExe();
-  if (type === 'continue' && canContinue(a) && exe !== null) openClaude(root, exe, c, `ANEW · ${c}`);
+  if (canContinue(a) && exe !== null) return openClaude(root, exe, c, `ANEW · ${c}`);
+  // drawn under the rule, no longer under it at the click: say why (review round 1, L-1)
+  void vscode.window.showInformationMessage(a.agent !== 'claude-code' ? `The agent picked is ${setup.adapter(a.agent).label}: copy the command into its chat.`
+    : exe === null ? 'Claude Code was not found on PATH: copy the command.' : 'Continue waits for the Claude Code adapter: install it on the Start screen.');
 }
 
 // One panel, reused for whichever row was opened last.
@@ -344,6 +348,8 @@ class Start {
     if (type.startsWith('agent-')) {
       const id = type.slice(6);
       if (setup.isTool(id)) await this.memo.update('anew.agent', id);
+      // the open approval and triage screens show the command in the agent's form (review round 1, L-2)
+      void this.refresh();
       return this.render();
     }
     if (type.startsWith('install-')) {

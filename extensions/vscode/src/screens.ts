@@ -99,7 +99,7 @@ export function warnings(row: Row): string {
 // Code under Start's rule; what kind of session it wants. No agent read: Copy only.
 export function nextBox(cmd: string, a: Agent = NO_AGENT): string {
   const c = forAgent(cmd, a.agent);
-  const go = canContinue(a) ? '<button id="continue" class="primary">Continue in Claude Code</button>' : '';
+  const go = canContinue(a) ? '<button id="continue" class="primary" data-keep="1">Continue in Claude Code</button>' : '';
   const session = fresh(cmd) ? 'A fresh session: the producer never verifies its own work. Continue always opens a new one.'
     : 'Or tell the session that is waiting to go on. Continue opens a new one; the segment reads its files.';
   const why = canContinue(a) ? '' : a.agent !== 'claude-code' ? ` Copy it into ${adapter(a.agent).label}'s chat.`

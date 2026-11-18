@@ -45,7 +45,7 @@ test('AC-3: Continue only under Start\'s rule; the reason when not; the session 
   assert.equal(canContinue({ ...claude, have: [] }), false);
   assert.equal(canContinue({ ...claude, agent: 'cursor', have: ['claude-code', 'cursor'] }), false);
   const go = nextBox('/build 0003', claude);
-  assert.ok(go.includes('<code class="cmd">/build 0003</code><button id="copy" class="secondary" data-keep="1">Copy</button><button id="continue" class="primary">Continue in Claude Code</button>'));
+  assert.ok(go.includes('<code class="cmd">/build 0003</code><button id="copy" class="secondary" data-keep="1">Copy</button><button id="continue" class="primary" data-keep="1">Continue in Claude Code</button>'));
   assert.ok(go.includes('Or tell the session that is waiting to go on.'));
   assert.ok(!nextBox('/build 0003', { ...claude, claude: false }).includes('id="continue"'));
   assert.ok(nextBox('/build 0003', { ...claude, claude: false }).includes('Claude Code was not found on PATH'));
@@ -65,13 +65,13 @@ test('AC-3: the approval panel, reopened at BUILD, shows the command; the answer
   const v = { row: r, file: 'specs/plans/0003-plan.md', sections: [], offer: offer({ row: r, opened: false, shell: true, running: null }), result: null, approver: 'x', nonce: 'n', cspSource: 'c' };
   const h = panel({ ...v, agent: claude });
   assert.ok(h.includes('<code class="cmd">/build 0003</code>'));
-  assert.ok(h.includes('<button id="continue" class="primary">Continue in Claude Code</button>'));
+  assert.ok(h.includes('<button id="continue" class="primary" data-keep="1">Continue in Claude Code</button>'));
   assert.ok(h.includes('BUILD: waiting for Developer.'));
   // a human row: no command
   const p = row('PLAN', 'human', 'approve the plan');
   assert.ok(!panel({ ...v, row: p, offer: offer({ row: p, opened: false, shell: true, running: null }), agent: claude }).includes('class="cmd"'));
   const after = answerBox({ written: true, code: 0, text: 'approve-plan 0003: approved', next: '/build 0003' }, 'Plan approved', claude);
-  assert.ok(after.includes('<button id="continue" class="primary">Continue in Claude Code</button>'));
+  assert.ok(after.includes('<button id="continue" class="primary" data-keep="1">Continue in Claude Code</button>'));
   assert.ok(!answerBox({ written: false, code: 1, text: 'no', next: '' }, 'x', claude).includes('id="continue"'));
 });
 
