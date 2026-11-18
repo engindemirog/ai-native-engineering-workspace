@@ -1,8 +1,8 @@
 {
   "name": "anew",
   "displayName": "ANEW",
-  "description": "The whole ANEW process on a screen — set up, start work, approve, triage, ship — over scripts/status, scripts/gate and scripts/init.",
-  "version": "0.3.1",
+  "description": "The whole ANEW process on a screen — add ANEW to a project or start a new one, set up, start work, approve, triage, ship — over scripts/adopt, scripts/status, scripts/gate and scripts/init.",
+  "version": "0.4.0",
   "publisher": "anew",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,8 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:scripts/status"
+    "workspaceContains:scripts/status",
+    "onStartupFinished"
   ],
   "main": "./out/extension.cjs",
   "capabilities": {
@@ -43,9 +44,26 @@
           "type": "webview",
           "name": "Work",
           "when": "anew.active"
+        },
+        {
+          "id": "anew.welcome",
+          "name": "Get started",
+          "when": "!anew.active"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "anew.welcome",
+        "contents": "This folder has no ANEW yet. Add the ANEW core from the latest release — files that exist are kept, nothing is committed.\n[Add ANEW to this project](command:anew.adopt)\nOr start a project of its own:\n[New ANEW project](command:anew.newProject)",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "view": "anew.welcome",
+        "contents": "No folder is open. Start a new project with ANEW from the latest release:\n[New ANEW project](command:anew.newProject)",
+        "when": "workspaceFolderCount == 0"
+      }
+    ],
     "commands": [
       {
         "command": "anew.refresh",
@@ -59,6 +77,14 @@
       {
         "command": "anew.newWork",
         "title": "ANEW: New work"
+      },
+      {
+        "command": "anew.adopt",
+        "title": "ANEW: Add ANEW to this project"
+      },
+      {
+        "command": "anew.newProject",
+        "title": "ANEW: New ANEW project"
       }
     ],
     "menus": {
@@ -81,6 +107,10 @@
         {
           "command": "anew.open",
           "when": "false"
+        },
+        {
+          "command": "anew.adopt",
+          "when": "!anew.active && workspaceFolderCount > 0"
         }
       ]
     },
@@ -92,6 +122,11 @@
           "default": "",
           "scope": "machine",
           "description": "The POSIX shell that runs scripts/status and scripts/gate. Empty: sh on Linux and macOS, Git for Windows' bash.exe on Windows."
+        },
+        "anew.templateRepository": {
+          "type": "string",
+          "default": "",
+          "description": "The GitHub repository whose latest release Add and New copy ANEW from: owner/name or its URL. Empty: the official ANEW template."
         }
       }
     }

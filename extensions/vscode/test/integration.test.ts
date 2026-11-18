@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findShell, runScript } from '../src/shell.ts';
 import { parseStatus, writeFor } from '../src/status.ts';
 import { gateArgs, answer } from '../src/gate.ts';
@@ -13,6 +13,7 @@ import { write as triageWrite, type Decision } from '../src/triage.ts';
 import { offered } from '../src/ship.ts';
 import { ADAPTERS, existsIn, initArgs, installed } from '../src/setup.ts';
 import { nextFor } from '../src/next.ts';
+import { cloneArgs, adoptArgs, newSteps } from '../src/adopt.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -259,4 +260,74 @@ test('next step: the rows scripts/status gives at PLAN, BUILD, REVIEW, FIX ROUND
   const b = await atReview('next-verify');
   terminal(b, './scripts/gate triage 0001 --review');
   assert.equal(nextFor(await row(b)), '/verify 0001');
+});
+
+// A local stand-in for a GitHub release: the template's files, committed and tagged, cloned over
+// file:// exactly as the extension clones the release (spec 0013, AC-4).
+function fixtureRelease(): string {
+  const dir = path.join(tmp, 'release');
+  if (fs.existsSync(dir)) return dir;
+  fs.mkdirSync(dir);
+  const listed = execFileSync('git', ['-C', repo, 'ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  for (const f of listed) {
+    if (!fs.existsSync(path.join(repo, f))) continue;
+    fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
+    fs.copyFileSync(path.join(repo, f), path.join(dir, f));
+  }
+  git(dir, 'init', '-q');
+  git(dir, 'config', 'core.autocrlf', 'false');
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-q', '-m', 'release');
+  git(dir, 'tag', 'v9.9.9');
+  return dir;
+}
+
+function tree(dir: string): [string, string][] {
+  const walk = (under: string): string[] => fs.readdirSync(path.join(dir, under), { withFileTypes: true }).flatMap((e) => {
+    const rel = under ? `${under}/${e.name}` : e.name;
+    return e.name === '.git' ? [] : e.isDirectory() ? walk(rel) : [rel];
+  });
+  return walk('').sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]);
+}
+
+// The screen's way: git with cloneArgs into a temporary folder, the release's scripts/adopt.
+async function screenAdopt(target: string): Promise<void> {
+  const t = fs.mkdtempSync(path.join(tmp, 'clone-'));
+  execFileSync('git', cloneArgs(pathToFileURL(fixtureRelease()).href, 'v9.9.9', path.join(t, 'template')), { cwd: t, stdio: 'pipe' });
+  const r = await runScript(shell as string, path.join(t, 'template'), 'adopt', adoptArgs(target));
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /^Adopted ANEW v1\.\d+(\.\d+)* into /m);
+  fs.rmSync(t, { recursive: true, force: true });
+}
+
+test('Add: the screen\'s clone and adopt leave what the terminal\'s leave; a project\'s own files kept', { skip }, async () => {
+  const a = path.join(tmp, 'add-a');
+  const b = path.join(tmp, 'add-b');
+  for (const d of [a, b]) {
+    fs.mkdirSync(path.join(d, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'README.md'), 'our project\n');
+    fs.writeFileSync(path.join(d, 'src', 'app.txt'), 'code\n');
+  }
+  await screenAdopt(a);
+  const t = fs.mkdtempSync(path.join(tmp, 'term-'));
+  terminal(t, `git clone --quiet --depth 1 --branch v9.9.9 ${quote(pathToFileURL(fixtureRelease()).href)} template && ./template/scripts/adopt ${quote(b)}`);
+  assert.deepEqual(tree(a), tree(b));
+  assert.equal(fs.readFileSync(path.join(a, 'README.md'), 'utf8'), 'our project\n');
+  assert.ok(fs.existsSync(path.join(a, 'scripts', 'status')) && fs.existsSync(path.join(a, 'AGENTS.md')));
+  for (const own of ['.anew-dev', 'extensions', 'CHANGELOG.md', 'LICENSE', '.claude']) assert.ok(!fs.existsSync(path.join(a, own)), own);
+  assert.ok(!fs.existsSync(path.join(a, '.git')));
+});
+
+test('New: init, adopt, one commit with the scripts executable in the index; nothing left over', { skip }, async () => {
+  const n = path.join(tmp, 'new-project');
+  fs.mkdirSync(n);
+  await screenAdopt(n);
+  const files = fs.readdirSync(path.join(n, 'scripts')).map((f) => `scripts/${f}`);
+  for (const step of newSteps('v9.9.9', files)) execFileSync('git', ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.autocrlf=false', ...step], { cwd: n, stdio: 'pipe' });
+  assert.equal(git(n, 'log', '--format=%s'), 'chore: ANEW v9.9.9');
+  assert.equal(git(n, 'status', '--porcelain'), '');
+  const modes = git(n, 'ls-files', '-s', 'scripts').split('\n').map((l) => [l.split(/\s+/)[0], l.split('\t')[1]]);
+  for (const [mode, f] of modes) assert.equal(mode, /^scripts\/[^/.]+$/.test(f) ? '100755' : '100644', f);
+  assert.ok(modes.some(([, f]) => f === 'scripts/adopt'));
+  assert.equal(fs.readFileSync(path.join(n, 'README.md'), 'utf8'), `# new-project\n\nBuilt with ANEW ${fs.readFileSync(path.join(repo, '.anew-version'), 'utf8').trim()} — the rules are in AGENTS.md.\n`);
 });

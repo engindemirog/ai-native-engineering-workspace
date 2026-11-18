@@ -2,6 +2,7 @@
 // in the modules it imports; this file only wires them to VS Code.
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -17,12 +18,30 @@ import * as setup from './setup.ts';
 import * as triage from './triage.ts';
 import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
+import * as adopt from './adopt.ts';
 import { nextFor, canContinue, type Agent } from './next.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  const root = folder?.uri.fsPath;
-  if (!root || !fs.existsSync(path.join(root, 'scripts', 'status')) || !fs.existsSync(path.join(root, 'AGENTS.md'))) return;
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  let started = false;
+  // ANEW's screens once the folder holds ANEW: at startup, or right after an Add (spec 0013)
+  const begin = () => {
+    if (started || !root || !hasAnew(root)) return;
+    started = true;
+    screens(ctx, root);
+  };
+  // without ANEW, the view's welcome: Add and New (package.json, viewsWelcome)
+  ctx.subscriptions.push(
+    vscode.window.registerTreeDataProvider('anew.welcome', { getTreeItem: (x: vscode.TreeItem) => x, getChildren: () => [] }),
+    vscode.commands.registerCommand('anew.adopt', () => addAnew(root, begin).catch(failed)),
+    vscode.commands.registerCommand('anew.newProject', () => newProject().catch(failed)),
+  );
+  begin();
+}
+
+const hasAnew = (root: string) => fs.existsSync(path.join(root, 'scripts', 'status')) && fs.existsSync(path.join(root, 'AGENTS.md'));
+
+function screens(ctx: vscode.ExtensionContext, root: string): void {
   void vscode.commands.executeCommand('setContext', 'anew.active', true);
 
   const shellOf = () => findShell({ setting: vscode.workspace.getConfiguration('anew').get<string>('shell') ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -123,6 +142,99 @@ export function activate(ctx: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {}
+
+let channel: vscode.OutputChannel | null = null;
+const output = () => (channel ??= vscode.window.createOutputChannel('ANEW'));
+const failed = (e: Error) => void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
+let adopting = false; // one Add or New at a time
+
+const shellNow = () => findShell({ setting: vscode.workspace.getConfiguration('anew').get<string>('shell') ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
+
+// The latest release of the template repository: its tag and where to clone it (spec 0013, R4).
+async function latest(): Promise<{ tag: string; url: string }> {
+  const repo = adopt.repository(vscode.workspace.getConfiguration('anew').get<string>('templateRepository') ?? '');
+  if (repo === null) throw new Error('anew.templateRepository is neither owner/name nor a GitHub URL.');
+  let body: string;
+  try {
+    const res = await fetch(adopt.latestUrl(repo), { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'anew-vscode' } });
+    body = await res.text();
+  } catch (e) {
+    throw new Error(`GitHub could not be reached (${(e as Error).message}); nothing was written.`);
+  }
+  return { tag: adopt.latestTag(body), url: adopt.cloneUrl(repo) };
+}
+
+// The release's own scripts/adopt into the target, from a clone in a temporary folder that is
+// removed afterwards; its output as it is, in the ANEW output channel.
+async function adoptInto(shell: string, url: string, tag: string, target: string): Promise<string> {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'anew-release-'));
+  try {
+    const dir = path.join(tmp, 'template');
+    const g = await run('git', adopt.cloneArgs(url, tag, dir), tmp);
+    if (g.code !== 0) throw new Error(`git clone of ${tag} failed: ${g.out || 'git was not found'}; nothing was written.`);
+    if (!fs.existsSync(path.join(dir, 'scripts', 'adopt'))) throw new Error(`${adopt.NO_ADOPT(tag)}; nothing was written.`);
+    const r = await runScript(shell, dir, 'adopt', adopt.adoptArgs(target));
+    output().appendLine(`$ scripts/adopt ${target}  (ANEW ${tag})`);
+    output().appendLine(`${r.stdout}${r.stderr}`.trimEnd());
+    if (r.code !== 0) { output().show(true); throw new Error(`scripts/adopt exited ${r.code} — see its output (ANEW).`); }
+    return adopt.summary(r.stdout);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// Add: the folder open here gets the core; files that exist are kept; nothing is committed.
+async function addAnew(root: string | undefined, begin: () => void): Promise<void> {
+  if (!root) return void vscode.window.showInformationMessage('Open a folder first, or create a new ANEW project.');
+  if (adopting || hasAnew(root)) return;
+  const shell = shellNow();
+  if (shell === null) throw new Error('No POSIX shell found: set anew.shell (Git for Windows: bash.exe). Nothing was written.');
+  adopting = true;
+  try {
+    const { tag, url } = await latest();
+    if (await vscode.window.showWarningMessage(adopt.addConfirm(root, tag), { modal: true }, 'Add ANEW') !== 'Add ANEW') return;
+    const said = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `ANEW ${tag}: adding to this project…` }, () => adoptInto(shell, url, tag, root));
+    void vscode.window.showInformationMessage(`${said} Nothing is committed: the commit is yours.`, 'Show output').then((b) => { if (b) output().show(); });
+    begin();
+  } finally {
+    adopting = false;
+  }
+}
+
+const emptyOrNone = (dir: string) => { try { return fs.statSync(dir).isDirectory() && fs.readdirSync(dir).length === 0; } catch { return true; } };
+
+// New: a new (or empty) folder with the core, its repository and one commit, opened here.
+async function newProject(): Promise<void> {
+  if (adopting) return;
+  const shell = shellNow();
+  if (shell === null) throw new Error('No POSIX shell found: set anew.shell (Git for Windows: bash.exe). Nothing was written.');
+  const parent = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: 'Create the project in this folder' });
+  if (!parent?.length) return;
+  const base = parent[0].fsPath;
+  const name = await vscode.window.showInputBox({
+    prompt: `The new project's folder, in ${base}`,
+    validateInput: (v) => adopt.nameProblem(v) || (emptyOrNone(path.join(base, v)) ? '' : 'That folder exists and is not empty.'),
+  });
+  if (name === undefined) return;
+  const target = path.join(base, name);
+  adopting = true;
+  try {
+    const { tag, url } = await latest();
+    if (await vscode.window.showWarningMessage(adopt.newConfirm(target, tag), { modal: true }, 'Create') !== 'Create') return;
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `ANEW ${tag}: creating ${name}…` }, async () => {
+      fs.mkdirSync(target, { recursive: true });
+      await adoptInto(shell, url, tag, target);
+      const files = fs.readdirSync(path.join(target, 'scripts')).map((f) => `scripts/${f}`);
+      for (const step of adopt.newSteps(tag, files)) {
+        const g = await run('git', step, target);
+        if (g.code !== 0) throw new Error(`git ${step[0]} failed in ${target}: ${g.out || 'git was not found'}. The ANEW core is there; finish the repository by hand.`);
+      }
+    });
+    await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(target));
+  } finally {
+    adopting = false;
+  }
+}
 
 const claudeExe = () => start.findClaude({ platform: process.platform, pathEnv: process.env.PATH ?? '', exists: (p) => fs.existsSync(p), read: (p) => fs.readFileSync(p, 'utf8') });
 
