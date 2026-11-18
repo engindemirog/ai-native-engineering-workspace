@@ -7,7 +7,7 @@ What it adds on top of the core:
 
 - **Rule pointer** (`rules/anew.mdc`, always applied): points Cursor at `AGENTS.md`.
 - **Immutability rule** (`rules/specs-done.mdc`, applies to `specs/done/**`): advisory, not a hook.
-- **Workflow commands** (`commands/`): `/bootstrap`, `/fix-bug`, `/refactor`, `/adr`, `/recover` —
+- **Workflow commands** (`commands/`): `/bootstrap`, `/upgrade`, `/fix-bug`, `/refactor`, `/adr`, `/recover` —
   the same pointers as the Claude Code adapter.
 - **Segment commands** (`commands/`): `/analyze`, `/plan`, `/build`, `/review`, `/verify` — one
   file per segment of `workflows/segments.md`, each a pointer that runs the segment and stops at

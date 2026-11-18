@@ -18,6 +18,7 @@ Almost every prompt follows the same anatomy — knowing it lets you re-derive a
 | Prompt | Used by | Role |
 |---|---|---|
 | `bootstrap.md` | `workflows/bootstrap.md` | Analyst → Developer |
+| `upgrade.md` | `workflows/upgrade.md` | Developer |
 | `clarify.md` | ANALYZE segment (feature step 1) | Analyst |
 | `spec.md` | ANALYZE segment (feature step 2); CHANGE lane and incidents with `specs/TEMPLATE-mini.md` | Analyst |
 | `plan.md` | PLAN segment (feature step 3); refactor step 2 | Developer |

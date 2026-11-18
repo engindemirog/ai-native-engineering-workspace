@@ -1,0 +1,3 @@
+# Explicit only: ANEW commands start a gated stage, so Codex must never pick one by itself.
+policy:
+  allow_implicit_invocation: false

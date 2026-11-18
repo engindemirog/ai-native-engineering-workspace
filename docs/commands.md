@@ -31,7 +31,7 @@ Always available, outside the loop:
 |---|---|
 | Terminal scripts | `scripts/adopt` · `scripts/upgrade` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
-| Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
+| Setup · record · recover | `/bootstrap` · `/upgrade` · `/adr` · `/recover` |
 | Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init` and `scripts/adopt` |
 
 ## How to read this page
@@ -430,7 +430,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Refusal:** none — but `./scripts/check` must be green before it starts.
 - **Common mistake:** editing a test — a needed test edit means behavior changed; stop.
 
-## E — Record and recover: `/adr`, `/recover`
+## E — Record, recover, upgrade: `/adr`, `/recover`, `/upgrade`
 
 ### `/adr`
 - **What it does:** discusses an architecture decision, then records it from
@@ -450,6 +450,22 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 - **Lite / Strict:** no difference.
 - **Refusal:** none — no match is treated as R-10 (ambiguity).
 - **Common mistake:** improvising a fix instead of naming the ramp.
+
+### `/upgrade`
+- **What it does:** finishes an upgrade to a newer ANEW release (`workflows/upgrade.md`): applies
+  each CHANGELOG entry above the base, oldest first, to the files `scripts/upgrade` listed
+  `merge` — behavior lists to extended scripts, intents to documents in the project's words —
+  takes new `ANEW-*` decisions, writes `.anew-version` last, one commit.
+- **When to use it:** after `scripts/upgrade` ran on `chore/anew-<tag>` with both releases under
+  `.git/anew-upgrade/` (the VS Code extension prepares all three): `/upgrade v1.32`.
+- **Reads / writes:** `prompts/upgrade.md`, both releases, the new CHANGELOG; writes the `merge`
+  files and `.anew-version`, commits on `chore/anew-<tag>`. Never pushes or merges.
+- **Stops at:** each question, with its recommendation; a change it cannot apply without guessing
+  (a recovery ramp).
+- **Lite / Strict:** no difference.
+- **Refusal:** not on `chore/anew-<tag>`.
+- **Common mistake:** copying a newer script over one the project extended — the behavior list is
+  applied instead.
 
 ## F — Editor: the VS Code extension
 
@@ -532,6 +548,7 @@ lives in [`prompts/recovery/README.md`](../prompts/recovery/README.md).
 | `/refactor` | Behavior unchanged, proven | Approval · triage | Same | Same |
 | `/adr` | Record a decision | Your decision | Same | Same |
 | `/recover` | Run the matching ramp | Ramp confirmation | Same | Same |
+| `/upgrade <tag>` | Merge a newer ANEW release into the project's changed files | Questions · a guess it cannot make | Same | Same |
 
 ## Two golden rules
 

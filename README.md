@@ -101,7 +101,7 @@ Each stage is a *segment* with an entry condition and a handoff written to files
 | `/review <NNNN>` | Independent review — read-only where the tool supports it (see "How strongly is each rule held?") | Findings report → human triage |
 | `/verify <NNNN>` | QA: criterion ↔ evidence table | Table → human ship |
 | `/change "<request> <work item>"` | Change an existing behavior: triage rubric (bug → `/fix-bug` · trivial → one commit per `docs/git.md` policy · change → mini-spec lane), then the lane by mode (`workflows/change-request.md`) | Triage verdict; then the lane's gates |
-| `/bootstrap` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows — same commands in Claude Code, Cursor, Copilot and Codex; any other tool pastes the prompts | Their gates |
+| `/bootstrap` · `/upgrade` · `/fix-bug` · `/refactor` · `/adr` · `/recover` | Other workflows — same commands in Claude Code, Cursor, Copilot and Codex; any other tool pastes the prompts | Their gates |
 
 Claude Code and Cursor expose these as slash commands, GitHub Copilot as prompt files, Codex as
 project-level skills (`$analyze`, explicit only; it reads `AGENTS.md` natively), and any
