@@ -454,7 +454,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     generated · verified · merged — read from AGENTS.md and git; the chat and document languages,
     the mode and the trivial-change policy answered on the screen and carried in `/bootstrap`;
     **Run doctor** (read-only); **Push and open PR** of `chore/bootstrap` after a confirmation,
-    never the merge; merged on the remote but not pulled, it names the pull;
+    never the merge; merged on the remote but not pulled, it names the pull; **Start over** resets a
+    start that went nowhere;
   - **approve spec / plan** (ANALYZE, PLAN human): the file as cards; Approve after the full file
     was opened → `scripts/gate approve-spec|approve-plan NNNN`;
   - **triage** (REVIEW, VERIFY, an open investigate): paste the reviewer's report; it is split

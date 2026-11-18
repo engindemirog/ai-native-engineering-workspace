@@ -376,6 +376,18 @@ test('bootstrap: the phase from git — not started, generated, verified by doct
   assert.equal(bootPhase(await facts(), d2), 'generated');
   g('checkout', '-q', '--', 'docs/domain.md');
   assert.equal(bootPhase(await facts(), d), 'verified'); // back to the contents doctor read
+  // the temporary index seeded from the real one: a file staged, then changed, is read as it is in
+  // the working tree, not as staged (review round 3, I-2)
+  fs.writeFileSync(path.join(p, 'docs', 'domain.md'), 'staged\n');
+  g('add', 'docs/domain.md');
+  const staged = await facts();
+  assert.notEqual(staged.state, d.state);
+  fs.writeFileSync(path.join(p, 'docs', 'domain.md'), 'staged, then changed\n');
+  const changed = await facts();
+  assert.notEqual(changed.state, staged.state);
+  assert.ok(!changed.state.startsWith('unread:'));
+  g('checkout', '-q', 'HEAD', '--', 'docs/domain.md');
+  assert.equal(bootPhase(await facts(), d), 'verified');
   // a squash merge: chore/bootstrap is no ancestor of main, and the section still goes
   g('switch', '-q', 'main');
   g('merge', '-q', '--squash', 'chore/bootstrap');

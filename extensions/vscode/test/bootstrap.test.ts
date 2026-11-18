@@ -161,5 +161,5 @@ test('review round 2: an unread tree never verifies (N-1); the pull named off th
   assert.notEqual((await gather({ ...o, git: fake(true) })).state, bad.state);
   // merged on main, not pulled, the human on another branch
   const off = facts({ branch: configured, base: configured, current: 'feat/x' });
-  assert.match(offered({ facts: off, answers: NO_ANSWERS, agent: 'claude-code', doctor: null }).instead, /^bootstrap is merged on main: git switch main && git pull/);
+  assert.match(offered({ facts: off, answers: NO_ANSWERS, agent: 'claude-code', doctor: null }).instead, /^bootstrap is merged on main: git switch main, then git pull/);
 });

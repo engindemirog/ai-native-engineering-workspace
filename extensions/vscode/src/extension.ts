@@ -456,7 +456,7 @@ class Start {
   // already waiting (review round 2, N-4)
   show(): void {
     this.web.reveal();
-    void this.gather().then(() => this.render());
+    void this.gather().catch((e: Error) => { void vscode.window.showErrorMessage(`ANEW: git could not be read: ${e.message}`); }).then(() => this.render()); // never blank (round 3, L-B)
   }
 
   private claude(): string | null {
@@ -482,7 +482,7 @@ class Start {
         index,
         seed: (gitIndex, to) => fs.copyFileSync(path.resolve(this.root, gitIndex), to),
       });
-      if (n === this.gathering) this.facts = facts;
+      if (n === this.gathering || this.facts === null) this.facts = facts; // the first facts kept (round 3, L-A)
       return facts;
     } finally {
       try { fs.rmSync(index, { force: true }); } catch { /* a temporary index; the OS cleans it */ }

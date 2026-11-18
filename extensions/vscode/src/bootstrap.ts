@@ -177,7 +177,7 @@ export function offered(v: { facts: Facts; answers: Answers; agent: Tool; doctor
   const p = phase(v.facts, v.doctor);
   if (p === 'not started' || p === 'in the agent') return { cmd: command(v.answers, v.agent), instead: '' };
   const d = v.facts.defaultBranch;
-  const pull = d && v.facts.current !== d ? `git switch ${d} && git pull` : 'git pull'; // round 2, N-6
+  const pull = d && v.facts.current !== d ? `git switch ${d}, then git pull` : 'git pull'; // round 2, N-6; no && for Windows PowerShell (round 3, L-D)
   if (p === 'merged') return { cmd: null, instead: bootstrapped(v.facts.here) ? '' : `bootstrap is merged on ${d || 'the default branch'}: ${pull} — this working tree still has the template's AGENTS.md` };
   return { cmd: null, instead: bootstrapped(v.facts.here) ? 'bootstrap has run: its output is in this working tree' : `bootstrap's output waits on ${BRANCH}: git switch ${BRANCH}` };
 }
@@ -230,7 +230,7 @@ export function section(v: BootView): string {
   const d = v.doctor;
   const stale = d && d.state !== v.facts.state;
   const doctorBox = !configured ? '' : `<div class="row"><button id="boot-doctor" class="secondary"${v.shell && !v.doctoring && bootstrapped(v.facts.here) ? '' : ' disabled'}>${v.doctoring ? 'Running doctor…' : 'Run doctor'}</button>
-  <span class="muted small">${esc(!bootstrapped(v.facts.here) ? `doctor reads the working tree: git switch ${BRANCH} first` : !v.shell ? 'No POSIX shell found: set anew.shell.' : stale ? 'The files changed since doctor ran: run it again.' : './scripts/doctor reads the files; it writes nothing.')}</span></div>
+  <span class="muted small">${esc(!bootstrapped(v.facts.here) ? `doctor reads the working tree: git switch ${BRANCH} first` : !v.shell ? 'No POSIX shell found: set anew.shell.' : v.facts.state.startsWith(UNREAD) ? 'The working tree could not be read (git add failed): no doctor answer can be matched to these files.' : stale ? 'The files changed since doctor ran: run it again.' : './scripts/doctor reads the files; it writes nothing.')}</span></div>
 ${d && !stale ? `<div class="result ${green(d) ? 'ok' : 'refused'}" role="${green(d) ? 'status' : 'alert'}"><strong>${esc(d.result || `doctor exited ${d.code} with no result line`)}</strong>${d.fails.length || d.warns.length ? `<pre class="out">${esc([...d.fails, ...d.warns].join('\n'))}</pre>` : ''}</div>` : ''}`;
   const m = configured && v.facts.branch !== null ? mergeStep(v.facts) : null;
   const merge = m === null ? '' : `<div><span class="label">The merge of ${esc(BRANCH)}</span>
