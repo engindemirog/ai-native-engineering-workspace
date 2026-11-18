@@ -11,6 +11,7 @@ import { parseStatus, writeFor } from '../src/status.ts';
 import { gateArgs, answer } from '../src/gate.ts';
 import { write as triageWrite, type Decision } from '../src/triage.ts';
 import { offered } from '../src/ship.ts';
+import { ADAPTERS, existsIn, initArgs, installed } from '../src/setup.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -190,4 +191,50 @@ test('ship: the screen\'s gate call leaves what the terminal call leaves; before
   assert.deepEqual(change(a), change(b));
   assert.ok(fs.existsSync(path.join(a, 'specs', 'done', '0001-demo.md')));
   assert.match(fs.readFileSync(path.join(a, 'specs', 'done', '0001-demo.md'), 'utf8'), /^- \[x\] AC-1 — it works$/m);
+});
+
+// A bare template copy for init: scripts/init and adapters/, nothing installed.
+function initFixture(name: string): string {
+  const dir = path.join(tmp, name);
+  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  fs.copyFileSync(path.join(repo, 'scripts', 'init'), path.join(dir, 'scripts', 'init'));
+  fs.cpSync(path.join(repo, 'adapters'), path.join(dir, 'adapters'), { recursive: true });
+  return dir;
+}
+
+function files(dir: string, under = ''): string[] {
+  return fs.readdirSync(path.join(dir, under), { withFileTypes: true }).flatMap((e) => {
+    const rel = under ? `${under}/${e.name}` : e.name;
+    return e.isDirectory() ? files(dir, rel) : [rel];
+  });
+}
+
+test('setup: what init writes for each adapter is what the confirmation lists, and the marker is among it', { skip }, async () => {
+  for (const a of ADAPTERS) {
+    const dir = initFixture(`init-${a.id}`);
+    const before = new Set(files(dir));
+    const r = await runScript(shell as string, dir, 'init', initArgs(a.id));
+    assert.equal(r.code, 0, r.stderr);
+    const wrote = files(dir).filter((f) => !before.has(f));
+    assert.ok(wrote.length > 0, a.id);
+    for (const f of wrote) assert.ok(a.writes.some((w) => w.endsWith('/') ? f.startsWith(w) : f === w), `${a.id}: ${f} is not in the list`);
+    for (const w of a.writes) assert.ok(wrote.some((f) => w.endsWith('/') ? f.startsWith(w) : f === w), `${a.id}: ${w} is listed but not written`);
+    assert.deepEqual(installed(existsIn(dir)), [a.id]);
+  }
+});
+
+test('install: the screen\'s init call leaves what the terminal call leaves; an existing file is kept and named', { skip }, async () => {
+  const a = initFixture('install-a');
+  const b = initFixture('install-b');
+  for (const dir of [a, b]) {
+    fs.mkdirSync(path.join(dir, '.cursor', 'rules'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.cursor', 'rules', 'anew.mdc'), 'our own rule\n');
+  }
+  const r = await runScript(shell as string, a, 'init', initArgs('cursor'));
+  terminal(b, './scripts/init cursor');
+  assert.equal(r.code, 0, r.stderr);
+  const tree = (dir: string) => files(dir).sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]);
+  assert.deepEqual(tree(a), tree(b));
+  assert.equal(fs.readFileSync(path.join(a, '.cursor', 'rules', 'anew.mdc'), 'utf8'), 'our own rule\n');
+  assert.match(r.stdout, /^kept {3}\.cursor\/rules\/anew\.mdc \(exists — use --force to overwrite\)$/m);
 });

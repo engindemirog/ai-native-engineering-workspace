@@ -412,7 +412,12 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     `scripts/status --json`;
   - **start new work:** the kind (`/new-feature`, `/change`, `/fix-bug`, `/refactor`; `/analyze`
     for a feature in strict) and a description build the command, shown first; it opens a fresh
-    Claude Code session with it in a terminal, or you copy it to any agent. It writes no file;
+    Claude Code session with it in a terminal, or you copy it to any agent, in the agent's form
+    (`$new-feature` for Codex). It writes no file;
+  - **setup** (on the start screen, and a sidebar card while something is missing): each adapter
+    installed or not, as `scripts/doctor` reads it; **Install** for a missing one, after a
+    confirmation naming the files → `./scripts/init <tool>` (never `--force`; existing files kept,
+    nothing committed); while AGENTS.md is not configured the one work offered is `/bootstrap`;
   - **approve spec / plan** (ANALYZE, PLAN human): the file as cards; Approve after the full file
     was opened → `scripts/gate approve-spec|approve-plan NNNN`;
   - **triage** (REVIEW, VERIFY, an open investigate): paste the reviewer's report; it is split
@@ -424,7 +429,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     remote (`git push -u`, `gh pr create --fill`), or the two commands to copy. Never a merge.
 - **When to use it:** when you follow the work in VS Code rather than the terminal.
 - **Reads / writes:** reads what `scripts/status` and the spec and plan files say; every decision
-  is one `scripts/gate` call; the only file it writes itself is a defer's backlog entry. A pasted
+  is one `scripts/gate` call, every install one `scripts/init` call; the only file it writes itself
+  is a defer's backlog entry. A pasted
   report lives only in the open screen. No state of its own.
 - **Stops at:** Approve appears only after "Open the full file" has opened the file: the decision
   is on the file, not the summary.

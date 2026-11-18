@@ -8,7 +8,13 @@ The human's part of the ANEW process on a screen, inside VS Code — over two sc
   view's badge and the status bar show how many decisions wait for you.
 - **Start new work:** pick the kind (new feature, change, bug fix, refactor), say what you want;
   the command for the agent is shown first. **Start in Claude Code** opens a fresh session with it
-  in a new terminal (when `claude` is on PATH); **Copy command** for any other agent.
+  in a new terminal (when `claude` is on PATH); **Copy command** for any other agent — the command
+  in the form the agent you pick runs it (`$new-feature` for Codex).
+- **Setup** (on the start screen; a sidebar card while something is missing): which adapters are
+  installed — Claude Code, GitHub Copilot, Cursor, Codex — read as `scripts/doctor` reads them;
+  **Install** a missing one, after a confirmation naming the files: `./scripts/init <tool>`, never
+  `--force` (existing files are kept; nothing is committed). While AGENTS.md is not configured, the
+  one work offered is `/bootstrap`.
 - **Spec and plan approval:** the file as cards (intent and criteria; files, criterion ↔ test,
   risks). **Approve** appears only after **Open the full file** has opened it, and runs
   `scripts/gate approve-spec|approve-plan NNNN`. **Request changes** opens the file.
@@ -25,7 +31,7 @@ gate's answer is shown as it is on every screen, with the next command to copy.
 ## What it reads and writes
 
 It reads what `scripts/status --json` and the spec and plan files say. Every decision is one
-`scripts/gate` call, the same one you would type; the only file it writes itself is the backlog
+`scripts/gate` call, every install one `scripts/init` call, the same one you would type; the only file it writes itself is the backlog
 entry for a deferred finding (shown in the preview, left for you to commit). A pasted report lives
 only in the open screen. It keeps no state of its own; a team without it follows the same process
 by hand.

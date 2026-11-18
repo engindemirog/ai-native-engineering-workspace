@@ -13,6 +13,7 @@ import { offer, decision, done, shown, fileFor, type Done } from './panel-logic.
 import { html, notice } from './panel.ts';
 import * as sidebar from './sidebar.ts';
 import * as start from './start.ts';
+import * as setup from './setup.ts';
 import * as triage from './triage.ts';
 import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
@@ -33,7 +34,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   let side: vscode.WebviewView | null = null;
   const drawSide = () => {
     if (side === null) return;
-    const m = sidebar.model(status, problem, meta());
+    const m = sidebar.model(status, problem, meta(), setup.needs(setup.installed(setup.existsIn(root)), read('AGENTS.md')));
     side.webview.html = sidebar.html(m, randomBytes(16).toString('hex'), side.webview.cspSource);
     side.badge = m.waiting ? { value: m.waiting, tooltip: `${m.waiting} decision(s) wait for you` } : undefined;
   };
@@ -42,7 +43,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
       side = v;
       v.webview.options = { enableScripts: true, localResourceRoots: [] };
       v.webview.onDidReceiveMessage((m: { type: string }) => {
-        if (m.type === 'new') void vscode.commands.executeCommand('anew.newWork');
+        if (m.type === 'new' || m.type === 'setup') void vscode.commands.executeCommand('anew.newWork');
         else if (m.type.startsWith('row-')) void vscode.commands.executeCommand('anew.open', m.type.slice(4));
       });
       v.onDidDispose(() => { side = null; });
@@ -78,12 +79,17 @@ export function activate(ctx: vscode.ExtensionContext): void {
     panel?.render();
     triager?.render();
     shipper?.render();
+    starter?.refreshed();
   }
 
   let timer: NodeJS.Timeout | undefined;
   const soon = () => { clearTimeout(timer); timer = setTimeout(() => void refresh(), 300); };
   const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'specs/**'));
   watcher.onDidChange(soon); watcher.onDidCreate(soon); watcher.onDidDelete(soon);
+  // the setup follows an install or a bootstrap: AGENTS.md and the files doctor's adapter check names
+  const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github,.github/copilot-instructions.md,.cursor,.cursor/rules,.cursor/rules/**,.agents,.agents/skills,.agents/skills/analyze,.agents/skills/analyze/SKILL.md}'));
+  setupWatcher.onDidChange(soon); setupWatcher.onDidCreate(soon); setupWatcher.onDidDelete(soon);
+  ctx.subscriptions.push(setupWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
 
   let panel: Approval | null = null;
@@ -93,7 +99,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   ctx.subscriptions.push(
     vscode.commands.registerCommand('anew.refresh', () => refresh()),
     vscode.commands.registerCommand('anew.newWork', () => {
-      if (starter === null || starter.disposed) starter = new Start(root as string, read);
+      if (starter === null || starter.disposed) starter = new Start(root as string, read, ctx.workspaceState, shellOf, refresh);
       starter.show();
     }),
     vscode.commands.registerCommand('anew.open', (spec: string) => {
@@ -222,19 +228,28 @@ class Approval {
 }
 
 // The start screen: it builds the command and opens a fresh agent session with it, or hands the
-// command over; it writes no file and answers no gate (spec 0010, G-2).
+// command over; it answers no gate (spec 0010, G-2). The setup (spec 0011): the adapters installed
+// as doctor reads them, Install through `scripts/init` (never --force), bootstrap first.
 class Start {
   private readonly web: vscode.WebviewPanel;
   private kind: start.Kind = 'feature';
   private description = '';
   private started: string | null = null;
+  private installing: setup.Tool | null = null;
+  private installed: start.StartView['installed'] = null;
   disposed = false;
   private readonly root: string;
   private readonly read: (rel: string) => string;
+  private readonly memo: vscode.Memento;
+  private readonly shell: () => string | null;
+  private readonly refresh: () => Promise<void>;
 
-  constructor(root: string, read: (rel: string) => string) {
+  constructor(root: string, read: (rel: string) => string, memo: vscode.Memento, shell: () => string | null, refresh: () => Promise<void>) {
     this.root = root;
     this.read = read;
+    this.memo = memo;
+    this.shell = shell;
+    this.refresh = refresh;
     this.web = vscode.window.createWebviewPanel('anew.start', 'ANEW · new work', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [], retainContextWhenHidden: true });
     this.web.onDidDispose(() => { this.disposed = true; });
     this.web.webview.onDidReceiveMessage((m: { type: string; form?: Record<string, string> }) => this.on(m.type, m.form ?? {}).catch((e: Error) => {
@@ -252,12 +267,38 @@ class Start {
     return start.findClaude({ platform: process.platform, pathEnv: process.env.PATH ?? '', exists: (p) => fs.existsSync(p), read: (p) => fs.readFileSync(p, 'utf8') });
   }
 
-  private render(): void {
+  // Read again on every draw: installed or not is never cached (spec 0011, Constraints).
+  private setup() {
+    const exists = setup.existsIn(this.root);
+    const have = setup.installed(exists);
+    const claude = this.claude() !== null;
+    return {
+      claude, have,
+      installable: setup.ADAPTERS.filter((a) => setup.installable(a.id, exists)).map((a) => a.id),
+      why: Object.fromEntries(setup.ADAPTERS.map((a) => [a.id, setup.whyNot(a.id, exists)])) as Partial<Record<setup.Tool, string>>,
+      agent: setup.pick(this.memo.get<string>('anew.agent'), claude, have),
+      bootstrapped: setup.bootstrapped(this.read('AGENTS.md')),
+    };
+  }
+
+  private shown = '';
+  private keyNow(): string {
+    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null });
+  }
+
+  // After a refresh: redrawn only when the setup it shows changed (review round 1, M-1).
+  refreshed(): void {
+    if (!this.disposed && this.keyNow() !== this.shown) this.render();
+  }
+
+  render(): void {
     if (this.disposed) return;
+    this.shown = this.keyNow();
     const names = ['specs/active', 'specs/done', 'specs/plans'].flatMap((d) => { try { return fs.readdirSync(path.join(this.root, d)); } catch { return []; } });
     this.web.webview.html = start.html({
       kind: this.kind, description: this.description, mode: start.mode(this.read('AGENTS.md')), number: start.nextNumber(names),
-      claude: this.claude() !== null, started: this.started, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      ...this.setup(), started: this.started, shell: this.shell() !== null, installing: this.installing, installed: this.installed,
+      nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
@@ -269,19 +310,59 @@ class Start {
       if (k) this.kind = k.id;
       return this.render();
     }
-    const cmd = start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')));
+    if (type.startsWith('agent-')) {
+      const id = type.slice(6);
+      if (setup.isTool(id)) await this.memo.update('anew.agent', id);
+      return this.render();
+    }
+    if (type.startsWith('install-')) {
+      const id = type.slice(8);
+      return setup.isTool(id) ? this.install(id) : this.render();
+    }
+    if (type === 'generic') {
+      const f = path.join(this.root, 'adapters', 'generic', 'README.md');
+      if (fs.existsSync(f)) await vscode.window.showTextDocument(vscode.Uri.file(f), { preview: true });
+      else void vscode.window.showInformationMessage('adapters/generic/README.md is not in this workspace: paste AGENTS.md at the start of a session.');
+      return;
+    }
+    const s = this.setup();
+    const cmd = s.bootstrapped ? start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')), s.agent) : start.bootstrap(s.agent);
     if (cmd === null) return this.render();
     if (type === 'copy') {
       await vscode.env.clipboard.writeText(cmd);
       void vscode.window.showInformationMessage(`Copied: ${cmd}`);
       return;
     }
-    if (type !== 'start') return;
+    if (type !== 'start' || s.agent !== 'claude-code') return;
     const exe = this.claude();
     if (exe === null) return this.render();
     const t = vscode.window.createTerminal({ name: 'ANEW · new work', shellPath: exe, shellArgs: [cmd], cwd: this.root });
     t.show();
     this.started = cmd;
+    this.render();
+  }
+
+  // One `./scripts/init <tool>` after the human confirmed the files it writes; its output as it is.
+  private async install(id: setup.Tool): Promise<void> {
+    const shell = this.shell();
+    const s = this.setup();
+    if (shell === null || this.installing || s.have.includes(id) || !s.installable.includes(id)) return this.render();
+    const a = setup.adapter(id);
+    const ok = await vscode.window.showWarningMessage(`Install the ${a.label} adapter?`, {
+      modal: true,
+      detail: `./scripts/init ${id} writes ${a.writes.join(', ')}. Files that exist are kept. Nothing is committed.`,
+    }, 'Install');
+    if (ok !== 'Install') return this.render();
+    this.installing = id;
+    this.installed = null;
+    this.render();
+    try {
+      const r = await runScript(shell, this.root, 'init', setup.initArgs(id));
+      this.installed = { tool: id, written: r.code === 0, code: r.code, text: [r.stdout, r.stderr].map((x) => x.trim()).filter(Boolean).join('\n') };
+    } finally {
+      this.installing = null;
+    }
+    await this.refresh();
     this.render();
   }
 }

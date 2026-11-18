@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as path from 'node:path';
-import { mode, command, nextNumber, findClaude, html, KINDS } from '../src/start.ts';
+import { mode, command, bootstrap, nextNumber, findClaude, html, KINDS, type StartView } from '../src/start.ts';
+import { ADAPTERS, whyNot, type Tool } from '../src/setup.ts';
 
 test('each kind builds its command from the description, on one line', () => {
   assert.equal(command('feature', 'export a month\n  as CSV ', 'lite'), '/new-feature export a month as CSV');
@@ -41,7 +42,8 @@ test('claude is found as a program: on PATH, or the exe behind the npm shim; els
   assert.equal(findClaude({ platform: 'darwin', pathEnv: '/usr/bin', exists: () => false, read: () => '' }), null);
 });
 
-const view = { kind: 'feature' as const, description: '', mode: 'lite' as const, number: '0011', claude: true, started: null, nonce: 'n0nce', cspSource: 'vscode-resource:' };
+const view = { kind: 'feature' as const, description: '', mode: 'lite' as const, number: '0011', claude: true, started: null, nonce: 'n0nce', cspSource: 'vscode-resource:',
+  agent: 'claude-code' as Tool, have: ['claude-code'] as Tool[], installable: [] as Tool[], bootstrapped: true, shell: true, installing: null as Tool | null, installed: null as StartView['installed'], why: {} as StartView['why'] };
 
 test('the screen: kinds as pressed buttons, the command shown before anything runs, Start only with claude', () => {
   const empty = html(view);
@@ -62,4 +64,83 @@ test('the screen: kinds as pressed buttons, the command shown before anything ru
 
 test('the live preview script collapses whitespace as command() does', () => {
   assert.ok(html(view).includes(String.raw`ta.value.replace(/\s+/g, ' ').trim()`));
+});
+
+test('AC-3: the command follows the picked agent — $ for Codex, / for the others — for every kind and for bootstrap', () => {
+  for (const k of KINDS) {
+    assert.equal(command(k.id, 'x', 'lite', 'codex'), `$${k.cmd.slice(1)} x`);
+    for (const a of ['claude-code', 'github-copilot', 'cursor'] as const) assert.equal(command(k.id, 'x', 'lite', a), `${k.cmd} x`);
+  }
+  assert.equal(command('feature', 'x', 'strict', 'codex'), '$analyze x');
+  assert.equal(bootstrap('codex'), '$bootstrap');
+  assert.equal(bootstrap('cursor'), '/bootstrap');
+  const h = html({ ...view, agent: 'codex', have: ['codex'], description: 'export' });
+  assert.ok(h.includes('>$new-feature export</pre>'));
+  assert.ok(h.includes('data-cmd="$new-feature"'));
+  assert.ok(h.includes('<code>$fix-bug</code>'));
+  assert.ok(!h.includes('id="start"'));
+  assert.ok(h.includes('Copy the command into Codex&#39;s chat.'));
+});
+
+test('AC-1: the agent card — each adapter installed or not, the pick pressed, Install for a missing one', () => {
+  const h = html({ ...view, have: ['claude-code'], installable: ['github-copilot', 'cursor', 'codex'] });
+  assert.ok(h.includes('<button id="agent-claude-code" class="secondary small" data-keep="1" aria-pressed="true">Claude Code</button><span class="ok">✓ installed</span></li>'));
+  assert.ok(h.includes('<button id="agent-codex" class="secondary small" data-keep="1" aria-pressed="false">Codex</button><span class="missing">not installed</span><button id="install-codex" class="secondary small">Install</button>'));
+  assert.ok(!h.includes('id="install-claude-code"'));
+  assert.ok(h.includes('./scripts/init --force &lt;tool&gt;'));
+  assert.ok(h.includes('<button id="generic" class="link" data-keep="1">adapters/generic/README.md</button>'));
+  // no adapters/ folder: no Install, and why
+  const why = (exists: (rel: string) => boolean) => Object.fromEntries(ADAPTERS.map((a) => [a.id, whyNot(a.id, exists)]));
+  const bare = html({ ...view, have: [], installable: [], why: why((rel) => rel === 'scripts/init') });
+  assert.ok(!/id="install-/.test(bare));
+  assert.ok(bare.includes('no adapters/cursor/ here'));
+  // L-3: only scripts/init missing names scripts/init
+  assert.ok(html({ ...view, have: [], installable: [], why: why((rel) => rel.startsWith('adapters/')) }).includes('no scripts/init here: run ./scripts/init from a template copy'));
+  assert.ok(bare.includes('Claude Code is not installed here: it does not know the ANEW commands until it is.'));
+  // no shell, or an install running: Install disabled
+  assert.ok(html({ ...view, installable: ['codex'], have: [], shell: false }).includes('<button id="install-codex" class="secondary small" disabled>Install</button>'));
+  assert.ok(html({ ...view, installable: ['codex', 'cursor'], have: [], installing: 'codex' }).includes('<button id="install-codex" class="secondary small" disabled>Installing…</button>'));
+});
+
+test('init\'s answer as it is: installed and uncommitted, or refused with its exit code', () => {
+  const ok = html({ ...view, installed: { tool: 'cursor', written: true, code: 0, text: 'kept   .cursor/rules/x.mdc (exists — use --force to overwrite)\nInstalled: <rules>' } });
+  assert.ok(ok.includes('✓ Cursor installed — the files are new and not committed; the commit is yours.'));
+  assert.ok(ok.includes('kept   .cursor/rules/x.mdc (exists — use --force to overwrite)\nInstalled: &lt;rules&gt;'));
+  const no = html({ ...view, installed: { tool: 'cursor', written: false, code: 1, text: 'Unknown adapter' } });
+  // L-2: init is not atomic — the exit code and the output, no claim about what was written
+  assert.ok(no.includes('scripts/init exited 1 — see its output.'));
+  assert.ok(!no.includes('nothing else was written'));
+});
+
+test('AC-4: before bootstrap the one work is "Set up the project" with /bootstrap; no kinds, no description', () => {
+  const h = html({ ...view, bootstrapped: false, mode: 'unset' });
+  assert.ok(h.includes('<h1>Set up the project</h1>'));
+  assert.ok(h.includes('>/bootstrap</pre>'));
+  assert.ok(h.includes('<button id="start" class="primary">Start in Claude Code</button>'));
+  assert.ok(h.includes('<button id="copy" class="secondary" data-keep="1">Copy command</button>'));
+  assert.ok(!h.includes('id="kind-'));
+  assert.ok(!h.includes('name="description"'));
+  assert.equal((h.match(/<script nonce="n0nce">/g) ?? []).length, 1);
+  assert.ok(html({ ...view, bootstrapped: false, agent: 'codex' }).includes('>$bootstrap</pre>'));
+  const configured = html(view);
+  assert.ok(configured.includes('id="kind-feature"'));
+  assert.ok(!configured.includes('Set up the project'));
+});
+
+test('L-1: Start waits while the picked agent\'s adapter is not installed; Copy stays, the reason is shown', () => {
+  const h = html({ ...view, have: [], bootstrapped: false });
+  assert.ok(h.includes('<button id="start" class="primary" data-hold="1" disabled>Start in Claude Code</button>'));
+  assert.ok(h.includes('<button id="copy" class="secondary" data-keep="1">Copy command</button>'));
+  assert.ok(h.includes('Start waits for the Claude Code adapter: install it above, or copy the command.'));
+  // the live preview leaves a held Start alone
+  assert.ok(html({ ...view, have: [] }).includes('filter((b) => b && !b.dataset.hold)'));
+  assert.ok(html({ ...view, description: 'x' }).includes('<button id="start" class="primary">Start in Claude Code</button>'));
+});
+
+test('L-4: while init runs, the agent picks, Start and Copy are disabled', () => {
+  const h = html({ ...view, description: 'x', installable: ['codex'], installing: 'codex' });
+  assert.equal((h.match(/<button id="agent-[a-z-]+" class="secondary small" data-keep="1" aria-pressed="(?:true|false)" disabled>/g) ?? []).length, 4);
+  assert.ok(h.includes('<button id="start" class="primary" data-hold="1" disabled>Start in Claude Code</button>'));
+  // R2-2: held, so typing in the description does not enable it again
+  assert.ok(h.includes('<button id="copy" class="secondary" data-keep="1" data-hold="1" disabled>Copy command</button>'));
 });

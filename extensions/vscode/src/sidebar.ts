@@ -18,6 +18,7 @@ export interface Model {
   waiting: number;
   message: string | null; // a problem, "reading…", or the empty workspace
   meta: string; // mode · version, as the mockup's header
+  setup: string[]; // what the project's setup misses (spec 0011, setup.needs); empty when nothing
 }
 
 // What a row waits for, in the list's words.
@@ -37,12 +38,12 @@ export function card(r: Row): Card {
   return { spec: r.spec, name: r.name, badge: badge(r), tone, line };
 }
 
-export function model(status: Status | null, problem: string | null, meta: string): Model {
-  if (problem !== null) return { groups: [], waiting: 0, message: problem, meta };
-  if (status === null) return { groups: [], waiting: 0, message: 'reading scripts/status…', meta };
+export function model(status: Status | null, problem: string | null, meta: string, setup: string[] = []): Model {
+  if (problem !== null) return { groups: [], waiting: 0, message: problem, meta, setup };
+  if (status === null) return { groups: [], waiting: 0, message: 'reading scripts/status…', meta, setup };
   const g = grouped(status);
   const groups = (['your turn', 'in progress', 'shipped'] as Group[]).filter((k) => g[k].length > 0).map((group) => ({ group, cards: g[group].map(card) }));
-  return { groups, waiting: waiting(status), message: status.rows.length === 0 ? 'No work yet — start with + New work.' : null, meta };
+  return { groups, waiting: waiting(status), message: status.rows.length === 0 ? 'No work yet — start with + New work.' : null, meta, setup };
 }
 
 const LABEL: Record<Group, string> = { 'your turn': 'Your turn', 'in progress': 'In progress', shipped: 'Shipped' };
@@ -62,6 +63,7 @@ export function html(m: Model, nonce: string, cspSource: string): string {
 <div class="side">
 <div class="head"><span class="glabel">ANEW</span><span class="meta">${esc(m.meta)}</span></div>
 <button id="new" data-keep="1" class="primary wide">+ New work</button>
+${m.setup.length ? `<div class="setup" role="note"><span class="glabel you">Setup</span><ul>${m.setup.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><button id="setup" data-keep="1" class="secondary wide">Complete it in Start</button></div>` : ''}
 ${m.message ? `<p class="msg" role="status">${esc(m.message)}</p>` : ''}
 ${groups}
 <p class="note">This list is <code>scripts/status --json</code>. The extension keeps no record of its own.</p>
@@ -71,6 +73,9 @@ ${groups}
 
 const SIDE = `
 main { padding: 10px 8px 16px; gap: 0; max-width: none; }
+.setup { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; border: 1px solid var(--you); }
+.setup .glabel { margin: 0; }
+.setup ul { font-size: 12.5px; }
 .side { display: flex; flex-direction: column; gap: 6px; }
 .head { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 6px; }
 .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); }

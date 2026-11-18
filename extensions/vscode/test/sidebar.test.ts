@@ -65,3 +65,14 @@ test('names and lines from the files are escaped', () => {
   assert.ok(!h.includes('<img') && !h.includes('<b>x') && !h.includes('<i>'));
   assert.ok(h.includes('&lt;img src=x onerror=1&gt;'));
 });
+
+test('AC-5: the setup card shows what is missing above the groups, with a way to Start; none when set up', () => {
+  const missing = ['No AI tool adapter is installed.', 'The project is not set up yet (bootstrap has not run).'];
+  const h = html(model(status, null, '', missing), 'n0nce', 'vscode-resource:');
+  assert.ok(h.includes('<div class="setup" role="note"><span class="glabel you">Setup</span><ul><li>No AI tool adapter is installed.</li><li>The project is not set up yet (bootstrap has not run).</li></ul><button id="setup" data-keep="1" class="secondary wide">Complete it in Start</button></div>'));
+  assert.ok(h.indexOf('id="setup"') < h.indexOf('id="row-0001"'));
+  assert.ok(html(model(null, 'No POSIX shell found', '', missing), 'n0nce', 'vscode-resource:').includes('id="setup"'));
+  const set = html(model(status, null, ''), 'n0nce', 'vscode-resource:');
+  assert.ok(!set.includes('class="setup"'));
+  assert.deepEqual(model(status, null, '', []).setup, []);
+});
