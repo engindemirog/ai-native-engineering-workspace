@@ -174,3 +174,13 @@ test('spec 0014, review round 1: no /bootstrap while its output waits on chore/b
   assert.ok(unpulled.includes('Bootstrap is merged on main: git pull'));
   assert.ok(!unpulled.includes('>/bootstrap'));
 });
+
+test('spec 0015: the upgrade section above the kinds in a bootstrapped project; none before bootstrap', () => {
+  const f = { version: 'v1.31', to: '', branch: null, base: 'v1.31', defaultBranch: 'main', current: 'main', remote: 'origin', gh: true, fetched: false, state: '' };
+  const u = { facts: f, offer: { choices: ['v1.32'], why: '' }, pick: '', compare: (a: string, b: string) => `https://github.com/o/r/compare/${a}...${b}`, changelog: [], script: null, agent: { agent: 'claude-code' as Tool, claude: true, have: ['claude-code' as Tool] }, checks: null, busy: '' as const, prOutput: null, shell: true };
+  const h = html({ ...view, upgrade: u });
+  assert.ok(h.includes('aria-label="Upgrade ANEW"') && h.includes('ANEW v1.31 → v1.32'));
+  assert.ok(h.indexOf('Upgrade ANEW') < h.indexOf('id="kind-feature"'));
+  assert.ok(!html({ ...view, bootstrapped: false, upgrade: u }).includes('Upgrade ANEW'));
+  assert.ok(!html({ ...view, upgrade: { ...u, offer: { choices: [], why: '' } } }).includes('Upgrade ANEW'));
+});

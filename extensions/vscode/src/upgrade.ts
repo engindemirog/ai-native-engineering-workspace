@@ -196,3 +196,7 @@ ${head}
 <p class="prose">${esc(LINE[p])}</p>
 ${picks}${fetch}${scriptBox}${log}${agentBox}${checksBox}${merge}`);
 }
+
+export const CSS = `.up ol.strip { list-style: none; margin: 0; padding: 0; }
+.up .rec { font-size: 11px; opacity: .8; }
+.up details summary { cursor: pointer; }`;

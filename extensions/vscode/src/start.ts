@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { esc, page } from './screens.ts';
 import { ADAPTERS, adapter, forAgent, type Tool } from './setup.ts';
 import * as boot from './bootstrap.ts';
+import * as up from './upgrade.ts';
 
 export type Kind = 'feature' | 'change' | 'fix' | 'refactor';
 export type Mode = 'lite' | 'strict' | 'unset';
@@ -93,6 +94,7 @@ export interface StartView {
   installing: Tool | null;
   installed: { tool: Tool; written: boolean; code: number; text: string } | null; // init's answer
   boot?: boot.BootView | null; // bootstrap on the screen (spec 0014); without it, 0011's card
+  upgrade?: up.View | null; // ANEW upgraded on the screen (spec 0015), in a bootstrapped project
   nonce: string;
   cspSource: string;
 }
@@ -145,7 +147,7 @@ export function html(v: StartView): string {
   const work = setup && v.boot ? bootHtml : setup
     ? `<section class="card" aria-label="Set up the project"><span class="label">Set up the project</span>
 <p class="prose"><strong>The project is not set up yet</strong> (AGENTS.md is not configured, or names no mode). Bootstrap is the first work: the agent reads the project, asks what it cannot see, and writes AGENTS.md, the docs and <code>scripts/check.conf</code>, stopping for your approval. The kinds of work appear once it has set the mode.</p></section>`
-    : `${bootHtml}<section aria-label="Kind"><span class="label">Kind of work</span><div class="kinds">${kinds}</div></section>
+    : `${v.upgrade ? up.section(v.upgrade) : ''}${bootHtml}<section aria-label="Kind"><span class="label">Kind of work</span><div class="kinds">${kinds}</div></section>
 <label class="field"><span class="label">What do you want?</span>
 <textarea name="description" placeholder="${esc(PROMPT[v.kind])}">${esc(v.description)}</textarea></label>
 <p class="foot">You need not write the acceptance criteria: the agent proposes them in the spec draft, and you approve it. Its number will most likely be ${esc(v.number)}; the agent assigns it.</p>`;
@@ -191,5 +193,6 @@ ${script}
 button.small { min-height: 30px; padding: 0 10px; }
 button.link { min-height: 0; padding: 0; border: 0; background: none; color: var(--vscode-textLink-foreground); font-weight: 400; text-decoration: underline; }
 ${boot.CSS}
+${up.CSS}
 </style>`);
 }
