@@ -1,6 +1,6 @@
 # Spec 0012 — the VS Code extension: the agent's next step on the screen
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0012-plan.md`
 - Self-critique: done (G-1–G-4 accepted as recommended, Engin Demiroğ, 2026-11-18)
@@ -55,25 +55,25 @@ Deliberately not done:
   `node:test`; the VS Code layer by the human's run at SHIP.
 
 ## Acceptance criteria
-- [ ] AC-1 — each agent stage gives its command, and the human's, shipped and unclear rows give
+- [x] AC-1 — each agent stage gives its command, and the human's, shipped and unclear rows give
   none (unit tests on `scripts/status --json` rows for every stage, including a real fixture).
-- [ ] AC-2 — the command follows the picked agent: `$build NNNN` for Codex, `/build NNNN` for the
+- [x] AC-2 — the command follows the picked agent: `$build NNNN` for Codex, `/build NNNN` for the
   others (unit tests).
-- [ ] AC-3 — the row's screen shows the command with Copy, and Continue only under 0011's Start
+- [x] AC-3 — the row's screen shows the command with Copy, and Continue only under 0011's Start
   rule; REVIEW and VERIFY name the fresh session; the answer box after an approval offers Continue
   under the same rule (unit tests on the HTML).
-- [ ] AC-4 — on this machine the packaged `.vsix` installs, and a plan approved on the screen is
+- [x] AC-4 — on this machine the packaged `.vsix` installs, and a plan approved on the screen is
   continued with `/build NNNN` from the reopened row; judged by the human at SHIP.
-- [ ] AC-5 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+- [x] AC-5 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; `docs/commands.md` §F, `extensions/vscode/README.md`, CHANGELOG v1.29.1 and
   `.anew-version` v1.29.1.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (`docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (`docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-18)
 - **G-1 — the command from stage and who, not from status's text.** Status's `next` is prose for a
