@@ -1124,7 +1124,9 @@ exits 0 "adopt: into an empty folder"
 grep -q '^Built with ANEW ' "$E/README.md"; report $? "adopt: the README is the project's three lines, not the template's"
 ! grep -rqE '^own:' "$E"; report $? "adopt: the template's own files (.anew-dev, extensions, CHANGELOG, LICENSE, .claude, README) are never written"
 [ ! -e "$E/.git" ]; report $? "adopt: no git state is written"
-has "git add --chmod=+x scripts/adopt scripts/check" "adopt: names the line that keeps the scripts executable in a commit"
+chmodline=$(printf '%s\n' "$out" | grep '^  git add --chmod=+x ')
+for s in adopt check doctor gate status; do case " $chmodline " in *" scripts/$s "*) ;; *) chmodline="" ;; esac; done
+[ -n "$chmodline" ]; report $? "adopt: names the line that keeps the scripts executable in a commit"
 [ -x "$E/scripts/doctor" ] && [ -x "$E/scripts/gate" ]; report $? "adopt: the scripts stay executable"
 git -C "$E" init -q
 run sh -c 'unset ANEW_BASE_REF GITHUB_BASE_REF GITHUB_EVENT_PATH; exec sh "$0"' "$E/scripts/doctor"
@@ -1132,6 +1134,7 @@ has "ok    core structure complete" "adopt: doctor in the adopted folder has no 
 hasnt "FAIL" "adopt: … and no failure at all"
 P="$TMP/adopt-project"; mkdir -p "$P/docs"
 printf 'our readme\n' > "$P/README.md"; printf 'our domain\n' > "$P/docs/domain.md"; printf 'node_modules/\n' > "$P/.gitignore"
+printf '# our agents\n' > "$P/AGENTS.md"; mkdir -p "$P/scripts/lib"; printf 'x\n' > "$P/scripts/lib/util.sh"
 git -C "$P" init -q; git -C "$P" config core.autocrlf false; git -C "$P" add -A; git -C "$P" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm own
 head0=$(git -C "$P" rev-parse HEAD); index0=$(cksum < "$P/.git/index")
 run sh "$A/scripts/adopt" "$P"
@@ -1141,6 +1144,12 @@ has "kept   docs/domain.md (exists)" "adopt: an existing doc is kept and named"
 has "kept   .gitignore (exists)" "adopt: an existing .gitignore is kept, not merged"
 [ "$(cat "$P/README.md")" = "our readme" ] && [ "$(cat "$P/docs/domain.md")" = "our domain" ] && [ "$(cat "$P/.gitignore")" = "node_modules/" ]
 report $? "adopt: … each byte for byte"
+has "merge  AGENTS.md.anew into AGENTS.md" "adopt: a kept AGENTS.md gets ANEW's beside it, to merge"
+[ "$(cat "$P/AGENTS.md")" = "# our agents" ] && cmp -s "$P/AGENTS.md.anew" "$A/AGENTS.md" && cmp -s "$P/.gitignore.anew" "$A/.gitignore"
+report $? "adopt: … the project's own unchanged, the .anew files the template's"
+has "merge  .gitignore.anew into .gitignore" "adopt: a kept .gitignore is named to merge"
+hasnt "merge  docs/domain.md" "adopt: other kept files are not merge files"
+hasnt " scripts/lib" "adopt: the chmod line names files, not the folders under scripts/"
 [ "$(git -C "$P" rev-parse HEAD)" = "$head0" ] && [ "$(cksum < "$P/.git/index")" = "$index0" ]; report $? "adopt: no commit, nothing staged"
 run sh "$A/scripts/adopt"
 exits 1 "adopt: no target"

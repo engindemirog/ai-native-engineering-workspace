@@ -32,7 +32,7 @@ Always available, outside the loop:
 | Terminal scripts | `scripts/adopt` · `scripts/init` · `scripts/doctor` · `scripts/status` · `scripts/gate` · `scripts/check` · `scripts/residue` · `scripts/selftest` |
 | Request lanes | `/change` (existing behavior) · `/fix-bug` (broken behavior) · `/refactor` (structure only) |
 | Setup · record · recover | `/bootstrap` · `/adr` · `/recover` |
-| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status` and `scripts/gate` |
+| Editor (optional) | the VS Code extension (`extensions/vscode/`) — a screen over `scripts/status`, `scripts/gate`, `scripts/init` and `scripts/adopt` |
 
 ## How to read this page
 
@@ -60,8 +60,11 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
 - **When to use it:** once, to bring ANEW into an existing project or an empty folder — run from a
   clone of the release tag: `<template>/scripts/adopt <project>`. Then `scripts/init`, then
   `/bootstrap`.
-- **Reads / writes:** reads the template it runs from; writes the core into the target. Files that
-  exist are kept and named (`kept   <path> (exists)`), never overwritten or merged. No git call:
+- **Reads / writes:** reads the template it runs from — a clean clone of a release tag, since it
+  copies every file it finds in the folders; writes the core into the target. Files that exist
+  are kept and named (`kept   <path> (exists)`), never overwritten or merged; a kept `AGENTS.md`,
+  `.gitattributes` or `.gitignore` gets the template's beside it as `<name>.anew` and a
+  `merge  …` line — an `AGENTS.md` without ANEW's invariant rules fails doctor. No git call:
   nothing is staged or committed; it prints the `git add --chmod=+x scripts/…` line that keeps
   the scripts executable in a commit made on Windows.
 - **Stops at:** no gate; it prints what was written and kept, and the next step.
@@ -427,7 +430,7 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 ## F — Editor: the VS Code extension
 
 ### The VS Code extension (`extensions/vscode/`)
-- **What it does:** the human's part of the process on a screen, over two scripts:
+- **What it does:** the human's part of the process on a screen, over the template's scripts:
   - **ANEW into a project** (a folder without ANEW): **Add ANEW to this project** — the latest
     release cloned, its `scripts/adopt` run into the open folder (existing files kept, nothing
     committed); **New ANEW project** — a new folder, `git init`, `scripts/adopt`, one commit

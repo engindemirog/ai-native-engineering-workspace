@@ -43,8 +43,9 @@ A current release (not in `1.24.x`). No rule changes.
   `specs/` (templates, READMEs, `backlog.md`), `.gitattributes`, `.gitignore`,
   `.github/workflows/check.yml`, `.github/pull_request_template.md`, and a three-line
   `README.md` when there is none. Never the template's own files (`.anew-dev/`, `extensions/`,
-  its README, `CHANGELOG.md`, `LICENSE`, `.claude/`). Existing files are kept and named; no git
-  call; it prints the `git add --chmod=+x` line for a Windows commit. Refused from a configured
+  its README, `CHANGELOG.md`, `LICENSE`, `.claude/`). Existing files are kept and named; a kept
+  `AGENTS.md`, `.gitattributes` or `.gitignore` gets the template's beside it as `<name>.anew`,
+  to merge; no git call; it prints the `git add --chmod=+x` line for a Windows commit. Refused from a configured
   project (only a template copies).
 - **`check.yml`:** each step of the `extension` job runs only where `extensions/vscode/` exists,
   so an adopted project's CI is green before bootstrap.

@@ -126,6 +126,7 @@
         "anew.templateRepository": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "The GitHub repository whose latest release Add and New copy ANEW from: owner/name or its URL. Empty: the official ANEW template."
         }
       }

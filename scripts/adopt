@@ -14,6 +14,7 @@ usage() {
   echo "workflows/, prompts/, scripts/, adapters/, specs/ (templates and READMEs), .gitattributes,"
   echo ".gitignore, .github/workflows/check.yml, .github/pull_request_template.md, and a short"
   echo "README.md when the target has none. Existing files are kept. Nothing is committed."
+  echo "Run it from a clean clone of a release tag: it copies the files it finds in the folders."
 }
 
 # The core: single files, and folders copied whole (spec 0013, R1).
@@ -33,11 +34,19 @@ version=$(head -n 1 "$ROOT/.anew-version" 2>/dev/null | tr -d '\r')
 
 written=0
 kept=0
-# put <relpath>: copy one file unless it exists in the target.
+merges=0
+# put <relpath>: copy one file unless it exists in the target. A kept AGENTS.md, .gitattributes or
+# .gitignore gets the template's beside it as <path>.anew, to merge: ANEW's invariant rules, its
+# scripts kept LF, its ignores (review round 1, M-1).
 put() {
   if [ -e "$T/$1" ]; then
     echo "kept   $1 (exists)"
     kept=$((kept + 1))
+    case "$1" in AGENTS.md|.gitattributes|.gitignore)
+      if [ ! -e "$T/$1.anew" ]; then cp "$ROOT/$1" "$T/$1.anew"; written=$((written + 1)); fi
+      echo "merge  $1.anew into $1 (ANEW's version of it), then delete $1.anew"
+      merges=$((merges + 1)) ;;
+    esac
   else
     mkdir -p "$(dirname "$T/$1")"
     cp "$ROOT/$1" "$T/$1"
@@ -63,9 +72,11 @@ else
 fi
 
 echo "Adopted ANEW ${version:-(version unknown)} into $T: $written written, $kept kept."
+[ "$merges" -eq 0 ] || echo "To merge: $merges file(s) above (merge … .anew). AGENTS.md without ANEW's invariant rules fails doctor."
 echo "Nothing is committed. Git on Windows records no executable bit; when you commit, keep the scripts runnable:"
 printf '  git add --chmod=+x'
 for f in "$T"/scripts/*; do
+  [ -f "$f" ] || continue
   case "$(basename "$f")" in *.*) ;; *) printf ' scripts/%s' "$(basename "$f")" ;; esac
 done
 echo ""

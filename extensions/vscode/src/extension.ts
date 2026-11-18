@@ -151,35 +151,37 @@ let adopting = false; // one Add or New at a time
 const shellNow = () => findShell({ setting: vscode.workspace.getConfiguration('anew').get<string>('shell') ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
 
 // The latest release of the template repository: its tag and where to clone it (spec 0013, R4).
-async function latest(): Promise<{ tag: string; url: string }> {
+async function latest(): Promise<{ tag: string; url: string; from: string }> {
   const repo = adopt.repository(vscode.workspace.getConfiguration('anew').get<string>('templateRepository') ?? '');
   if (repo === null) throw new Error('anew.templateRepository is neither owner/name nor a GitHub URL.');
   let body: string;
   try {
-    const res = await fetch(adopt.latestUrl(repo), { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'anew-vscode' } });
+    const res = await fetch(adopt.latestUrl(repo), { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'anew-vscode' }, signal: AbortSignal.timeout(30_000) });
     body = await res.text();
   } catch (e) {
     throw new Error(`GitHub could not be reached (${(e as Error).message}); nothing was written.`);
   }
-  return { tag: adopt.latestTag(body), url: adopt.cloneUrl(repo) };
+  return { tag: adopt.latestTag(body), url: adopt.cloneUrl(repo), from: adopt.source(repo) };
 }
 
 // The release's own scripts/adopt into the target, from a clone in a temporary folder that is
 // removed afterwards; its output as it is, in the ANEW output channel.
-async function adoptInto(shell: string, url: string, tag: string, target: string): Promise<string> {
+async function adoptInto(shell: string, url: string, tag: string, target: string): Promise<{ summary: string; stdout: string }> {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'anew-release-'));
   try {
     const dir = path.join(tmp, 'template');
-    const g = await run('git', adopt.cloneArgs(url, tag, dir), tmp);
+    const g = await run('git', adopt.cloneArgs(url, tag, dir), tmp, { GIT_TERMINAL_PROMPT: '0' });
     if (g.code !== 0) throw new Error(`git clone of ${tag} failed: ${g.out || 'git was not found'}; nothing was written.`);
     if (!fs.existsSync(path.join(dir, 'scripts', 'adopt'))) throw new Error(`${adopt.NO_ADOPT(tag)}; nothing was written.`);
     const r = await runScript(shell, dir, 'adopt', adopt.adoptArgs(target));
     output().appendLine(`$ scripts/adopt ${target}  (ANEW ${tag})`);
     output().appendLine(`${r.stdout}${r.stderr}`.trimEnd());
     if (r.code !== 0) { output().show(true); throw new Error(`scripts/adopt exited ${r.code} — see its output (ANEW).`); }
-    return adopt.summary(r.stdout);
+    if (adopt.merges(r.stdout).length) output().show(true);
+    return { summary: adopt.summary(r.stdout), stdout: r.stdout };
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    // a folder still held (antivirus, an indexer) never turns the result into a failure (L-3)
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { output().appendLine(`not removed: ${tmp} (${(e as Error).message})`); }
   }
 }
 
@@ -191,14 +193,28 @@ async function addAnew(root: string | undefined, begin: () => void): Promise<voi
   if (shell === null) throw new Error('No POSIX shell found: set anew.shell (Git for Windows: bash.exe). Nothing was written.');
   adopting = true;
   try {
-    const { tag, url } = await latest();
-    if (await vscode.window.showWarningMessage(adopt.addConfirm(root, tag), { modal: true }, 'Add ANEW') !== 'Add ANEW') return;
-    const said = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `ANEW ${tag}: adding to this project…` }, () => adoptInto(shell, url, tag, root));
-    void vscode.window.showInformationMessage(`${said} Nothing is committed: the commit is yours.`, 'Show output').then((b) => { if (b) output().show(); });
+    const { tag, url, from } = await reading();
+    if (await vscode.window.showWarningMessage(adopt.addConfirm(root, tag, from), { modal: true }, 'Add ANEW') !== 'Add ANEW') return;
+    const r = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `ANEW ${tag}: adding to this project…` }, () => adoptInto(shell, url, tag, root));
+    adopted(r.stdout, `${r.summary}${adopt.merges(r.stdout).length ? ' Some files were kept: merge their .anew versions (see the output).' : ''} Nothing is committed: the commit is yours.`);
     begin();
   } finally {
     adopting = false;
   }
+}
+
+// The release read inside a progress notification, so a slow network shows (L-4).
+const reading = () => vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'ANEW: reading the latest release…' }, () => latest());
+
+// adopt's answer: on Windows, the git add --chmod=+x line to copy, since git there records no
+// executable bit (spec 0013, G-5; review round 1, M-4).
+function adopted(stdout: string, text: string): void {
+  const line = adopt.chmodLine(stdout);
+  const copy = process.platform === 'win32' && line ? ['Copy git add line'] : [];
+  void vscode.window.showInformationMessage(text, ...copy, 'Show output').then(async (b) => {
+    if (b === 'Show output') output().show();
+    else if (b) { await vscode.env.clipboard.writeText(line); void vscode.window.showInformationMessage(`Copied: ${line} — run it before your commit.`); }
+  });
 }
 
 const emptyOrNone = (dir: string) => { try { return fs.statSync(dir).isDirectory() && fs.readdirSync(dir).length === 0; } catch { return true; } };
@@ -219,17 +235,27 @@ async function newProject(): Promise<void> {
   const target = path.join(base, name);
   adopting = true;
   try {
-    const { tag, url } = await latest();
-    if (await vscode.window.showWarningMessage(adopt.newConfirm(target, tag), { modal: true }, 'Create') !== 'Create') return;
-    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `ANEW ${tag}: creating ${name}…` }, async () => {
+    const { tag, url, from } = await reading();
+    if (await vscode.window.showWarningMessage(adopt.newConfirm(target, tag, from), { modal: true }, 'Create') !== 'Create') return;
+    const made = !fs.existsSync(target);
+    const failedGit = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `ANEW ${tag}: creating ${name}…` }, async () => {
       fs.mkdirSync(target, { recursive: true });
-      await adoptInto(shell, url, tag, target);
-      const files = fs.readdirSync(path.join(target, 'scripts')).map((f) => `scripts/${f}`);
-      for (const step of adopt.newSteps(tag, files)) {
-        const g = await run('git', step, target);
-        if (g.code !== 0) throw new Error(`git ${step[0]} failed in ${target}: ${g.out || 'git was not found'}. The ANEW core is there; finish the repository by hand.`);
+      try {
+        await adoptInto(shell, url, tag, target);
+      } catch (e) {
+        // the folder New made goes again: nothing was written (L-1)
+        if (made) { try { fs.rmSync(target, { recursive: true, force: true }); } catch { /* left; named below */ } }
+        throw e;
       }
+      const files = fs.readdirSync(path.join(target, 'scripts'), { withFileTypes: true }).filter((f) => f.isFile()).map((f) => `scripts/${f.name}`);
+      for (const step of adopt.newSteps(tag, files)) {
+        const g = await run('git', step, target, { GIT_TERMINAL_PROMPT: '0' });
+        if (g.code !== 0) return `git ${step[0]} failed in ${target}: ${g.out || 'git was not found'}. The ANEW core is there; finish the repository by hand.`;
+      }
+      return '';
     });
+    // the folder opens either way; a failed git step is named (L-2)
+    if (failedGit) void vscode.window.showErrorMessage(`ANEW: ${failedGit}`);
     await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(target));
   } finally {
     adopting = false;
@@ -673,9 +699,9 @@ class Triage {
 
 // A program's exit code, its stdout, and stdout with stderr (for showing), never through a shell
 // string.
-function run(cmd: string, args: string[], cwd: string): Promise<{ code: number; stdout: string; out: string }> {
+function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; out: string }> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { cwd }, (e, stdout, stderr) => {
+    execFile(cmd, args, { cwd, env: { ...process.env, ...env } }, (e, stdout, stderr) => {
       const code = e ? (typeof (e as { code?: unknown }).code === 'number' ? (e as { code: number }).code : 1) : 0;
       resolve({ code, stdout: String(stdout ?? ''), out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
     });

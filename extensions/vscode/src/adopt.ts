@@ -43,12 +43,17 @@ export const adoptArgs = (target: string): string[] => [target];
 // v1.30 is the first release with scripts/adopt (plan 0013, Risk 4).
 export const NO_ADOPT = (tag: string) => `the release ${tag} has no scripts/adopt (needs v1.30 or later)`;
 
-export function addConfirm(folder: string, tag: string): string {
-  return `Add ANEW ${tag} to ${folder}?\n\nThe ANEW core (AGENTS.md, docs/, workflows/, prompts/, scripts/, adapters/, specs/, .github/workflows/check.yml, …) is copied by the release's scripts/adopt. Files that exist are kept; nothing is committed.`;
+// The source, named in the confirmations when it is not the official template (review round 1, M-3).
+export function source(r: Repository): string {
+  return `${r.owner}/${r.name}` === DEFAULT_REPOSITORY ? '' : `\n\nFrom ${r.owner}/${r.name} (anew.templateRepository), not the official template: its scripts/adopt runs here.`;
 }
 
-export function newConfirm(folder: string, tag: string): string {
-  return `Create ${folder} with ANEW ${tag}?\n\nA new git repository, the ANEW core copied by the release's scripts/adopt, and one commit "chore: ANEW ${tag}". The folder then opens here.`;
+export function addConfirm(folder: string, tag: string, from = ''): string {
+  return `Add ANEW ${tag} to ${folder}?${from}\n\nThe ANEW core (AGENTS.md, docs/, workflows/, prompts/, scripts/, adapters/, specs/, .github/workflows/check.yml, …) is copied by the release's scripts/adopt. Files that exist are kept (AGENTS.md, .gitattributes and .gitignore get ANEW's beside them, to merge); nothing is committed.`;
+}
+
+export function newConfirm(folder: string, tag: string, from = ''): string {
+  return `Create ${folder} with ANEW ${tag}?${from}\n\nA new git repository, the ANEW core copied by the release's scripts/adopt, and one commit "chore: ANEW ${tag}". The folder then opens here.`;
 }
 
 // A new project's folder name: one path segment a file system takes; '' when it is fine.
@@ -75,3 +80,7 @@ export function newSteps(tag: string, files: string[]): string[][] {
 export function summary(stdout: string): string {
   return stdout.split(/\r?\n/).find((l) => l.startsWith('Adopted ANEW ')) ?? 'scripts/adopt gave no summary — see its output.';
 }
+
+// adopt's "merge" lines (a kept AGENTS.md, .gitattributes, .gitignore) and its chmod line.
+export const merges = (stdout: string): string[] => stdout.split(/\r?\n/).filter((l) => l.startsWith('merge  '));
+export const chmodLine = (stdout: string): string => stdout.split(/\r?\n/).find((l) => l.startsWith('  git add --chmod=+x'))?.trim() ?? '';

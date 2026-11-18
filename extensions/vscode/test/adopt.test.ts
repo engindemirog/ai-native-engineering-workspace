@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { repository, latestUrl, cloneUrl, latestTag, cloneArgs, adoptArgs, addConfirm, newConfirm, nameProblem, newSteps, summary, NO_ADOPT, DEFAULT_REPOSITORY } from '../src/adopt.ts';
+import { source, merges, chmodLine, repository, latestUrl, cloneUrl, latestTag, cloneArgs, adoptArgs, addConfirm, newConfirm, nameProblem, newSteps, summary, NO_ADOPT, DEFAULT_REPOSITORY } from '../src/adopt.ts';
 
 test('the template repository: the setting as owner/name or its GitHub URL; empty is the official one', () => {
   assert.deepEqual(repository(''), { owner: 'engindemirog', name: 'ai-native-engineering-workspace' });
@@ -33,7 +33,7 @@ test('AC-3: the clone and adopt arguments — the tag only, one commit deep, the
 test('AC-3: the confirmations name the folder, the version, what is kept and what is committed', () => {
   const add = addConfirm('C:\\work\\shop', 'v1.30');
   assert.ok(add.startsWith('Add ANEW v1.30 to C:\\work\\shop?'));
-  assert.ok(add.includes('Files that exist are kept; nothing is committed.'));
+  assert.ok(add.includes('Files that exist are kept (AGENTS.md, .gitattributes and .gitignore get ANEW\'s beside them, to merge); nothing is committed.'));
   const n = newConfirm('C:\\work\\new-shop', 'v1.30');
   assert.ok(n.startsWith('Create C:\\work\\new-shop with ANEW v1.30?'));
   assert.ok(n.includes('one commit "chore: ANEW v1.30"'));
@@ -60,4 +60,21 @@ test('G-5: the new project\'s git steps — the scripts executable in the index,
 test('adopt\'s summary line for the notification', () => {
   assert.equal(summary('kept   README.md (exists)\nAdopted ANEW v1.30 into /p: 150 written, 1 kept.\nNothing is committed.'), 'Adopted ANEW v1.30 into /p: 150 written, 1 kept.');
   assert.equal(summary(''), 'scripts/adopt gave no summary — see its output.');
+});
+
+test('M-3: a source that is not the official template is named in both confirmations', () => {
+  assert.equal(source(repository('')!), '');
+  const from = source(repository('acme/anew-fork')!);
+  assert.ok(from.includes('From acme/anew-fork (anew.templateRepository), not the official template'));
+  assert.ok(addConfirm('/work/p', 'v1.30', from).startsWith('Add ANEW v1.30 to /work/p?\n\nFrom acme/anew-fork'));
+  assert.ok(newConfirm('/work/p', 'v1.30', from).includes('From acme/anew-fork'));
+  assert.ok(!addConfirm('/work/p', 'v1.30').includes('From '));
+});
+
+test('M-1, M-4: adopt\'s merge lines and its chmod line, read from its output', () => {
+  const out = 'kept   AGENTS.md (exists)\nmerge  AGENTS.md.anew into AGENTS.md (ANEW\'s version of it), then delete AGENTS.md.anew\nkept   docs/x.md (exists)\nAdopted ANEW v1.30 into /p: 1 written, 2 kept.\n  git add --chmod=+x scripts/adopt scripts/check\n';
+  assert.deepEqual(merges(out), ['merge  AGENTS.md.anew into AGENTS.md (ANEW\'s version of it), then delete AGENTS.md.anew']);
+  assert.equal(chmodLine(out), 'git add --chmod=+x scripts/adopt scripts/check');
+  assert.deepEqual(merges('Adopted ANEW v1.30 into /p: 1 written, 0 kept.'), []);
+  assert.equal(chmodLine(''), '');
 });
