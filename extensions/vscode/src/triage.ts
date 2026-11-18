@@ -4,7 +4,8 @@
 // extension writes itself; it is previewed with the table (spec 0010, Constraints).
 import type { Finding, Severity } from './report.ts';
 import type { Row } from './status.ts';
-import { esc, page, strip, header, answerBox } from './screens.ts';
+import { esc, page, strip, header, answerBox, nextBox } from './screens.ts';
+import { nextFor, type Agent } from './next.ts';
 
 export type Verdict = 'real' | 'noise' | 'defer' | 'investigate';
 export const VERDICTS: Verdict[] = ['real', 'noise', 'defer', 'investigate'];
@@ -158,6 +159,7 @@ export interface TriageView {
   shell: boolean;
   running: boolean;
   result: { written: boolean; code: number; text: string; next: string } | null;
+  agent?: Agent; // the agent the next step is for; without it, Copy only
   nonce: string;
   cspSource: string;
 }
@@ -171,6 +173,12 @@ export function parts(v: Pick<TriageView, 'preview' | 'problems' | 'shell' | 'ru
 }
 
 const SEV_CLASS: Record<string, string> ={ Critical: 'hi', High: 'hi', Medium: 'mid', Low: 'low', Info: 'info', '': 'info' };
+
+// Before a report is pasted: the review (or VERIFY) it comes from, to run first (spec 0012).
+export function first(v: Pick<TriageView, 'row' | 'decisions' | 'result' | 'agent'>): string {
+  const cmd = v.decisions === null && v.result === null ? nextFor(v.row) : null;
+  return cmd ? `<div class="card next" role="note"><span class="label">First run it — then paste its report</span>${nextBox(cmd, v.agent)}</div>` : '';
+}
 
 export function html(v: TriageView): string {
   const label = v.kind === 'review' ? 'Review' : 'VERIFY';
@@ -204,11 +212,12 @@ export function html(v: TriageView): string {
 ${header(`${v.plan} · ## Triage`, title)}
 ${strip(v.row)}
 ${kinds}
+${first(v)}
 ${v.result?.written ? '' : paste}
 ${cards}
 ${preview}
 ${save}
-${v.result ? answerBox(v.result, 'Triage saved — written and committed') : ''}
+${v.result ? answerBox(v.result, 'Triage saved — written and committed', v.agent) : ''}
 <style nonce="${v.nonce}">
 .finding { gap: 10px; }
 .tag { font-weight: 700; font-family: var(--mono); }

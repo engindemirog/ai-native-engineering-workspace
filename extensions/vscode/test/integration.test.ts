@@ -12,6 +12,7 @@ import { gateArgs, answer } from '../src/gate.ts';
 import { write as triageWrite, type Decision } from '../src/triage.ts';
 import { offered } from '../src/ship.ts';
 import { ADAPTERS, existsIn, initArgs, installed } from '../src/setup.ts';
+import { nextFor } from '../src/next.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -237,4 +238,25 @@ test('install: the screen\'s init call leaves what the terminal call leaves; an 
   assert.deepEqual(tree(a), tree(b));
   assert.equal(fs.readFileSync(path.join(a, '.cursor', 'rules', 'anew.mdc'), 'utf8'), 'our own rule\n');
   assert.match(r.stdout, /^kept {3}\.cursor\/rules\/anew\.mdc \(exists — use --force to overwrite\)$/m);
+});
+
+test('next step: the rows scripts/status gives at PLAN, BUILD, REVIEW, FIX ROUND and VERIFY map to their commands', { skip }, async () => {
+  const row = async (dir: string) => parseStatus((await runScript(shell as string, dir, 'status', ['--json'])).stdout).rows[0];
+  const dir = fixture('next');
+  assert.equal(nextFor(await row(dir)), null); // ANALYZE: the human's
+  terminal(dir, './scripts/gate approve-spec 0001');
+  assert.equal(nextFor(await row(dir)), '/plan 0001');
+  fs.writeFileSync(path.join(dir, 'specs', 'plans', '0001-plan.md'), plan);
+  assert.equal(nextFor(await row(dir)), null); // the plan's approval: the human's
+  terminal(dir, './scripts/gate approve-plan 0001');
+  assert.equal(nextFor(await row(dir)), '/build 0001');
+  const a = await atReview('next-review');
+  assert.equal(nextFor(await row(a)), '/review 0001');
+  terminal(a, "./scripts/gate triage 0001 --review --finding 'L-1 a wrong word' real ''");
+  const fix = await row(a);
+  assert.equal(fix.stage, 'FIX ROUND', fix.next);
+  assert.equal(nextFor(fix), '/build 0001');
+  const b = await atReview('next-verify');
+  terminal(b, './scripts/gate triage 0001 --review');
+  assert.equal(nextFor(await row(b)), '/verify 0001');
 });

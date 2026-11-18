@@ -17,6 +17,7 @@ import * as setup from './setup.ts';
 import * as triage from './triage.ts';
 import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
+import { nextFor, canContinue, type Agent } from './next.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -110,11 +111,11 @@ export function activate(ctx: vscode.ExtensionContext): void {
         return;
       }
       if (row && triageKinds(row).length) {
-        if (triager === null || triager.disposed) triager = new Triage(root as string, () => status, shellOf, refresh);
+        if (triager === null || triager.disposed) triager = new Triage(root as string, () => status, shellOf, refresh, ctx.workspaceState);
         triager.show(spec);
         return;
       }
-      if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, () => problem, shellOf, refresh);
+      if (panel === null || panel.disposed) panel = new Approval(root as string, () => status, () => problem, shellOf, refresh, ctx.workspaceState);
       panel.show(spec);
     }),
   );
@@ -122,6 +123,40 @@ export function activate(ctx: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {}
+
+const claudeExe = () => start.findClaude({ platform: process.platform, pathEnv: process.env.PATH ?? '', exists: (p) => fs.existsSync(p), read: (p) => fs.readFileSync(p, 'utf8') });
+
+// The agent a next step is for, read as the Start screen reads it (spec 0011), never cached.
+function agentIn(root: string, memo: vscode.Memento): Agent {
+  const have = setup.installed(setup.existsIn(root));
+  const claude = claudeExe() !== null;
+  return { agent: setup.pick(memo.get<string>('anew.agent'), claude, have), claude, have };
+}
+
+// A fresh Claude Code session with the command, in a terminal: Start, and Continue (spec 0012).
+function openClaude(root: string, exe: string, cmd: string, name: string): void {
+  const t = vscode.window.createTerminal({ name, shellPath: exe, shellArgs: [cmd], cwd: root });
+  t.show();
+}
+
+// Copy, or Continue in Claude Code, with a next step in the agent's form; Continue only under
+// Start's rule (next.ts, canContinue).
+async function nextStep(type: string, root: string, memo: vscode.Memento, cmd: string): Promise<void> {
+  if (!cmd) return;
+  const a = agentIn(root, memo);
+  const c = setup.forAgent(cmd, a.agent);
+  if (type === 'copy') {
+    await vscode.env.clipboard.writeText(c);
+    void vscode.window.showInformationMessage(`Copied: ${c}`);
+    return;
+  }
+  if (type !== 'continue') return;
+  const exe = claudeExe();
+  if (canContinue(a) && exe !== null) return openClaude(root, exe, c, `ANEW · ${c}`);
+  // drawn under the rule, no longer under it at the click: say why (review round 1, L-1)
+  void vscode.window.showInformationMessage(a.agent !== 'claude-code' ? `The agent picked is ${setup.adapter(a.agent).label}: copy the command into its chat.`
+    : exe === null ? 'Claude Code was not found on PATH: copy the command.' : 'Continue waits for the Claude Code adapter: install it on the Start screen.');
+}
 
 // One panel, reused for whichever row was opened last.
 class Approval {
@@ -137,13 +172,15 @@ class Approval {
   private readonly problem: () => string | null;
   private readonly shell: () => string | null;
   private readonly refresh: () => Promise<void>;
+  private readonly memo: vscode.Memento;
 
-  constructor(root: string, status: () => Status | null, problem: () => string | null, shell: () => string | null, refresh: () => Promise<void>) {
+  constructor(root: string, status: () => Status | null, problem: () => string | null, shell: () => string | null, refresh: () => Promise<void>, memo: vscode.Memento) {
     this.root = root;
     this.status = status;
     this.problem = problem;
     this.shell = shell;
     this.refresh = refresh;
+    this.memo = memo;
     this.web = vscode.window.createWebviewPanel('anew.approval', 'ANEW', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [] });
     this.web.onDidDispose(() => { this.disposed = true; });
     execFile('git', ['config', 'user.name'], { cwd: root }, (_e, out) => { this.approver = String(out ?? '').trim(); this.render(); });
@@ -192,7 +229,7 @@ class Approval {
     this.web.webview.html = html({
       row, file: file ?? '(file not found)', sections: sections(text, names),
       offer: offer({ row, opened: this.opened === d, shell: this.shell() !== null, running: this.running }),
-      result: shown(this.result, row, file), approver: this.approver, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      result: shown(this.result, row, file), approver: this.approver, agent: agentIn(this.root, this.memo), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
@@ -205,12 +242,10 @@ class Approval {
       if (type === 'open') this.opened = decision(row, file);
       return this.render();
     }
-    if (type === 'copy') {
-      if (this.result?.next) {
-        await vscode.env.clipboard.writeText(this.result.next);
-        void vscode.window.showInformationMessage(`Copied: ${this.result.next}`);
-      }
-      return;
+    if (type === 'copy' || type === 'continue') {
+      // the step the screen shows: gate's answer's, else the row's while it waits for the agent
+      const r = shown(this.result, row, file);
+      return nextStep(type, this.root, this.memo, r ? (r.written ? r.next : '') : nextFor(row) ?? '');
     }
     if (type !== 'approve') return;
     const d = decision(row, file);
@@ -264,7 +299,7 @@ class Start {
   }
 
   private claude(): string | null {
-    return start.findClaude({ platform: process.platform, pathEnv: process.env.PATH ?? '', exists: (p) => fs.existsSync(p), read: (p) => fs.readFileSync(p, 'utf8') });
+    return claudeExe();
   }
 
   // Read again on every draw: installed or not is never cached (spec 0011, Constraints).
@@ -313,6 +348,8 @@ class Start {
     if (type.startsWith('agent-')) {
       const id = type.slice(6);
       if (setup.isTool(id)) await this.memo.update('anew.agent', id);
+      // the open approval and triage screens show the command in the agent's form (review round 1, L-2)
+      void this.refresh();
       return this.render();
     }
     if (type.startsWith('install-')) {
@@ -336,8 +373,7 @@ class Start {
     if (type !== 'start' || s.agent !== 'claude-code') return;
     const exe = this.claude();
     if (exe === null) return this.render();
-    const t = vscode.window.createTerminal({ name: 'ANEW · new work', shellPath: exe, shellArgs: [cmd], cwd: this.root });
-    t.show();
+    openClaude(this.root, exe, cmd, 'ANEW · new work');
     this.started = cmd;
     this.render();
   }
@@ -395,11 +431,14 @@ class Triage {
   private readonly shell: () => string | null;
   private readonly refresh: () => Promise<void>;
 
-  constructor(root: string, status: () => Status | null, shell: () => string | null, refresh: () => Promise<void>) {
+  private readonly memo: vscode.Memento;
+
+  constructor(root: string, status: () => Status | null, shell: () => string | null, refresh: () => Promise<void>, memo: vscode.Memento) {
     this.root = root;
     this.status = status;
     this.shell = shell;
     this.refresh = refresh;
+    this.memo = memo;
     // kept alive while hidden: a pasted report and half-written notes survive a tab switch
     this.web = vscode.window.createWebviewPanel('anew.triage', 'ANEW · triage', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [], retainContextWhenHidden: true });
     this.web.onDidDispose(() => { this.disposed = true; });
@@ -442,7 +481,7 @@ class Triage {
     this.web.title = `ANEW · ${row.spec} triage`;
     this.web.webview.html = triage.html({
       row, plan: `specs/plans/${row.spec}-plan.md`, kind: this.kind, kinds: kinds.length ? kinds : [this.kind],
-      report: this.report, decisions: this.decisions, ...this.state(), result: this.result, nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      report: this.report, decisions: this.decisions, ...this.state(), result: this.result, agent: agentIn(this.root, this.memo), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
@@ -479,9 +518,10 @@ class Triage {
       this.decisions = ds;
     } else if (v && this.decisions?.[Number(v[1])]) this.decisions[Number(v[1])].verdict = v[2] as triage.Verdict;
     else if (rm && this.decisions) this.decisions.splice(Number(rm[1]), 1);
-    else if (type === 'copy') {
-      if (this.result?.next) await vscode.env.clipboard.writeText(this.result.next);
-      return;
+    else if (type === 'copy' || type === 'continue') {
+      // the step the screen shows: the answer's, else the review or VERIFY to run first (triage.first)
+      const cmd = this.result ? this.result.next : row && this.decisions === null ? nextFor(row) ?? '' : '';
+      return nextStep(type, this.root, this.memo, cmd);
     } else if (type === 'save') return this.save();
     this.render();
   }

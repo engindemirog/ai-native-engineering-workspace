@@ -26,7 +26,13 @@ The human's part of the ANEW process on a screen, inside VS Code — over two sc
   PR**, after a confirmation that names the branch and the remote — or the commands to copy. The
   merge stays on GitHub.
 
-gate's answer is shown as it is on every screen, with the next command to copy.
+- **The agent's next step:** a row that waits for the agent (PLAN, BUILD, a fix round, REVIEW,
+  VERIFY) shows the command that continues it — `/build NNNN`, `/review NNNN`, … in the picked
+  agent's form — with **Copy**, and **Continue in Claude Code** when `claude` is found, Claude Code is
+  picked and its adapter is installed: a fresh session with the command. The chat that asked for a decision taken on the screen does not learn
+  of it: tell it to go on, or continue in a new session.
+
+gate's answer is shown as it is on every screen, with the next step when there is one.
 
 ## What it reads and writes
 
