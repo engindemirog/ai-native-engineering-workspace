@@ -54,7 +54,7 @@ checked and merged by the team like bootstrap.
   scripts, intents to documents in the project's words — writes `.anew-version` last and commits
   on `chore/anew-<tag>`; never pushes or merges.
 - **Extension 0.6.0** (the `.vsix` is attached to the release): the Start screen offers a newer
-  release (on `v1.24.x`, the line's newest first), fetches both releases into `.git/anew-upgrade/`,
+  release (on `v1.24.x`, which has no `scripts/upgrade`, only as an explicit choice), fetches both releases into `.git/anew-upgrade/`,
   creates the branch, runs the script, offers `/upgrade`, runs doctor and selftest, pushes and opens
   the PR; never the merge.
 
@@ -69,8 +69,8 @@ checked and merged by the team like bootstrap.
   `workflows/README.md`: intent: the new rows.
 - `/upgrade` in each adapter you installed (`.claude/commands/upgrade.md`,
   `.github/prompts/upgrade.prompt.md`, `.cursor/commands/upgrade.md`, `.agents/skills/upgrade/`):
-  `./scripts/init <tool>` adds it (existing files kept); the adapters' READMEs: intent: `/upgrade`
-  among the other commands.
+  `scripts/upgrade` adds it to each installed adapter, or `./scripts/init <tool>` (existing files
+  kept); the adapters' READMEs: intent: `/upgrade` among the other commands.
 - `docs/commands.md` (`scripts/upgrade`, `/upgrade`, §F), `README.md` (the scripts table):
   intent: the new script and command.
 - CHANGELOG, "How to upgrade": the note on `scripts/upgrade` and `/upgrade`.

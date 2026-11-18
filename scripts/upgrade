@@ -46,6 +46,21 @@ have=$(head -n 1 "$T/.anew-version" 2>/dev/null | tr -d '\r')
 git -C "$T" rev-parse --git-dir >/dev/null 2>&1 || { echo "upgrade: $T is not a git repository" >&2; exit 1; }
 [ -z "$(git -C "$T" status --porcelain)" ] || { echo "upgrade: $T has uncommitted changes — commit or stash them first" >&2; exit 1; }
 
+# same <a> <b>: both absent, or both present with the same contents — line endings aside, so a
+# working tree checked out with CRLF still matches the releases' LF (review round 1, L-8)
+same() {
+  if [ -e "$1" ]; then
+    [ -e "$2" ] || return 1
+    cmp -s "$1" "$2" && return 0
+    [ "$(tr -d '\r' < "$1" | cksum)" = "$(tr -d '\r' < "$2" | cksum)" ]
+  else
+    [ ! -e "$2" ]
+  fi
+}
+# installed <release marker> <project marker>: an adapter counts when its marker is ANEW's copy,
+# never by a file of the project's own that happens to have the name (L-2)
+installed() { [ -e "$T/$2" ] && { same "$T/$2" "$B/$1" || same "$T/$2" "$ROOT/$1"; }; }
+
 # Each path as "<release path>	<project path>": the core as it is, the installed adapters' files
 # where scripts/init puts them (keep in step with scripts/init; selftest checks it).
 TAB=$(printf '\t')
@@ -57,42 +72,57 @@ map() {
     printf '%s\t%s\n' "$1$rel" "$2$rel"
   done
 }
+CC=0; GH=0; CU=0; CX=0
+installed adapters/claude-code/.claude/commands/new-feature.md .claude/commands/new-feature.md && CC=1
+installed adapters/github-copilot/prompts/new-feature.prompt.md .github/prompts/new-feature.prompt.md && GH=1
+installed adapters/cursor/commands/new-feature.md .cursor/commands/new-feature.md && CU=1
+installed adapters/codex/skills/new-feature/SKILL.md .agents/skills/new-feature/SKILL.md && CX=1
 paths() {
   for f in $FILES; do printf '%s\t%s\n' "$f" "$f"; done
   for r in "$ROOT" "$B"; do
     for d in $DIRS; do map "$d" "$d"; done
-    if [ -f "$T/CLAUDE.md" ] || [ -d "$T/.claude/commands" ]; then
+    if [ "$CC" -eq 1 ]; then
       map adapters/claude-code/CLAUDE.md CLAUDE.md
       map adapters/claude-code/.claude .claude
     fi
-    if [ -f "$T/.github/copilot-instructions.md" ] || [ -d "$T/.github/prompts" ]; then
+    if [ "$GH" -eq 1 ]; then
       map adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md
       for d in prompts agents instructions; do map "adapters/github-copilot/$d" ".github/$d"; done
     fi
-    if [ -d "$T/.cursor/commands" ] || [ -d "$T/.cursor/rules" ]; then
+    if [ "$CU" -eq 1 ]; then
       map adapters/cursor/rules .cursor/rules
       map adapters/cursor/commands .cursor/commands
     fi
-    if [ -d "$T/.agents/skills" ]; then
+    if [ "$CX" -eq 1 ]; then
       map adapters/codex/skills .agents/skills
     fi
   done
   return 0
 }
 
-replaced=0; added=0; removed=0; kept=0; merges=0; scripts=0
-# same <a> <b>: both absent, or both present and identical
-same() { if [ -e "$1" ]; then [ -e "$2" ] && cmp -s "$1" "$2"; else [ ! -e "$2" ]; fi; }
+# The answer is also kept in the git directory, for /upgrade in a fresh session: the tree is dirty
+# after this run, so a rerun is refused (review round 1, H-1).
+GD=$(git -C "$T" rev-parse --absolute-git-dir)
+mkdir -p "$GD/anew-upgrade"
+OUT="$GD/anew-upgrade/upgrade-$new.out"
+tmp=$(mktemp "${TMPDIR:-/tmp}/anew-upgrade.XXXXXX")
+trap 'rm -f "$tmp"' EXIT INT TERM
+
+replaced=0; added=0; removed=0; kept=0; merges=0; exe=0
+{
 while IFS="$TAB" read -r src dst; do
   [ -n "$src" ] || continue
   n="$ROOT/$src"; b="$B/$src"; p="$T/$dst"
   same "$p" "$n" && continue
-  if same "$p" "$b"; then
+  if [ ! -e "$p" ] && [ -d "$(dirname "$b")" ] && [ ! -d "$(dirname "$p")" ]; then
+    # the base had the folder, the project removed it: nothing put back there, nothing to merge (L-3)
+    echo "kept     $dst (its folder was removed in the project)"; kept=$((kept + 1))
+  elif same "$p" "$b"; then
     if [ -e "$n" ]; then
       if [ -e "$p" ]; then echo "replaced $dst"; replaced=$((replaced + 1)); else echo "added    $dst"; added=$((added + 1)); fi
       mkdir -p "$(dirname "$p")"
       cp "$n" "$p"
-      case "$dst" in scripts/*.*) ;; scripts/*) scripts=1 ;; esac
+      case "$dst" in scripts/*.*) ;; scripts/*|.claude/hooks/*.sh) exe=1 ;; esac
     else
       rm -f "$p"
       echo "removed  $dst"; removed=$((removed + 1))
@@ -108,12 +138,19 @@ EOF
 
 echo "Upgrade $base → $new in $T: $replaced replaced, $added added, $removed removed, $kept kept, $merges to merge."
 echo "Nothing is committed; .anew-version still says $base: /upgrade merges the files above and writes it last."
-if [ "$scripts" -eq 1 ]; then
-  echo "Git on Windows records no executable bit; when you commit, keep the scripts runnable:"
+echo "This answer is kept in $OUT for /upgrade."
+if [ "$exe" -eq 1 ]; then
+  echo "Git on Windows records no executable bit; when you commit, keep the scripts and hooks runnable:"
   printf '  git add --chmod=+x'
   for f in "$T"/scripts/*; do
     [ -f "$f" ] || continue
     case "$(basename "$f")" in *.*) ;; *) printf ' scripts/%s' "$(basename "$f")" ;; esac
   done
+  for f in "$T"/.claude/hooks/*.sh; do
+    [ -f "$f" ] && printf ' .claude/hooks/%s' "$(basename "$f")"
+  done
   echo ""
 fi
+} > "$tmp"
+cp "$tmp" "$OUT"
+cat "$tmp"

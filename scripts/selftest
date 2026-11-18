@@ -1196,10 +1196,14 @@ printf '\n# v9.1\n' >> "$UN/scripts/doctor"
 for f in docs/domain.md docs/testing.md; do printf '\nv9.1 text\n' >> "$UN/$f"; done
 printf 'new\n' > "$UN/workflows/new-thing.md"
 find "$UN/adapters" -type f ! -name README.md | while IFS= read -r f; do printf '\n# v9.1\n' >> "$f"; done
+printf '# v9.1\n' > "$UN/adapters/cursor/commands/new-cmd.md"; rm "$UN/adapters/cursor/commands/adr.md"
+printf '#!/bin/sh\n# v9.1\n' > "$UN/adapters/claude-code/.claude/hooks/new-hook.sh"
+printf 'upstream\n' > "$UN/docs/new-doc.md"
 sh "$UB/scripts/adopt" "$UP" >/dev/null
 for a in claude-code github-copilot cursor codex; do sh "$UP/scripts/init" "$a" >/dev/null; done
 grep -v 'STATUS: NOT CONFIGURED' "$UP/AGENTS.md" > "$TMP/agents" && cp "$TMP/agents" "$UP/AGENTS.md"
 printf '\nour domain\n' >> "$UP/docs/domain.md"; printf '\nour architecture\n' >> "$UP/docs/architecture.md"
+printf 'ours\n' > "$UP/docs/new-doc.md"; rm "$UP/docs/security.md"; rm -rf "$UP/adapters/cursor"
 ug() { git -C "$UP" -c core.safecrlf=false -c user.name=selftest -c user.email=selftest@example.invalid "$@"; }
 ug init -q; ug config core.autocrlf false; ug add -A; ug commit -qm bootstrapped
 head0=$(ug rev-parse HEAD)
@@ -1223,9 +1227,47 @@ report $? "upgrade: every file scripts/init installed, for each adapter, is upgr
 [ "$(head -n 1 "$UP/.anew-version")" = "v9.0" ]; report $? "upgrade: .anew-version is not written"
 [ "$(ug rev-parse HEAD)" = "$head0" ]; report $? "upgrade: nothing is committed"
 has "git add --chmod=+x" "upgrade: names the chmod line when it wrote a script"
+has " .claude/hooks/new-hook.sh" "upgrade: … and the hooks, run directly too (review round 1, L-4)"
 has "to merge." "upgrade: a summary line"
+has "added    .cursor/commands/new-cmd.md" "upgrade: an installed adapter gets a file new upstream"
+has "removed  .cursor/commands/adr.md" "upgrade: … and loses one removed upstream"
+has "merge    docs/new-doc.md" "upgrade: a file the project wrote where the new release adds one is listed to merge"
+[ "$(cat "$UP/docs/new-doc.md")" = "ours" ]; report $? "upgrade: … and left as the project wrote it"
+has "kept     docs/security.md" "upgrade: a file the project deleted, unchanged upstream, is kept"
+[ ! -e "$UP/docs/security.md" ]; report $? "upgrade: … deleted"
+has "kept     adapters/cursor/commands/new-cmd.md (its folder was removed in the project)" "upgrade: nothing is put back in a folder the project removed (L-3)"
+hasnt "merge    adapters/cursor/" "upgrade: … nor listed to merge"
+[ ! -d "$UP/adapters/cursor" ]; report $? "upgrade: … the folder stays removed"
+O="$UP/.git/anew-upgrade/upgrade-v9.1.out"
+[ -f "$O" ] && grep -q '^merge    docs/domain.md' "$O" && grep -q '^Upgrade v9.0 → v9.1' "$O"
+report $? "upgrade: the answer is kept in the git directory for /upgrade (H-1)"
+[ -z "$(ug status --porcelain | grep anew-upgrade)" ]; report $? "upgrade: … never in the working tree"
 run sh "$UN/scripts/upgrade" "$UB" "$UP"
 exits 1 "upgrade: refused on uncommitted changes";   has "has uncommitted changes" "… says so"
+# a project with a file of its own named like an adapter's, never installed (L-2); a CRLF checkout (L-8)
+U2="$TMP/up-project-2"; mkdir -p "$U2"
+sh "$UB/scripts/adopt" "$U2" >/dev/null
+grep -v 'STATUS: NOT CONFIGURED' "$U2/AGENTS.md" > "$TMP/agents" && cp "$TMP/agents" "$U2/AGENTS.md"
+printf 'our own notes\n' > "$U2/CLAUDE.md"
+sed 's/$/\r/' "$U2/docs/testing.md" > "$TMP/crlf" && cp "$TMP/crlf" "$U2/docs/testing.md"
+git -C "$U2" init -q; git -C "$U2" config core.autocrlf false; git -C "$U2" -c core.safecrlf=false add -A
+git -C "$U2" -c user.name=selftest -c user.email=selftest@example.invalid commit -qm own
+run sh "$UN/scripts/upgrade" "$UB" "$U2"
+exits 0 "upgrade: a project with no adapter installed"
+hasnt " CLAUDE.md" "upgrade: a file of the project's own is no adapter: not touched, not listed"
+hasnt " .claude/" "upgrade: … and no adapter is half-installed"
+[ "$(cat "$U2/CLAUDE.md")" = "our own notes" ]; report $? "upgrade: … CLAUDE.md as it was"
+has "replaced docs/testing.md" "upgrade: a CRLF copy of an unchanged file is still unchanged"
+cmp -s "$U2/docs/testing.md" "$UN/docs/testing.md"; report $? "upgrade: … and gets the new release's bytes"
+mkdir -p "$TMP/up-fake/scripts"; cp "$UN/scripts/upgrade" "$TMP/up-fake/scripts/"
+run sh "$TMP/up-fake/scripts/upgrade" "$UB" "$U2"
+exits 1 "upgrade: a script outside a release";       has "run the new release's own scripts/upgrade" "… says so"
+cp -R "$U2" "$TMP/up-nogit"; rm -rf "$TMP/up-nogit/.git"
+run sh "$UN/scripts/upgrade" "$UB" "$TMP/up-nogit"
+exits 1 "upgrade: a project that is not a git repository"; has "is not a git repository" "… says so"
+rm "$TMP/up-nogit/.anew-version"
+run sh "$UN/scripts/upgrade" "$UB" "$TMP/up-nogit"
+exits 1 "upgrade: a project without .anew-version";  has "has no .anew-version" "… says so"
 ug add -A; ug commit -qm "chore: upgrade"
 run sh "$UN/scripts/upgrade" "$UB" "$UP"
 exits 0 "upgrade: a rerun after the commit"
@@ -1239,8 +1281,8 @@ printf 'v8.0\n' > "$UP/.anew-version"; ug commit -qam v8
 run sh "$UN/scripts/upgrade" "$UB" "$UP"
 exits 1 "upgrade: a base that is not the project's version"; has "fetch v8.0 as the base" "… says so"
 printf 'v9.1\n' > "$UP/.anew-version"; ug commit -qam v91
-run sh "$UN/scripts/upgrade" "$UB" "$UP"
-exits 1 "upgrade: already on the new release"
+run sh "$UN/scripts/upgrade" "$UN" "$UP"
+exits 1 "upgrade: already on the new release";       has "is already on v9.1" "… says so"
 printf 'v9.0\n' > "$UP/.anew-version"; printf '\n> **STATUS: NOT CONFIGURED.**\n' >> "$UP/AGENTS.md"; ug commit -qam template
 run sh "$UN/scripts/upgrade" "$UB" "$UP"
 exits 1 "upgrade: refused in a project not bootstrapped";  has "run /bootstrap first" "… says so"

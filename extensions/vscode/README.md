@@ -20,8 +20,8 @@ The human's part of the ANEW process on a screen, inside VS Code — over the te
   confirmation. The merge stays with the team. Merged on the remote but not pulled, the screen names
   the pull and offers no `/bootstrap`; **Start over** resets a start that went nowhere.
 - **Upgrade** (on the start screen of a bootstrapped project, when a newer release exists): ANEW
-  `<base>` → `<new>` from `.anew-version` and the release's tags (a project on `v1.24.x` is offered
-  the newest `v1.24.x` first). **Fetch and prepare**, after a confirmation, clones both releases into
+  `<base>` → `<new>` from `.anew-version` and the release's tags (a project on `v1.24.x` — a line
+  without `scripts/upgrade` — gets the latest only as an explicit choice). **Fetch and prepare**, after a confirmation, clones both releases into
   `.git/anew-upgrade/` (never committed), creates `chore/anew-<tag>` and runs the new release's
   `scripts/upgrade`: the ANEW files the project never changed are replaced; the ones it changed are
   listed for `/upgrade`, offered with Copy and Continue. **Run checks** runs doctor and selftest;

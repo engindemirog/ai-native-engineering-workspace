@@ -85,8 +85,10 @@ Mode is the `Mode:` line in `AGENTS.md`, set at bootstrap (`workflows/README.md`
   `/upgrade` merges the `merge` files and writes `.anew-version` (`workflows/upgrade.md`; the
   VS Code extension does the clones, the branch and this run).
 - **Reads / writes:** reads both releases and the project; writes the replaced, added and removed
-  files. Nothing is staged or committed; `.anew-version` is left as it is. Run again, it writes
-  nothing more and lists the same `merge` files.
+  files, and its answer to `.git/anew-upgrade/upgrade-<tag>.out` (where `/upgrade` reads the
+  `merge` list). Nothing is staged or committed; `.anew-version` is left as it is. An adapter
+  counts as installed when its files are ANEW's (a project's own `CLAUDE.md` is not one); a folder
+  the project removed gets nothing back; line endings are not a change.
 - **Stops at:** no gate; one line per file it did not find the same, a summary, and the
   `git add --chmod=+x` line when it wrote a script.
 - **Lite / Strict:** no difference.
@@ -458,7 +460,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
   takes new `ANEW-*` decisions, writes `.anew-version` last, one commit.
 - **When to use it:** after `scripts/upgrade` ran on `chore/anew-<tag>` with both releases under
   `.git/anew-upgrade/` (the VS Code extension prepares all three): `/upgrade v1.32`.
-- **Reads / writes:** `prompts/upgrade.md`, both releases, the new CHANGELOG; writes the `merge`
+- **Reads / writes:** `prompts/upgrade.md`, both releases, the new CHANGELOG, the script's answer
+  in `.git/anew-upgrade/upgrade-<tag>.out`; writes the `merge`
   files and `.anew-version`, commits on `chore/anew-<tag>`. Never pushes or merges.
 - **Stops at:** each question, with its recommendation; a change it cannot apply without guessing
   (a recovery ramp).
@@ -494,8 +497,8 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
     never the merge; merged on the remote but not pulled, it names the pull; **Start over** resets a
     start that went nowhere;
   - **upgrade** (a bootstrapped project, a newer release): the phases — available · in the agent ·
-    upgraded · verified · merged — read from `.anew-version` and git; on `v1.24.x` the newest
-    `v1.24.x` first, the latest as the other choice; **Fetch and prepare** after a confirmation (both
+    upgraded · verified · merged — read from `.anew-version` and git; on `v1.24.x` (no
+    `scripts/upgrade` on that line) the latest only as an explicit choice; **Fetch and prepare** after a confirmation (both
     releases into `.git/anew-upgrade/`, `chore/anew-<tag>`, the new release's `scripts/upgrade`);
     `/upgrade <tag>` with Copy and Continue; **Run checks** (doctor, then selftest); **Push and open
     PR**, never the merge;

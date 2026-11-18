@@ -12,7 +12,8 @@ FETCH → SCRIPT → MERGE (agent) → CHECK → PR
    inside `.git`, so never committed. From a clean working tree, create `chore/anew-<new tag>`.
 2. **SCRIPT.** `.git/anew-upgrade/<new>/scripts/upgrade .git/anew-upgrade/<base> .` — the new
    release's own copy (`docs/commands.md`, `scripts/upgrade`): files the project never changed are
-   replaced, added or removed; the rest are `kept` or listed `merge`.
+   replaced, added or removed; the rest are `kept` or listed `merge` — the answer is kept in
+   `.git/anew-upgrade/upgrade-<new tag>.out` for the agent.
 3. **MERGE.** `/upgrade <new tag>` (`$upgrade` in Codex): the agent applies each entry's behavior
    lists and intents to the `merge` files, takes new `ANEW-*` decisions, writes `.anew-version`
    last and commits. Every question with a recommendation. **[GATE: human]** on any change it
@@ -22,5 +23,6 @@ FETCH → SCRIPT → MERGE (agent) → CHECK → PR
    `.git/anew-upgrade/`. **[GATE: human]**
 
 The VS Code extension does FETCH and SCRIPT after a confirmation, offers `/upgrade`, runs CHECK
-and opens the PR; never the merge. A project on the LTS line (`v1.24.x`) moves within it unless
-you choose the latest release.
+and opens the PR; never the merge. The LTS line (`v1.24.x`) has no `scripts/upgrade`: within
+the line, upgrade by hand (CHANGELOG, "How to upgrade"); the screen offers the latest release only
+as your explicit choice.

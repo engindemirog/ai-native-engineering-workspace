@@ -484,7 +484,7 @@ test('upgrade: the offer, the fetch, the script, the phases through a squash mer
   g('branch', '-M', 'main');
   // the offer: from the tags, the base read from .anew-version
   const tags = up.tagsFrom(execFileSync('git', ['ls-remote', '--tags', url], { encoding: 'utf8' }));
-  assert.deepEqual(up.offer({ version: fs.readFileSync(path.join(p, '.anew-version'), 'utf8'), latest: 'v9.1', tags }), { choices: ['v9.1'], why: '' });
+  assert.deepEqual(up.offer({ version: fs.readFileSync(path.join(p, '.anew-version'), 'utf8'), latest: 'v9.1', tags }).choices, ['v9.1']);
   let fetched = false;
   const facts = (to: string) => up.gather({
     git: async (args, env) => { try { return execFileSync('git', args, { cwd: p, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env } }); } catch { return null; } },
@@ -503,6 +503,8 @@ test('upgrade: the offer, the fetch, the script, the phases through a squash mer
   assert.ok(s.replaced >= 2, r.stdout); // scripts/doctor, docs/testing.md
   assert.deepEqual(s.merge, ['docs/domain.md']);
   assert.ok(!g('status', '--porcelain').includes(up.DIR), 'the releases are never in the working tree');
+  // the answer kept for /upgrade in a fresh session (review round 1, H-1)
+  assert.deepEqual(up.readScript(0, fs.readFileSync(path.join(dir, up.outFile('v9.1')), 'utf8')).merge, ['docs/domain.md']);
   assert.equal(fs.readFileSync(path.join(p, 'scripts', 'doctor'), 'utf8'), fs.readFileSync(path.join(dir, 'v9.1', 'scripts', 'doctor'), 'utf8'));
   assert.deepEqual(up.headings(fs.readFileSync(path.join(dir, 'v9.1', 'CHANGELOG.md'), 'utf8'), 'v9.0', 'v9.1'), ['v9.1 — the fixture release']);
   assert.equal(up.phase(await facts('v9.1'), null), 'in the agent');
@@ -530,5 +532,5 @@ test('upgrade: the offer, the fetch, the script, the phases through a squash mer
   const merged = await facts('v9.1');
   assert.equal(up.phase(merged, null), 'merged');
   assert.equal(merged.version, 'v9.1');
-  assert.deepEqual(up.offer({ version: merged.version, latest: 'v9.1', tags }), { choices: [], why: '' }, 'nothing more to offer');
+  assert.deepEqual(up.offer({ version: merged.version, latest: 'v9.1', tags }).choices, [], 'nothing more to offer');
 });

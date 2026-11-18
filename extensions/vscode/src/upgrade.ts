@@ -10,7 +10,8 @@ import { readDoctor, green as doctorGreen, type Doctor } from './bootstrap.ts';
 
 export const DIR = 'anew-upgrade'; // under the git directory: never committed (G-5)
 export const branchFor = (tag: string) => `chore/anew-${tag}`;
-export const LTS = 'v1.24.'; // the LTS line: moved within it unless the human picks the latest (G-3)
+export const LTS = 'v1.24.'; // the LTS line: it has no scripts/upgrade (review round 1, M-1)
+export const FIRST = 'v1.32'; // the first release with scripts/upgrade
 
 export const isTag = (s: string) => /^v\d+(\.\d+){1,2}$/.test(s);
 const parts = (t: string) => t.slice(1).split('.').map(Number);
@@ -26,20 +27,21 @@ export function tagsFrom(lsRemote: string): string[] {
   return [...new Set(t)].sort((a, b) => cmpTag(b, a));
 }
 
+export interface Offer { choices: string[]; why: string; note: string }
+
 // What to offer from the project's base (G-2, G-3): the releases to move to, the recommended one
-// first, or why nothing can be offered. No choices and no why: up to date.
-export function offer(o: { version: string; latest: string; tags: string[] }): { choices: string[]; why: string } {
+// first, or why nothing can be offered. No choices and no why: up to date. On the LTS line, which
+// has no scripts/upgrade, the latest only as an explicit choice, with a note (M-1, L-1).
+export function offer(o: { version: string; latest: string; tags: string[] }): Offer {
   const v = o.version.trim();
-  if (!v) return { choices: [], why: '.anew-version is missing: write the ANEW version this project is based on (e.g. v1.31) — doctor warns about it too. Nothing is guessed.' };
-  if (!isTag(v)) return { choices: [], why: `.anew-version says “${v}”, not a release tag (e.g. v1.31): write the version this project is based on.` };
-  if (o.tags.length && !o.tags.includes(v)) return { choices: [], why: `no release ${v} in the template repository: the base cannot be fetched. Write the version this project is based on into .anew-version.` };
-  const newer = (t: string) => isTag(t) && cmpTag(t, v) > 0;
-  const latest = newer(o.latest) ? [o.latest] : [];
+  if (!v) return { note: '', choices: [], why: '.anew-version is missing: write the ANEW version this project is based on (e.g. v1.31) — doctor warns about it too. Nothing is guessed.' };
+  if (!isTag(v)) return { note: '', choices: [], why: `.anew-version says “${v}”, not a release tag (e.g. v1.31): write the version this project is based on.` };
+  if (o.tags.length && !o.tags.includes(v)) return { note: '', choices: [], why: `no release ${v} in the template repository: the base cannot be fetched. Write the version this project is based on into .anew-version.` };
+  const latest = isTag(o.latest) && cmpTag(o.latest, v) > 0 && cmpTag(o.latest, FIRST) >= 0 ? [o.latest] : [];
   if (v.startsWith(LTS)) {
-    const line = o.tags.find((t) => t.startsWith(LTS) && newer(t));
-    return { choices: [...(line ? [line] : []), ...latest.filter((t) => t !== line)], why: '' };
+    return latest.length ? { choices: latest, why: '', note: `This project is on the LTS line (${LTS}x), which has no scripts/upgrade: upgrade within the line by hand (CHANGELOG, "How to upgrade"). ${latest[0]} leaves the line — pick it only if you mean to.` } : { choices: [], why: '', note: '' };
   }
-  return { choices: latest, why: '' };
+  return { choices: latest, why: '', note: '' };
 }
 
 // The CHANGELOG headings above the base, up to the new tag, oldest first (A-2: once it is fetched).
@@ -58,7 +60,7 @@ export function readScript(code: number, out: string): Script {
   const n = (w: string) => lines.filter((l) => l.startsWith(`${w} `)).length;
   return {
     code, replaced: n('replaced'), added: n('added'), removed: n('removed'), kept: n('kept'),
-    merge: lines.filter((l) => l.startsWith('merge ')).map((l) => l.replace(/^merge\s+/, '').replace(/ \(.*\)$/, '')),
+    merge: lines.filter((l) => l.startsWith('merge ')).map((l) => l.replace(/^merge\s+/, '').replace(/ \(changed by the project and by [^)]*\)$/, '')), // L-5
     summary: lines.find((l) => l.startsWith('Upgrade ')) ?? '', out,
   };
 }
@@ -128,14 +130,21 @@ export function phase(f: Facts, checks: Checks | null): Phase {
 
 export const mergeStep = (f: Facts) => choreMerge(branchFor(f.to), f);
 
+// Merged and pulled: the releases under .git/anew-upgrade/ and the remembered tag go (Requirement 7).
+export const cleanup = (f: Facts) => !!f.to && f.version === f.to && phase(f, null) === 'merged';
+
+// The script's answer, as it kept it in the git directory (H-1).
+export const outFile = (to: string) => `upgrade-${to}.out`;
+
 export function key(f: Facts, checks: Checks | null): string {
   return JSON.stringify([phase(f, checks), f.to, f.branch, f.current, f.remote, f.gh, f.fetched, f.version, checks ? checks.state === f.state : null]);
 }
 
 export interface View {
   facts: Facts;
-  offer: { choices: string[]; why: string }; // from the project's base
-  pick: string; // the choice before Fetch ('' = the recommended one)
+  offer: Offer; // from the project's base
+  base: string; // the release the upgrade started from: the working tree's until the agent writes the new one (L-7)
+  pick: string; // the choice before Fetch ('' = the recommended one; none on the LTS line)
   compare: (base: string, to: string) => string; // the release diff link
   changelog: string[]; // the headings, once the new release is fetched (A-2)
   script: Script | null; // its last answer on this screen
@@ -166,18 +175,22 @@ export function section(v: View): string {
     const pull = d && f.current !== d ? `git switch ${d}, then git pull` : 'git pull';
     return f.version === f.to ? '' : card(`<p class="prose" role="status">The upgrade to ${esc(f.to)} is merged on ${esc(d || 'the default branch')}: ${esc(pull)}.</p>`);
   }
-  const to = f.to || (v.offer.choices.includes(v.pick) ? v.pick : v.offer.choices[0]);
+  const to = f.to || (v.offer.choices.includes(v.pick) ? v.pick : v.offer.note ? '' : v.offer.choices[0]);
+  const base = v.base || f.version;
   const at = PHASES.indexOf(p);
   const strip = `<ol class="strip" aria-label="Upgrade">${PHASES.map((s, i) => `<li class="step${i < at ? ' done' : i === at ? ' now' : ''}"${i === at ? ' aria-current="step"' : ''}>${i < at ? '✓ ' : i === at ? '● ' : ''}${esc(s)}</li>`).join('')}</ol>`;
-  const head = `<p class="prose"><strong>ANEW ${esc(f.version)} → ${esc(to)}</strong> · <a href="${esc(v.compare(f.version, to))}">what changed</a></p>`;
-  const picks = !f.to && v.offer.choices.length > 1 ? `<div class="row" role="group" aria-label="Release">${v.offer.choices.map((t, i) => `<button id="up-pick-${esc(t)}" class="secondary small" data-keep="1" aria-pressed="${t === to}">${esc(t)}${i === 0 ? ' <span class="rec">recommended: stays on the line</span>' : ' (latest)'}</button>`).join('')}</div>` : '';
-  const fetch = p === 'available' ? `<div class="row"><button id="up-fetch" class="primary"${v.shell && !v.busy ? '' : ' disabled'}>${v.busy === 'fetching' ? 'Fetching…' : 'Fetch and prepare'}</button><span class="muted small">${esc(v.shell ? 'after a confirmation: clones into .git/anew-upgrade/, a branch, scripts/upgrade' : 'No POSIX shell found: set anew.shell.')}</span></div>` : '';
+  const head = to ? `<p class="prose"><strong>ANEW ${esc(base)} → ${esc(to)}</strong> · <a href="${esc(v.compare(base, to))}">what changed</a></p>` : '';
+  const note = !f.to && v.offer.note ? `<p class="missing small" role="note">${esc(v.offer.note)}</p>` : '';
+  const picks = !f.to && (v.offer.choices.length > 1 || v.offer.note) ? `<div class="row" role="group" aria-label="Release">${v.offer.choices.map((t) => `<button id="up-pick-${esc(t)}" class="secondary small" data-keep="1" aria-pressed="${t === to}">${esc(t)}${v.offer.note ? ' (leaves the LTS line)' : ''}</button>`).join('')}</div>` : '';
+  const fetch = p === 'available' ? `<div class="row"><button id="up-fetch" class="primary"${v.shell && !v.busy && to ? '' : ' disabled'}>${v.busy === 'fetching' ? 'Fetching…' : 'Fetch and prepare'}</button><span class="muted small">${esc(v.shell ? 'after a confirmation: clones into .git/anew-upgrade/, a branch, scripts/upgrade' : 'No POSIX shell found: set anew.shell.')}</span></div>` : '';
   const s = v.script;
   const scriptBox = s === null ? '' : `<div class="result ${s.code === 0 ? 'ok' : 'refused'}" role="${s.code === 0 ? 'status' : 'alert'}"><strong>${esc(s.code === 0 ? s.summary || 'scripts/upgrade ran' : `scripts/upgrade exited ${s.code}`)}</strong>${s.code === 0 ? (s.merge.length ? `<p class="small">For /upgrade — changed by the project and by ${esc(to)}:</p><pre class="out">${esc(s.merge.join('\n'))}</pre>` : '') : `<pre class="out">${esc(s.out.trim())}</pre>`}</div>`;
-  const log = v.changelog.length ? `<details><summary class="small">CHANGELOG, ${esc(f.version)} → ${esc(to)} (${v.changelog.length})</summary><ul class="facts">${v.changelog.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></details>` : '';
+  const log = v.changelog.length ? `<details><summary class="small">CHANGELOG, ${esc(base)} → ${esc(to)} (${v.changelog.length})</summary><ul class="facts">${v.changelog.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></details>` : '';
   const cmd = command(to, v.agent.agent);
   const agentBox = p === 'in the agent' ? `<div class="row"><span>Run in your agent:</span><code class="cmd">${esc(cmd)}</code><button id="up-copy" class="secondary" data-keep="1">Copy</button>${canContinue(v.agent) ? '<button id="up-continue" class="primary" data-keep="1">Continue in Claude Code</button>' : ''}</div>
   <p class="muted small">${esc(canContinue(v.agent) ? 'Continue opens a fresh session with the command.' : v.agent.agent !== 'claude-code' ? `Copy it into ${adapter(v.agent.agent).label}'s chat.` : 'Copy the command into your agent.')}</p>` : '';
+  // a start that went nowhere, or one to begin again: the releases and the tag forgotten; the branch kept (M-2)
+  const reset = f.to && (p === 'available' || p === 'in the agent') ? `<p class="muted small">Not going on, or starting again? <button id="up-reset" class="link" data-keep="1">Start over</button> — the fetched releases and the remembered tag are removed; ${esc(branchFor(f.to))} is kept.</p>` : '';
   const c = v.checks;
   const stale = c && c.state !== f.state;
   const onBranch = f.current === branchFor(to);
@@ -194,7 +207,7 @@ ${c && !stale ? `<div class="result ${green(c) ? 'ok' : 'refused'}" role="${gree
 ${strip}
 ${head}
 <p class="prose">${esc(LINE[p])}</p>
-${picks}${fetch}${scriptBox}${log}${agentBox}${checksBox}${merge}`);
+${note}${picks}${fetch}${scriptBox}${log}${agentBox}${reset}${checksBox}${merge}`);
 }
 
 export const CSS = `.up ol.strip { list-style: none; margin: 0; padding: 0; }

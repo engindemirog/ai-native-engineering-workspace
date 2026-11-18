@@ -4,9 +4,10 @@
 Upgrade this project's ANEW to <new tag> (workflows/upgrade.md). Read AGENTS.md first.
 
 INPUTS: the base release (the tag in .anew-version) and the new one, cloned under
-.git/anew-upgrade/<tag>/; the output of <new>/scripts/upgrade <base> . — run it again if it is
-not in front of you: it writes nothing more and lists the same "merge" lines. We are on
-chore/anew-<new tag>; if not, stop and say so.
+.git/anew-upgrade/<tag>/; the answer of <new>/scripts/upgrade <base> ., kept in
+.git/anew-upgrade/upgrade-<new tag>.out — read the "merge" lines there (do not run the script
+again: it refuses the uncommitted tree it left). No such file → stop and ask me to run it. We are
+on chore/anew-<new tag>; if not, stop and say so.
 
 TASK, oldest first, for every entry of <new>/CHANGELOG.md above the base:
 1. Read its "Upgrading" section: a behavior list per changed script, a one-line intent per

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { offer, tagsFrom, cmpTag, headings, readScript, readChecks, green, phase, mergeStep, section, command, confirm, branchFor, key, type Facts, type View } from '../src/upgrade.ts';
+import { offer, tagsFrom, cmpTag, headings, readScript, readChecks, green, phase, mergeStep, section, command, confirm, branchFor, key, cleanup, type Facts, type View } from '../src/upgrade.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (f: string) => fs.readFileSync(path.join(repo, f), 'utf8');
@@ -26,11 +26,16 @@ test('AC-2: the release offered from the base, the LTS line, the base never gues
   const tags = tagsFrom('a1\trefs/tags/v1.31\na2\trefs/tags/v1.31^{}\na3\trefs/tags/v1.24.1\na4\trefs/tags/v1.32\na5\trefs/tags/v1.24.2\na6\trefs/tags/v1.30\na7\trefs/tags/v1.9\nx\trefs/tags/nightly\n');
   assert.deepEqual(tags, ['v1.32', 'v1.31', 'v1.30', 'v1.24.2', 'v1.24.1', 'v1.9']);
   assert.ok(cmpTag('v1.10', 'v1.9') > 0 && cmpTag('v1.24.1', 'v1.24') > 0 && cmpTag('v1.31', 'v1.31') === 0);
-  assert.deepEqual(offer({ version: 'v1.31', latest: 'v1.32', tags }), { choices: ['v1.32'], why: '' });
-  assert.deepEqual(offer({ version: 'v1.32\r\n', latest: 'v1.32', tags }), { choices: [], why: '' }); // up to date
-  // G-3: on the LTS line, its newest first, the latest as the other choice
-  assert.deepEqual(offer({ version: 'v1.24.1', latest: 'v1.32', tags }).choices, ['v1.24.2', 'v1.32']);
-  assert.deepEqual(offer({ version: 'v1.24.2', latest: 'v1.32', tags }).choices, ['v1.32']);
+  assert.deepEqual(offer({ version: 'v1.31', latest: 'v1.32', tags }), { choices: ['v1.32'], why: '', note: '' });
+  assert.deepEqual(offer({ version: 'v1.32\r\n', latest: 'v1.32', tags }), { choices: [], why: '', note: '' }); // up to date
+  assert.deepEqual(offer({ version: 'v1.30', latest: 'v1.31', tags }).choices, [], 'a latest without scripts/upgrade is not offered');
+  // G-3, review round 1 M-1 and L-1: the LTS line has no scripts/upgrade — the latest only as an
+  // explicit choice, with a note; never a v1.24.x, tags read or not
+  for (const t of [tags, []]) {
+    const o = offer({ version: 'v1.24.1', latest: 'v1.32', tags: t });
+    assert.deepEqual(o.choices, ['v1.32']);
+    assert.match(o.note, /LTS line .*no scripts\/upgrade.*by hand/);
+  }
   // G-2: missing, not a tag, no such release → why, no choice
   for (const version of ['', 'main', 'v1.29']) {
     const o = offer({ version, latest: 'v1.32', tags });
@@ -48,6 +53,7 @@ test("the script's answer and the checks read as they are", () => {
   const s = readScript(0, "replaced scripts/doctor\nadded    workflows/x.md\nkept     docs/a.md (the project's change; v1.32 left it as v1.31 had it)\nmerge    docs/domain.md (changed by the project and by v1.32)\nmerge    AGENTS.md (changed by the project and by v1.32)\nUpgrade v1.31 → v1.32 in /p: 1 replaced, 1 added, 0 removed, 1 kept, 2 to merge.\n");
   assert.deepEqual([s.replaced, s.added, s.removed, s.kept], [1, 1, 0, 1]);
   assert.deepEqual(s.merge, ['docs/domain.md', 'AGENTS.md']);
+  assert.deepEqual(readScript(0, 'merge    docs/a (b).md (changed by the project and by v1.32)\n').merge, ['docs/a (b).md'], 'L-5');
   assert.match(s.summary, /^Upgrade v1.31 → v1.32/);
   const c = readChecks({ code: 0, out: '== result: 0 fail, 2 warn ==\n' }, { code: 0, out: 'ok    x\n== selftest: 558 passed, 0 failed ==\n' }, 's');
   assert.ok(green(c));
@@ -82,7 +88,7 @@ test('AC-5: the merge step only for chore/anew-<tag>; never a merge; the section
   assert.equal(mergeStep(up).offered, true);
   assert.deepEqual(mergeStep({ ...up, current: 'main' }).commands, ['git switch chore/anew-v1.32', 'git push -u origin chore/anew-v1.32', 'gh pr create --fill']);
   assert.deepEqual(mergeStep({ ...up, remote: '' }).commands, ['git switch main', 'git merge --no-ff chore/anew-v1.32']);
-  const view = (f: Facts, over: Partial<View> = {}): View => ({ facts: f, offer: { choices: ['v1.32'], why: '' }, pick: '', compare: (a, b) => `https://github.com/o/r/compare/${a}...${b}`, changelog: [], script: null, agent: { agent: 'claude-code', claude: true, have: ['claude-code'] }, checks: null, busy: '', prOutput: null, shell: true, ...over });
+  const view = (f: Facts, over: Partial<View> = {}): View => ({ facts: f, offer: { choices: ['v1.32'], why: '', note: '' }, base: '', pick: '', compare: (a, b) => `https://github.com/o/r/compare/${a}...${b}`, changelog: [], script: null, agent: { agent: 'claude-code', claude: true, have: ['claude-code'] }, checks: null, busy: '', prOutput: null, shell: true, ...over });
   const all = [facts(), facts({ fetched: true, branch: 'v1.31', current: 'chore/anew-v1.32' }), up, { ...up, base: 'v1.32', version: 'v1.31' }].map((f) => section(view(f))).join('\n');
   assert.ok(!all.includes('gh pr merge') && !/<button[^>]*>[^<]*[Mm]erge/.test(all), 'no merge is ever offered as a button or run');
   const avail = section(view(facts()));
@@ -95,9 +101,25 @@ test('AC-5: the merge step only for chore/anew-<tag>; never a merge; the section
   // merged and pulled: gone; merged, not pulled: the pull in two steps (0014 round 3, L-D)
   assert.equal(section(view({ ...up, base: 'v1.32', current: 'main' })), '');
   assert.ok(section(view({ ...up, base: 'v1.32', version: 'v1.31', current: 'feat/x' })).includes('git switch main, then git pull'));
-  // the LTS pick, the recommended one first; nothing to offer: no section; a base not read: why
-  const lts = section(view(facts({ version: 'v1.24.1', to: '' }), { offer: { choices: ['v1.24.2', 'v1.32'], why: '' } }));
-  assert.ok(lts.includes('id="up-pick-v1.24.2"') && lts.includes('aria-pressed="true"') && lts.includes('recommended'));
-  assert.equal(section(view(facts({ to: '', version: 'v1.32' }), { offer: { choices: [], why: '' } })), '');
-  assert.ok(section(view(facts({ to: '' }), { offer: { choices: [], why: '.anew-version is missing' } })).includes('role="note"'));
+  // the LTS line: the note, the latest unpicked and Fetch disabled until it is picked (M-1)
+  const ltsOffer = offer({ version: 'v1.24.1', latest: 'v1.32', tags: [] });
+  const lts = section(view(facts({ version: 'v1.24.1', to: '' }), { offer: ltsOffer }));
+  assert.ok(lts.includes('id="up-pick-v1.32"') && lts.includes('aria-pressed="false"') && lts.includes('leaves the LTS line') && lts.includes('role="note"'));
+  assert.ok(lts.includes('id="up-fetch" class="primary" disabled'));
+  const picked = section(view(facts({ version: 'v1.24.1', to: '' }), { offer: ltsOffer, pick: 'v1.32' }));
+  assert.ok(picked.includes('aria-pressed="true"') && !picked.includes('id="up-fetch" class="primary" disabled'));
+  // nothing to offer: no section; a base not read: why
+  assert.equal(section(view(facts({ to: '', version: 'v1.32' }), { offer: { choices: [], why: '', note: '' } })), '');
+  assert.ok(section(view(facts({ to: '' }), { offer: { choices: [], why: '.anew-version is missing', note: '' } })).includes('role="note"'));
+  // L-7: after the agent's commit, the base the upgrade started from
+  assert.ok(section(view(up, { base: 'v1.31' })).includes('ANEW v1.31 → v1.32'));
+  // M-2: Start over while nothing is done, or in the agent; not once upgraded
+  assert.ok(section(view(facts({ fetched: false }))).includes('id="up-reset"'));
+  assert.ok(section(view(facts({ fetched: true, branch: 'v1.31', current: 'chore/anew-v1.32' }))).includes('id="up-reset"'));
+  assert.ok(!section(view(up)).includes('id="up-reset"'));
+  // the cleanup decision: merged and pulled only
+  assert.equal(cleanup({ ...up, base: 'v1.32' }), true);
+  assert.equal(cleanup({ ...up, base: 'v1.32', version: 'v1.31' }), false, 'merged, not pulled: kept');
+  assert.equal(cleanup(up), false);
+  assert.equal(cleanup({ ...up, to: '' }), false);
 });
