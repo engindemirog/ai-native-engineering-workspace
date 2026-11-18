@@ -1,9 +1,9 @@
 # Spec 0015 — ANEW upgraded on the screen: the newer release, the unchanged files, the agent for the rest, the merge
 
-- Status: Draft
+- Status: Approved
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0015-plan.md`
-- Self-critique: pending (G-1–G-7 below, each with a recommendation)
+- Self-critique: done (G-1–G-7 accepted as recommended, Engin Demiroğ, 2026-11-18)
 - Source: the human after 0014's SHIP, on the one screen gap named — ANEW upgraded in a project:
   "Başla"
 
@@ -112,7 +112,7 @@ Deliberately not done:
 - [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
 - [ ] Spec moved to `.anew-dev/done/`
 
-## Self-critique (pending approval)
+## Self-critique (approved 2026-11-18)
 - **G-1 — the unchanged files by a script, not the agent.** A file identical to the base release's
   copy can be replaced without judgement; the agent would spend tokens and could slip.
   Recommendation: `scripts/upgrade` compares each file with the base's copy and does that part;
