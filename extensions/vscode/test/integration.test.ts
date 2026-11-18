@@ -14,6 +14,7 @@ import { offered } from '../src/ship.ts';
 import { ADAPTERS, existsIn, initArgs, installed } from '../src/setup.ts';
 import { nextFor } from '../src/next.ts';
 import { cloneArgs, adoptArgs, newSteps } from '../src/adopt.ts';
+import { gather as bootGather, phase as bootPhase, readDoctor, mergeStep as bootMerge, offered as bootOffered } from '../src/bootstrap.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const shell = findShell({ setting: process.env.ANEW_TEST_SHELL ?? '', platform: process.platform, pathEnv: process.env.PATH ?? '' });
@@ -330,4 +331,114 @@ test('New: init, adopt, one commit with the scripts executable in the index; not
   for (const [mode, f] of modes) assert.equal(mode, /^scripts\/[^/.]+$/.test(f) ? '100755' : '100644', f);
   assert.ok(modes.some(([, f]) => f === 'scripts/adopt'));
   assert.equal(fs.readFileSync(path.join(n, 'README.md'), 'utf8'), `# new-project\n\nBuilt with ANEW ${fs.readFileSync(path.join(repo, '.anew-version'), 'utf8').trim()} — the rules are in AGENTS.md.\n`);
+});
+
+// A project from the fixture release (0013's New), then bootstrap's output on chore/bootstrap,
+// doctor on it, and a squash merge: the phase read from the real git at each step (spec 0014).
+test('bootstrap: the phase from git — not started, generated, verified by doctor, merged after a squash merge', { skip }, async () => {
+  const p = path.join(tmp, 'boot-project');
+  fs.mkdirSync(p);
+  await screenAdopt(p);
+  const id = ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.autocrlf=false'];
+  const g = (...args: string[]) => execFileSync('git', [...id, ...args], { cwd: p, encoding: 'utf8', stdio: 'pipe' });
+  for (const step of newSteps('v9.9.9', fs.readdirSync(path.join(p, 'scripts')).map((f) => `scripts/${f}`))) g(...step);
+  g('branch', '-M', 'main');
+  const facts = (started = false) => bootGather({
+    git: async (args, env) => { try { return execFileSync('git', args, { cwd: p, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env } }); } catch { return null; } },
+    gh: async () => false, here: fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8'), started, checkConf: fs.existsSync(path.join(p, 'scripts', 'check.conf')), index: path.join(tmp, 'boot-index'), seed: (i, to) => fs.copyFileSync(path.resolve(p, i), to),
+  });
+  assert.equal(bootPhase(await facts(), null), 'not started');
+  assert.equal(bootPhase(await facts(true), null), 'in the agent');
+  // bootstrap's output: AGENTS.md configured (the invariant rules kept), on chore/bootstrap
+  g('switch', '-q', '-c', 'chore/bootstrap');
+  const agents = fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8').split('\n').filter((l) => !l.startsWith('>')).join('\n')
+    .replace('**Mode: unset**', '**Mode: lite**').replace('**Language: unset**', '**Language: chat=en · docs=en**');
+  fs.writeFileSync(path.join(p, 'AGENTS.md'), agents);
+  g('commit', '-q', '-am', 'chore: bootstrap');
+  const gen = await facts();
+  assert.equal(gen.current, 'chore/bootstrap');
+  assert.equal(gen.defaultBranch, 'main');
+  assert.equal(bootPhase(gen, null), 'generated');
+  assert.deepEqual(bootMerge(gen).commands, ['git switch main', 'git merge --no-ff chore/bootstrap']); // no remote: the local merge, to copy
+  const r = await runScript(shell as string, p, 'doctor', []);
+  const d = readDoctor(r.code, `${r.stdout}${r.stderr}`, gen.state);
+  assert.match(d.result, /^== result: \d+ fail, \d+ warn ==$/);
+  assert.deepEqual(d.fails, [], d.fails.join('\n'));
+  assert.equal(bootPhase(gen, d), 'verified');
+  // a file changed after doctor: its answer no longer counts — also a second edit of a file that was
+  // already changed when doctor ran (review round 1, M-1)
+  fs.writeFileSync(path.join(p, 'docs', 'domain.md'), 'changed\n');
+  assert.equal(bootPhase(await facts(), d), 'generated');
+  const dirty = await facts();
+  const d2 = readDoctor(0, '== result: 0 fail, 0 warn ==', dirty.state);
+  assert.equal(bootPhase(dirty, d2), 'verified');
+  fs.writeFileSync(path.join(p, 'docs', 'domain.md'), 'changed again\n');
+  assert.equal(bootPhase(await facts(), d2), 'generated');
+  g('checkout', '-q', '--', 'docs/domain.md');
+  assert.equal(bootPhase(await facts(), d), 'verified'); // back to the contents doctor read
+  // the temporary index seeded from the real one: a file staged, then changed, is read as it is in
+  // the working tree, not as staged (review round 3, I-2)
+  fs.writeFileSync(path.join(p, 'docs', 'domain.md'), 'staged\n');
+  g('add', 'docs/domain.md');
+  const staged = await facts();
+  assert.notEqual(staged.state, d.state);
+  fs.writeFileSync(path.join(p, 'docs', 'domain.md'), 'staged, then changed\n');
+  const changed = await facts();
+  assert.notEqual(changed.state, staged.state);
+  assert.ok(!changed.state.startsWith('unread:'));
+  g('checkout', '-q', 'HEAD', '--', 'docs/domain.md');
+  assert.equal(bootPhase(await facts(), d), 'verified');
+  // a squash merge: chore/bootstrap is no ancestor of main, and the section still goes
+  g('switch', '-q', 'main');
+  g('merge', '-q', '--squash', 'chore/bootstrap');
+  g('commit', '-q', '-m', 'chore: bootstrap (#1)');
+  const merged = await facts();
+  assert.notEqual(merged.branch, null);
+  assert.equal(bootPhase(merged, null), 'merged');
+});
+
+// The remote path (review round 1, L-7): a bare origin with its HEAD, the PR squash-merged there,
+// fetched but not pulled — merged, and the screen says to pull.
+test('bootstrap: with a remote — the default branch from origin/HEAD, the push offered, merged on origin before the pull', { skip }, async () => {
+  const p = path.join(tmp, 'boot-remote');
+  const origin = path.join(tmp, 'boot-origin.git');
+  fs.mkdirSync(p);
+  await screenAdopt(p);
+  const id = ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.autocrlf=false'];
+  const g = (cwd: string, ...args: string[]) => execFileSync('git', [...id, ...args], { cwd, encoding: 'utf8', stdio: 'pipe' });
+  for (const step of newSteps('v9.9.9', fs.readdirSync(path.join(p, 'scripts')).map((f) => `scripts/${f}`))) g(p, ...step);
+  g(p, 'branch', '-M', 'main');
+  execFileSync('git', ['init', '-q', '--bare', '--initial-branch=main', origin]);
+  g(p, 'remote', 'add', 'origin', origin);
+  g(p, 'push', '-q', '-u', 'origin', 'main');
+  g(p, 'remote', 'set-head', 'origin', '--auto');
+  const facts = () => bootGather({
+    git: async (args, env) => { try { return execFileSync('git', args, { cwd: p, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env } }); } catch { return null; } },
+    gh: async () => true, here: fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8'), started: true, checkConf: false, index: path.join(tmp, 'boot-remote-index'), seed: (i, to) => fs.copyFileSync(path.resolve(p, i), to),
+  });
+  g(p, 'switch', '-q', '-c', 'chore/bootstrap');
+  fs.writeFileSync(path.join(p, 'AGENTS.md'), fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8').split('\n').filter((l) => !l.startsWith('>')).join('\n').replace('**Mode: unset**', '**Mode: lite**'));
+  g(p, 'commit', '-q', '-am', 'chore: bootstrap');
+  const gen = await facts();
+  assert.equal(gen.remote, 'origin');
+  assert.equal(gen.defaultBranch, 'main');
+  assert.equal(gen.gh, true);
+  assert.equal(bootPhase(gen, null), 'generated');
+  assert.deepEqual(bootMerge(gen), { offered: true, why: '', commands: ['git push -u origin chore/bootstrap', 'gh pr create --fill'] });
+  // the PR squash-merged on origin (a clone stands in for GitHub), then fetched — not pulled
+  g(p, 'push', '-q', 'origin', 'chore/bootstrap');
+  const hub = path.join(tmp, 'boot-hub');
+  execFileSync('git', ['clone', '-q', origin, hub]);
+  g(hub, 'merge', '-q', '--squash', 'origin/chore/bootstrap');
+  g(hub, 'commit', '-q', '-m', 'chore: bootstrap (#1)');
+  g(hub, 'push', '-q', 'origin', 'main');
+  g(p, 'switch', '-q', 'main');
+  g(p, 'fetch', '-q', 'origin');
+  const unpulled = await facts();
+  assert.equal(bootPhase(unpulled, null), 'merged');
+  assert.match(bootOffered({ facts: unpulled, answers: { chat: '', docs: '', mode: '', trivial: '' }, agent: 'claude-code', doctor: null }).instead, /^bootstrap is merged on main: git pull/);
+  g(p, 'pull', '-q', '--ff-only');
+  const pulled = await facts();
+  assert.equal(bootPhase(pulled, null), 'merged');
+  assert.equal(bootOffered({ facts: pulled, answers: { chat: '', docs: '', mode: '', trivial: '' }, agent: 'claude-code', doctor: null }).instead, '');
 });

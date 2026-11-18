@@ -10,7 +10,10 @@ LANGUAGE → INSPECT → INTERVIEW → GENERATE → VERIFY → REPORT
 0. **LANGUAGE.** The first question, asked in the language the human used to start the session:
    in which language to run the interview, and in which language to write the project documents
    (docs/, specs, plans, ADRs, reports). Two settings, because international teams often talk in
-   one language and document in another. The agent recommends (proposal rule); the answer is
+   one language and document in another. Answers given with the command (`/bootstrap chat=tr
+   docs=en mode=lite trivial=1`, e.g. from the VS Code extension) are taken at their gates
+   (`prompts/bootstrap.md`, "ANSWERS GIVEN WITH THE COMMAND").
+   The agent recommends (proposal rule); the answer is
    permanent — recorded in `AGENTS.md` (`Language:` line) and `docs/conventions.md` ("Language").
    The ANEW core and every protocol field (`Status:` values, `Approved by / on:`, `Source:`,
    template headings) stay English so the gates and `scripts/doctor` keep working.

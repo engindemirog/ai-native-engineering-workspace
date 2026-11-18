@@ -19,6 +19,8 @@ import * as triage from './triage.ts';
 import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
 import * as adopt from './adopt.ts';
+import * as boot from './bootstrap.ts';
+import { esc } from './screens.ts';
 import { nextFor, canContinue, type Agent } from './next.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
@@ -110,6 +112,13 @@ function screens(ctx: vscode.ExtensionContext, root: string): void {
   const setupWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{AGENTS.md,CLAUDE.md,.github,.github/copilot-instructions.md,.cursor,.cursor/rules,.cursor/rules/**,.agents,.agents/skills,.agents/skills/analyze,.agents/skills/analyze/SKILL.md}'));
   setupWatcher.onDidChange(soon); setupWatcher.onDidCreate(soon); setupWatcher.onDidDelete(soon);
   ctx.subscriptions.push(setupWatcher);
+  // bootstrap's phase follows the files doctor reads, a commit, a branch switch, a fetch (spec 0014)
+  // — Start alone: the other screens are not redrawn for these (review round 2, N-3)
+  let bootTimer: NodeJS.Timeout | undefined;
+  const bootSoon = () => { clearTimeout(bootTimer); bootTimer = setTimeout(() => starter?.refreshed(), 300); };
+  const bootWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{docs/**,scripts/**,workflows/**,prompts/**,.git/HEAD,.git/refs/**}'));
+  bootWatcher.onDidChange(bootSoon); bootWatcher.onDidCreate(bootSoon); bootWatcher.onDidDelete(bootSoon);
+  ctx.subscriptions.push(bootWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
 
   let panel: Approval | null = null;
@@ -413,6 +422,12 @@ class Start {
   private started: string | null = null;
   private installing: setup.Tool | null = null;
   private installed: start.StartView['installed'] = null;
+  // bootstrap on the screen (spec 0014): the facts read from git on each draw, doctor's last answer
+  private facts: boot.Facts | null = null;
+  private doctor: boot.Doctor | null = null;
+  private doctoring = false;
+  private pushing = false;
+  private prOutput: string | null = null;
   disposed = false;
   private readonly root: string;
   private readonly read: (rel: string) => string;
@@ -428,19 +443,62 @@ class Start {
     this.refresh = refresh;
     this.web = vscode.window.createWebviewPanel('anew.start', 'ANEW · new work', vscode.ViewColumn.One, { enableScripts: true, localResourceRoots: [], retainContextWhenHidden: true });
     this.web.onDidDispose(() => { this.disposed = true; });
+    // what the bootstrap section shows changes outside any watched file (a commit, a fetch): read
+    // again whenever the panel comes into view (review round 1, M-2)
+    this.web.onDidChangeViewState((e) => { if (e.webviewPanel.visible) this.refreshed(); });
     this.web.webview.onDidReceiveMessage((m: { type: string; form?: Record<string, string> }) => this.on(m.type, m.form ?? {}).catch((e: Error) => {
       void vscode.window.showErrorMessage(`ANEW: ${e.message}`);
       this.render();
     }));
   }
 
+  // drawn once the first gather has read git: before it, no /bootstrap could be told from an output
+  // already waiting (review round 2, N-4)
   show(): void {
-    this.render();
     this.web.reveal();
+    void this.gather().catch((e: Error) => { void vscode.window.showErrorMessage(`ANEW: git could not be read: ${e.message}`); }).then(() => this.render()); // never blank (round 3, L-B)
   }
 
   private claude(): string | null {
     return claudeExe();
+  }
+
+  private answers(): boot.Answers {
+    return boot.answers(this.memo.get('anew.bootstrap.answers'));
+  }
+
+  // What the bootstrap section shows, from the files and git (spec 0014, G-4); never cached.
+  private gathering = 0; // the newest gather; an older one that ends later is dropped (L-4)
+  private async gather(): Promise<boot.Facts> {
+    const n = ++this.gathering;
+    const index = path.join(os.tmpdir(), `anew-index-${process.pid}-${n}`);
+    try {
+      const facts = await boot.gather({
+        git: async (args, env) => { const r = await run('git', args, this.root, env); return r.code === 0 ? r.stdout : null; },
+        gh: async () => (await run('gh', ['auth', 'status'], this.root)).code === 0,
+        here: this.read('AGENTS.md'),
+        started: this.memo.get<boolean>('anew.bootstrap.started') === true,
+        checkConf: fs.existsSync(path.join(this.root, 'scripts', 'check.conf')),
+        index,
+        seed: (gitIndex, to) => fs.copyFileSync(path.resolve(this.root, gitIndex), to),
+      });
+      if (n === this.gathering || this.facts === null) this.facts = facts; // the first facts kept (round 3, L-A)
+      return facts;
+    } finally {
+      try { fs.rmSync(index, { force: true }); } catch { /* a temporary index; the OS cleans it */ }
+    }
+  }
+
+  private typed(): { chat: string; docs: string } {
+    const r = (this.memo.get('anew.bootstrap.answers') ?? {}) as Record<string, unknown>;
+    return { chat: typeof r.chat === 'string' ? r.chat : '', docs: typeof r.docs === 'string' ? r.docs : '' };
+  }
+
+  private bootView(agent: setup.Tool): boot.BootView | null {
+    return this.facts === null ? null : {
+      facts: { ...this.facts, here: this.read('AGENTS.md') }, answers: this.answers(), typed: this.typed(), suggested: boot.suggested(vscode.env.language), agent,
+      doctor: this.doctor, doctoring: this.doctoring, pushing: this.pushing, prOutput: this.prOutput, shell: this.shell() !== null,
+    };
   }
 
   // Read again on every draw: installed or not is never cached (spec 0011, Constraints).
@@ -459,12 +517,13 @@ class Start {
 
   private shown = '';
   private keyNow(): string {
-    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null });
+    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null }) + (this.facts ? boot.key(this.facts, this.doctor) : '');
   }
 
   // After a refresh: redrawn only when the setup it shows changed (review round 1, M-1).
   refreshed(): void {
-    if (!this.disposed && this.keyNow() !== this.shown) this.render();
+    if (this.disposed) return;
+    void this.gather().then(() => { if (!this.disposed && this.keyNow() !== this.shown) this.render(); });
   }
 
   render(): void {
@@ -474,13 +533,29 @@ class Start {
     this.web.webview.html = start.html({
       kind: this.kind, description: this.description, mode: start.mode(this.read('AGENTS.md')), number: start.nextNumber(names),
       ...this.setup(), started: this.started, shell: this.shell() !== null, installing: this.installing, installed: this.installed,
-      nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      boot: this.bootView(this.setup().agent), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
   private async on(type: string, form: Record<string, string>): Promise<void> {
     this.description = form.description ?? this.description;
+    if (form.chat !== undefined || form.docs !== undefined) {
+      // the languages are kept as typed; the command in the preview follows in place (no redraw)
+      await this.memo.update('anew.bootstrap.answers', { ...this.answers(), chat: (form.chat ?? '').trim(), docs: (form.docs ?? '').trim() });
+      const s = this.setup();
+      const b = this.bootView(s.agent);
+      const o = b ? boot.offered(b) : null;
+      if (!s.bootstrapped && type === 'input' && o?.cmd) void this.web.webview.postMessage({ type: 'update', html: { preview: esc(o.cmd) } });
+    }
     if (type === 'input' || type === 'sync') return; // kept; the page already shows it
+    const pick = /^boot-(mode|trivial)-(ask|lite|strict|1|2|3)$/.exec(type);
+    if (pick) {
+      await this.memo.update('anew.bootstrap.answers', { ...this.answers(), [pick[1]]: pick[2] === 'ask' ? '' : pick[2] });
+      return this.render();
+    }
+    if (type === 'boot-doctor') return this.runDoctor();
+    if (type === 'boot-reset') { await this.memo.update('anew.bootstrap.started', false); await this.gather(); return this.render(); }
+    if (type === 'boot-pr') return this.openPr();
     if (type.startsWith('kind-')) {
       const k = start.KINDS.find((x) => x.id === type.slice(5)); // only a known kind
       if (k) this.kind = k.id;
@@ -504,7 +579,9 @@ class Start {
       return;
     }
     const s = this.setup();
-    const cmd = s.bootstrapped ? start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')), s.agent) : start.bootstrap(s.agent);
+    if (!s.bootstrapped && this.facts === null) return; // not read yet (N-4)
+    const b = this.bootView(s.agent);
+    const cmd = s.bootstrapped ? start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')), s.agent) : b ? boot.offered(b).cmd : boot.command(this.answers(), s.agent);
     if (cmd === null) return this.render();
     if (type === 'copy') {
       await vscode.env.clipboard.writeText(cmd);
@@ -516,6 +593,52 @@ class Start {
     if (exe === null) return this.render();
     openClaude(this.root, exe, cmd, 'ANEW · new work');
     this.started = cmd;
+    if (!s.bootstrapped) { await this.memo.update('anew.bootstrap.started', true); await this.gather(); }
+    this.render();
+  }
+
+  // ./scripts/doctor on the working tree, read-only; its answer kept with the state it ran on.
+  private async runDoctor(): Promise<void> {
+    const shell = this.shell();
+    if (shell === null || this.doctoring) return this.render();
+    this.doctoring = true;
+    this.render();
+    try {
+      // this gather's own state, even if a newer one is still running (review round 2, N-2)
+      const state = (await this.gather()).state;
+      const r = await runScript(shell, this.root, 'doctor', []);
+      this.doctor = boot.readDoctor(r.code, `${r.stdout}${r.stderr}`, state);
+    } finally {
+      this.doctoring = false;
+    }
+    await this.gather();
+    this.render();
+  }
+
+  // Push chore/bootstrap and open its PR after a confirmation naming branch and remote; never a
+  // merge (spec 0014, G-5).
+  private async openPr(): Promise<void> {
+    await this.gather();
+    const f = this.facts;
+    if (f === null || this.pushing || !boot.mergeStep(f).offered) return this.render();
+    const ok = await vscode.window.showWarningMessage(`Push ${boot.BRANCH} to ${f.remote} and open its PR?`, {
+      modal: true, detail: `git push -u ${f.remote} ${boot.BRANCH}, then gh pr create --fill. The merge stays with the team: review and CI first.`,
+    }, 'Push and open PR');
+    if (ok !== 'Push and open PR') return this.render();
+    this.pushing = true;
+    this.prOutput = null;
+    this.render();
+    try {
+      const push = await run('git', ['push', '-u', f.remote, boot.BRANCH], this.root, { GIT_TERMINAL_PROMPT: '0' });
+      if (push.code !== 0) this.prOutput = `git push exited ${push.code}:\n${push.out}`;
+      else {
+        const pr = await run('gh', ['pr', 'create', '--fill'], this.root, { GH_PROMPT_DISABLED: '1' });
+        this.prOutput = pr.code === 0 ? `✓ ${pr.out}` : `gh pr create exited ${pr.code}:\n${pr.out}`;
+      }
+    } finally {
+      this.pushing = false;
+    }
+    await this.gather();
     this.render();
   }
 
@@ -704,7 +827,7 @@ class Triage {
 // string.
 function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; out: string }> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { cwd, env: { ...process.env, ...env } }, (e, stdout, stderr) => {
+    execFile(cmd, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 }, (e, stdout, stderr) => {
       const code = e ? (typeof (e as { code?: unknown }).code === 'number' ? (e as { code: number }).code : 1) : 0;
       resolve({ code, stdout: String(stdout ?? ''), out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
     });

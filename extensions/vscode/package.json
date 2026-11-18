@@ -1,8 +1,8 @@
 {
   "name": "anew",
   "displayName": "ANEW",
-  "description": "The whole ANEW process on a screen — add ANEW to a project or start a new one, set up, start work, approve, triage, ship — over scripts/adopt, scripts/status, scripts/gate and scripts/init.",
-  "version": "0.4.0",
+  "description": "The whole ANEW process on a screen — add ANEW to a project or start a new one, set up and bootstrap, start work, approve, triage, ship — over scripts/adopt, scripts/status, scripts/gate and scripts/init.",
+  "version": "0.5.0",
   "publisher": "anew",
   "license": "MIT",
   "type": "module",

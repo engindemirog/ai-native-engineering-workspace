@@ -12,6 +12,13 @@ The human's part of the ANEW process on a screen, inside VS Code — over the te
   settings only) points them at a fork, named in the confirmation. A kept `AGENTS.md`,
   `.gitattributes` or `.gitignore` gets ANEW's beside it as `<name>.anew`, to merge; on Windows
   the notification copies the `git add --chmod=+x` line for your commit.
+- **Bootstrap** (on the start screen, until `chore/bootstrap` is merged): the phases — not started ·
+  in the agent · generated · verified · merged — read from AGENTS.md and git. The chat and document
+  languages, the mode and the trivial-change policy are answered here, each with ANEW's
+  recommendation, and ride on `/bootstrap`; the agent asks the rest. **Run doctor** shows its FAIL
+  and WARN lines; **Push and open PR** pushes `chore/bootstrap` and opens its PR after a
+  confirmation. The merge stays with the team. Merged on the remote but not pulled, the screen names
+  the pull and offers no `/bootstrap`; **Start over** resets a start that went nowhere.
 - **The sidebar** (the ANEW view in the activity bar): **+ New work**, then every spec as a card,
   grouped as *your turn* · *in progress* · *shipped*, each naming the decision it waits for. The
   view's badge and the status bar show how many decisions wait for you.

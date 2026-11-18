@@ -34,6 +34,33 @@ the core is Markdown plus a few POSIX scripts, so upgrades are file edits, not m
    ADRs are never renumbered.
 6. Write the new version into `.anew-version`.
 
+## v1.31 — Bootstrap on the screen
+
+A current release (not in `1.24.x`). No rule changes: every gate stays; answers given with the
+command are the human's decisions at their gates.
+
+- **`/bootstrap` takes answers:** `chat=`, `docs=`, `mode=`, `trivial=` typed after the
+  command are the human's decisions — confirmed in one line, not asked again; the rest of the
+  interview as before (`prompts/bootstrap.md`, "ANSWERS GIVEN WITH THE COMMAND"; every adapter's
+  bootstrap command points to it).
+- **Extension 0.5.0** (the `.vsix` is attached to the release): the Start screen carries bootstrap
+  from the first answer to the merge — the phases from AGENTS.md and git (a squash-merged PR
+  included), the four fixed answers with ANEW's recommendations, **Run doctor**, **Push and open
+  PR** of `chore/bootstrap`; never the merge. Merged on the remote but not pulled, it names the
+  pull; an abandoned start can be reset (**Start over**).
+
+### Upgrading
+
+- `prompts/bootstrap.md`: intent: answers given with the command are taken at their gates.
+- The bootstrap command of each adapter you installed (`.claude/commands/bootstrap.md`,
+  `.github/prompts/bootstrap.prompt.md`, `.cursor/commands/bootstrap.md`,
+  `.agents/skills/bootstrap/SKILL.md`): one sentence pointing to that section —
+  `./scripts/init --force <tool>` refreshes it, or add the sentence by hand.
+- `docs/commands.md` (`/bootstrap`, §F), `README.md` (Quickstart): intent: answers on the
+  command; the extension's bootstrap section.
+- `extensions/vscode/` (optional): replace the folder, or install the `.vsix` from the release.
+- Full diff: `/compare/v1.30...v1.31`.
+
 ## v1.30 — ANEW into a project: scripts/adopt, and Add / New on the screen
 
 A current release (not in `1.24.x`). No rule changes.

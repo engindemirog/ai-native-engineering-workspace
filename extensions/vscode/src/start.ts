@@ -4,6 +4,7 @@
 import * as path from 'node:path';
 import { esc, page } from './screens.ts';
 import { ADAPTERS, adapter, forAgent, type Tool } from './setup.ts';
+import * as boot from './bootstrap.ts';
 
 export type Kind = 'feature' | 'change' | 'fix' | 'refactor';
 export type Mode = 'lite' | 'strict' | 'unset';
@@ -91,6 +92,7 @@ export interface StartView {
   shell: boolean;
   installing: Tool | null;
   installed: { tool: Tool; written: boolean; code: number; text: string } | null; // init's answer
+  boot?: boot.BootView | null; // bootstrap on the screen (spec 0014); without it, 0011's card
   nonce: string;
   cspSource: string;
 }
@@ -122,7 +124,9 @@ ${answer}
 
 export function html(v: StartView): string {
   const setup = !v.bootstrapped;
-  const cmd = setup ? bootstrap(v.agent) : command(v.kind, v.description, v.mode, v.agent);
+  // bootstrap's command, or none while its output waits on chore/bootstrap or is merged unpulled
+  const offer = setup && v.boot ? boot.offered(v.boot) : null;
+  const cmd = setup ? (offer ? offer.cmd : bootstrap(v.agent)) : command(v.kind, v.description, v.mode, v.agent);
   const base = setup ? '' : (command(v.kind, 'x', v.mode, v.agent) as string).slice(0, -2);
   const kinds = KINDS.map((k) => `<button id="kind-${k.id}" class="kind" aria-pressed="${k.id === v.kind}" data-keep="1">
   <strong>${esc(k.label)}</strong><span>${esc(k.hint)}</span><code>${esc(forAgent(k.id === 'feature' && v.mode === 'strict' ? '/analyze' : k.cmd, v.agent))}</code>
@@ -136,10 +140,12 @@ export function html(v: StartView): string {
   const foot = canStart ? 'Copilot, Cursor, Codex: pick it above, then copy the command into its chat.'
     : v.agent === 'claude-code' ? 'Claude Code was not found on PATH: copy the command into your agent\'s chat.'
     : `Copy the command into ${adapter(v.agent).label}'s chat.`;
-  const work = setup
+  // the bootstrap section: in place of 0011's card, and above the kinds until chore/bootstrap is merged
+  const bootHtml = v.boot ? boot.section(v.boot) : '';
+  const work = setup && v.boot ? bootHtml : setup
     ? `<section class="card" aria-label="Set up the project"><span class="label">Set up the project</span>
 <p class="prose"><strong>The project is not set up yet</strong> (AGENTS.md is not configured, or names no mode). Bootstrap is the first work: the agent reads the project, asks what it cannot see, and writes AGENTS.md, the docs and <code>scripts/check.conf</code>, stopping for your approval. The kinds of work appear once it has set the mode.</p></section>`
-    : `<section aria-label="Kind"><span class="label">Kind of work</span><div class="kinds">${kinds}</div></section>
+    : `${bootHtml}<section aria-label="Kind"><span class="label">Kind of work</span><div class="kinds">${kinds}</div></section>
 <label class="field"><span class="label">What do you want?</span>
 <textarea name="description" placeholder="${esc(PROMPT[v.kind])}">${esc(v.description)}</textarea></label>
 <p class="foot">You need not write the acceptance criteria: the agent proposes them in the spec draft, and you approve it. Its number will most likely be ${esc(v.number)}; the agent assigns it.</p>`;
@@ -164,7 +170,7 @@ ${agents(v)}
 ${work}
 <div class="decide">
   <span class="label">Goes to the agent</span>
-  <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : EMPTY}</pre>
+  <pre id="preview" class="out" aria-live="polite" data-cmd="${esc(base)}">${cmd ? esc(cmd) : offer?.instead ? esc(offer.instead) : EMPTY}</pre>
   <ul class="facts"><li>A new session — no context carried over</li><li>${esc(modeLine)}</li><li>${setup ? 'It stops for your approval of what bootstrap writes' : 'First stop: the spec approval is yours'}</li></ul>
   <div class="row">${start}<button id="copy" class="secondary" data-keep="1"${v.installing ? ' data-hold="1"' : ''}${cmd && !v.installing ? '' : ' disabled'}>Copy command</button></div>
   <p class="foot">${esc(canStart && !ready ? 'Start waits for the Claude Code adapter: install it above, or copy the command.' : foot)}</p>
@@ -184,5 +190,6 @@ ${script}
 .small { font-size: 12.5px; }
 button.small { min-height: 30px; padding: 0 10px; }
 button.link { min-height: 0; padding: 0; border: 0; background: none; color: var(--vscode-textLink-foreground); font-weight: 400; text-decoration: underline; }
+${boot.CSS}
 </style>`);
 }
