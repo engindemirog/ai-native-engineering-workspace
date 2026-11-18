@@ -1,6 +1,6 @@
 # Spec 0014 — bootstrap on the screen: the fixed answers, the progress, doctor, the merge
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0014-plan.md`
 - Self-critique: done (G-1–G-6 accepted as recommended, Engin Demiroğ, 2026-11-18)
@@ -71,21 +71,21 @@ Deliberately not done:
   against fixture repositories; the VS Code layer by the human's run at SHIP.
 
 ## Acceptance criteria
-- [ ] AC-1 — the phase read for: the template's AGENTS.md (not started), a started bootstrap
+- [x] AC-1 — the phase read for: the template's AGENTS.md (not started), a started bootstrap
   without output (in the agent), a configured AGENTS.md on an unmerged `chore/bootstrap`
   (generated), with doctor green (verified), merged (gone) (unit + integration on fixture repos).
-- [ ] AC-2 — the command carries exactly the answers given, in the agent's form; none given →
+- [x] AC-2 — the command carries exactly the answers given, in the agent's form; none given →
   plain `/bootstrap` (unit).
-- [ ] AC-3 — `prompts/bootstrap.md` and each adapter's bootstrap command hold the given-answers
+- [x] AC-3 — `prompts/bootstrap.md` and each adapter's bootstrap command hold the given-answers
   rule (unit test reading the files; doctor's adapter parity stays green).
-- [ ] AC-4 — doctor's output read into its result line, FAIL and WARN lines, from real doctor runs
+- [x] AC-4 — doctor's output read into its result line, FAIL and WARN lines, from real doctor runs
   on a fixture (integration).
-- [ ] AC-5 — the merge step offered only for an unmerged `chore/bootstrap`; the confirmation names
+- [x] AC-5 — the merge step offered only for an unmerged `chore/bootstrap`; the confirmation names
   branch and remote; no merge is ever run (unit + integration).
-- [ ] AC-6 — on this machine the packaged `.vsix`: a new project from 0013 is bootstrapped from the
+- [x] AC-6 — on this machine the packaged `.vsix`: a new project from 0013 is bootstrapped from the
   screen — answers given, `/bootstrap` started, the phases followed, doctor run, the PR opened;
   judged by the human at SHIP.
-- [ ] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+- [x] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; README, `docs/commands.md` (`/bootstrap`, §F), `extensions/vscode/README.md`,
   CHANGELOG v1.31 and `.anew-version` v1.31.
 
