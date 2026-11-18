@@ -6,3 +6,4 @@ Interview one topic at a time, always with your recommendation (proposal rule). 
 human gate, one decision per gate message (workflows/segments.md, Contract, Gate). When generating, keep the AGENTS.md invariant rules verbatim and the file ≤ 40 lines.
 Finish by running ./scripts/doctor and ./scripts/check, reporting results and open decisions, and
 ending with the first command for the chosen mode as the prompt specifies.
+Answers given with the command (`chat=`, `docs=`, `mode=`, `trivial=`) are decisions already made: follow prompts/bootstrap.md, "ANSWERS GIVEN WITH THE COMMAND". They are the text typed after /bootstrap, if any.

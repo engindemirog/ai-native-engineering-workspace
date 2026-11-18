@@ -3,6 +3,13 @@
 ```
 Read AGENTS.md and workflows/bootstrap.md. We are adapting this workspace to a real project.
 
+ANSWERS GIVEN WITH THE COMMAND (e.g. /bootstrap chat=tr docs=en mode=lite trivial=1, as the VS
+Code extension's Start screen builds it): each one is my decision at its gate — chat= and docs=
+answer LANGUAGE (a) and (b), mode= the operating mode (lite or strict), trivial= the
+trivial-change policy (1, 2 or 3, as numbered in 2.). Confirm them in one line, in the chat
+language, and do not ask them again. One that is missing, unknown or malformed is asked as usual;
+every other question is asked as below.
+
 0. LANGUAGE — before anything else, in the language I used to start this session (English if
    unclear, with a note that any language is fine): ask (a) which language to conduct the
    interview in, (b) which language to write the project documents in (docs/, specs, plans,
