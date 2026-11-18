@@ -37,12 +37,17 @@ jobs:
         working-directory: extensions/vscode
     steps:
       - uses: actions/checkout@v4
+      # a project that adopted ANEW (scripts/adopt) has no extensions/: the job passes without it
       - uses: actions/setup-node@v4
+        if: hashFiles('extensions/vscode/package.json') != ''
         with:
           node-version: 24
       - name: Install (dev dependencies only)
+        if: hashFiles('extensions/vscode/package.json') != ''
         run: npm ci
       - name: Typecheck and tests (the integration tests run the real scripts/status and scripts/gate)
+        if: hashFiles('extensions/vscode/package.json') != ''
         run: npm test
       - name: Package the .vsix
+        if: hashFiles('extensions/vscode/package.json') != ''
         run: npm run package
