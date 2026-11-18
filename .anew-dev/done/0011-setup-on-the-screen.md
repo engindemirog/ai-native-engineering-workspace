@@ -1,6 +1,6 @@
 # Spec 0011 — the VS Code extension, part 3: setting up a project on the screen
 
-- Status: Approved
+- Status: Shipped
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0011-plan.md`
 - Self-critique: done (G-1–G-6 accepted as recommended, Engin Demiroğ, 2026-11-17)
@@ -66,32 +66,32 @@ Deliberately not done:
   by the human's run at SHIP.
 
 ## Acceptance criteria
-- [ ] AC-1 — the agent card shows each adapter installed or not for fixtures with none, one and
+- [x] AC-1 — the agent card shows each adapter installed or not for fixtures with none, one and
   all four installed; the markers are the ones `scripts/doctor` checks (unit tests on the model and
   the HTML).
-- [ ] AC-2 — Install runs exactly `./scripts/init <tool>` and on a fixture repo leaves the same
+- [x] AC-2 — Install runs exactly `./scripts/init <tool>` and on a fixture repo leaves the same
   files as the terminal call; an existing file is kept and its "kept" line shown; no `--force` is
   ever passed; a repo without the adapter's folder offers no Install (unit + integration).
-- [ ] AC-3 — the command follows the picked agent: `/…` for claude-code, github-copilot and
+- [x] AC-3 — the command follows the picked agent: `/…` for claude-code, github-copilot and
   cursor, `$…` for codex, for every kind and for bootstrap (unit tests).
-- [ ] AC-4 — with AGENTS.md not configured (the template's own text) Start offers only "Set up the
+- [x] AC-4 — with AGENTS.md not configured (the template's own text) Start offers only "Set up the
   project" with `/bootstrap`; with a configured AGENTS.md the kinds as in 0010 (unit tests on the
   template's real AGENTS.md and a configured fixture).
-- [ ] AC-5 — the sidebar's setup card appears when no adapter is installed or bootstrap has not
+- [x] AC-5 — the sidebar's setup card appears when no adapter is installed or bootstrap has not
   run, and not otherwise (unit tests).
-- [ ] AC-6 — on this machine the packaged `.vsix` installs, and a fresh template copy goes from no
+- [x] AC-6 — on this machine the packaged `.vsix` installs, and a fresh template copy goes from no
   adapter to an installed one, `/bootstrap` started from the screen, and a feature started from
   the screen; screenshots of each state, judged by the human at SHIP.
-- [ ] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
+- [x] AC-7 — `./scripts/selftest` and `./scripts/doctor --strict` stay green; CI runs the
   extension's tests; README, `docs/commands.md` §F, `extensions/vscode/README.md`, CHANGELOG v1.29
   and `.anew-version` v1.29.
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
-- [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
-- [ ] Spec moved to `.anew-dev/done/`
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green (here: doctor --strict + selftest + the extension's `npm test`)
+- [x] Independent review done; real findings fixed, noise rejected with written rationale, deferred ones in `.anew-dev/backlog.md`
+- [x] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
+- [x] Spec moved to `.anew-dev/done/`
 
 ## Self-critique (approved 2026-11-17)
 - **G-1 — where the setup lives.** Recommendation: on the Start screen, because that is where the
