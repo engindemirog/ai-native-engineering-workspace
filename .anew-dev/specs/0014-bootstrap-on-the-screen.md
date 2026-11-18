@@ -1,9 +1,9 @@
 # Spec 0014 — bootstrap on the screen: the fixed answers, the progress, doctor, the merge
 
-- Status: Draft
+- Status: Approved
 - Mode: lite (ANEW's own development)
 - Plan: `.anew-dev/plans/0014-plan.md`
-- Self-critique: pending
+- Self-critique: done (G-1–G-6 accepted as recommended, Engin Demiroğ, 2026-11-18)
 - Source: the human after 0012's SHIP: "bootstrap yapılmamışsa bootstrap işini de uçtan uca
   ekrandan yapmak istiyorum" (the first half of that request is spec 0013)
 
@@ -96,7 +96,7 @@ Deliberately not done:
 - [ ] Docs updated (README, `docs/commands.md`, CHANGELOG, `extensions/vscode/README.md`)
 - [ ] Spec moved to `.anew-dev/done/`
 
-## Self-critique
+## Self-critique (approved 2026-11-18)
 - **G-1 — the answers reach the agent with the command.** The screen could write the Language and
   Mode lines itself, but bootstrap writes them with the rest of AGENTS.md and docs/conventions.md
   in one commit on `chore/bootstrap`. Recommendation: the screen writes nothing; the answers ride
