@@ -45,8 +45,10 @@ Every file in ANEW connects to one of these channels — plus one more thing pro
 ## Quickstart
 
 ```bash
-# 1. Use this template on GitHub (or copy the files into an existing repo) — for a pinned
-#    version (training, adoption): git clone --branch v1.24.1 (README, Versions and support). Then:
+# 1. Use this template on GitHub — for a pinned version (training, adoption): git clone --branch
+#    v1.24.1 (README, Versions and support). An existing repo: clone a release tag, then
+#    <clone>/scripts/adopt <your repo> (existing files are kept). In VS Code the ANEW extension
+#    does either from its view: "Add ANEW to this project" or "New ANEW project". Then:
 ./scripts/init claude-code        # or: github-copilot | cursor | codex | generic
 
 # 2. Open your AI tool and run the bootstrap workflow

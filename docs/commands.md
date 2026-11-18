@@ -428,6 +428,11 @@ gate, handoff ending in `Next: <segment> — <who runs it>`, stop.
 
 ### The VS Code extension (`extensions/vscode/`)
 - **What it does:** the human's part of the process on a screen, over two scripts:
+  - **ANEW into a project** (a folder without ANEW): **Add ANEW to this project** — the latest
+    release cloned, its `scripts/adopt` run into the open folder (existing files kept, nothing
+    committed); **New ANEW project** — a new folder, `git init`, `scripts/adopt`, one commit
+    `chore: ANEW <tag>` with the scripts executable, opened; both after a confirmation naming the
+    folder and the version;
   - the sidebar: **+ New work**, then the work as cards (your turn · in progress · shipped), each
     naming the decision it waits for; a waiting badge and a status bar count — all from
     `scripts/status --json`;
