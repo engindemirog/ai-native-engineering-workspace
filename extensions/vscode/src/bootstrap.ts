@@ -105,7 +105,7 @@ export interface Facts {
 
 // The facts from git: AGENTS.md on chore/bootstrap and on the default branch (the remote's, else a
 // local main or master), the branch checked out, the remote, the state doctor's answer is kept with.
-export async function gather(o: { git: (args: string[], env?: Record<string, string>) => Promise<string | null>; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean; index: string }): Promise<Facts> {
+export async function gather(o: { git: (args: string[], env?: Record<string, string>) => Promise<string | null>; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean; index: string; seed: (gitIndex: string, to: string) => void }): Promise<Facts> {
   const { git } = o;
   const has = async (ref: string) => (await git(['rev-parse', '--verify', '--quiet', ref])) !== null;
   const current = (await git(['rev-parse', '--abbrev-ref', 'HEAD']))?.trim() ?? '';
@@ -119,13 +119,21 @@ export async function gather(o: { git: (args: string[], env?: Record<string, str
   const f: Facts = { here: o.here, branch, base, defaultBranch, current, remote, gh: false, started: o.started, checkConf: o.checkConf, state: '' };
   // merged: nothing more to read — a bootstrapped project pays for no tree and no gh (L-3)
   if (phase(f, null) === 'merged') return f;
-  // the contents, not the names: a temporary index of the whole working tree (review round 1, M-1)
+  // the contents, not the names: a temporary index of the whole working tree (review round 1, M-1),
+  // seeded from the real one so only changed files are hashed (round 2, N-5); no line-ending
+  // warnings, which could fill the output (N-1)
+  const real = ((await git(['rev-parse', '--git-path', 'index'])) ?? '').trim();
+  if (real) { try { o.seed(real, o.index); } catch { /* an empty index: every file is hashed */ } }
   const env = { GIT_INDEX_FILE: o.index };
-  const tree = (await git(['add', '--all'], env)) !== null ? ((await git(['write-tree'], env)) ?? '').trim() : '';
-  f.state = `${((await git(['rev-parse', 'HEAD'])) ?? '').trim()} ${tree}`;
+  const tree = (await git(['-c', 'core.safecrlf=false', 'add', '--all'], env)) !== null ? ((await git(['write-tree'], env)) ?? '').trim() : '';
+  // a tree not read is a state no doctor answer can match (N-1)
+  f.state = tree ? `${((await git(['rev-parse', 'HEAD'])) ?? '').trim()} ${tree}` : `${UNREAD}${Date.now()}-${Math.random()}`;
   f.gh = branch !== null && remote !== '' && bootstrapped(branch) ? await o.gh() : false;
   return f;
 }
+
+// The prefix of a state whose contents could not be read: never verified.
+export const UNREAD = 'unread:';
 
 export type Phase = 'not started' | 'in the agent' | 'generated' | 'verified' | 'merged';
 export const PHASES: Phase[] = ['not started', 'in the agent', 'generated', 'verified', 'merged'];
@@ -136,7 +144,7 @@ export const PHASES: Phase[] = ['not started', 'in the agent', 'generated', 'ver
 export function phase(f: Facts, doctor: Doctor | null): Phase {
   if (f.base !== null ? bootstrapped(f.base) : bootstrapped(f.here) && (f.branch === null || f.current !== BRANCH)) return 'merged';
   if (!bootstrapped(f.branch ?? f.here)) return f.started || f.branch !== null ? 'in the agent' : 'not started';
-  return doctor && green(doctor) && doctor.state === f.state && bootstrapped(f.here) ? 'verified' : 'generated';
+  return doctor && green(doctor) && doctor.state === f.state && !f.state.startsWith(UNREAD) && bootstrapped(f.here) ? 'verified' : 'generated';
 }
 
 // The merge step: Push and open PR from chore/bootstrap (Ship's rule), or the commands to copy;
@@ -168,7 +176,9 @@ export function key(f: Facts, doctor: Doctor | null): string {
 export function offered(v: { facts: Facts; answers: Answers; agent: Tool; doctor: Doctor | null }): { cmd: string | null; instead: string } {
   const p = phase(v.facts, v.doctor);
   if (p === 'not started' || p === 'in the agent') return { cmd: command(v.answers, v.agent), instead: '' };
-  if (p === 'merged') return { cmd: null, instead: bootstrapped(v.facts.here) ? '' : `bootstrap is merged on ${v.facts.defaultBranch || 'the default branch'}: git pull — this working tree still has the template's AGENTS.md` };
+  const d = v.facts.defaultBranch;
+  const pull = d && v.facts.current !== d ? `git switch ${d} && git pull` : 'git pull'; // round 2, N-6
+  if (p === 'merged') return { cmd: null, instead: bootstrapped(v.facts.here) ? '' : `bootstrap is merged on ${d || 'the default branch'}: ${pull} — this working tree still has the template's AGENTS.md` };
   return { cmd: null, instead: bootstrapped(v.facts.here) ? 'bootstrap has run: its output is in this working tree' : `bootstrap's output waits on ${BRANCH}: git switch ${BRANCH}` };
 }
 

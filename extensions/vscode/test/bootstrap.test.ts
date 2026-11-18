@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { answers, command, suggested, phase, readDoctor, green, mergeStep, written, section, key, lang, offered, NO_ANSWERS, type Facts, type BootView } from '../src/bootstrap.ts';
+import { gather, answers, command, suggested, phase, readDoctor, green, mergeStep, written, section, key, lang, offered, NO_ANSWERS, type Facts, type BootView } from '../src/bootstrap.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const template = fs.readFileSync(path.join(repo, 'AGENTS.md'), 'utf8');
@@ -133,4 +133,33 @@ test('review round 1: what the screen offers in each phase, the codes as typed, 
   // L-5: Start over while started and no branch yet
   assert.ok(section({ ...v, facts: facts({ started: true }) }).includes('<button id="boot-reset" class="link" data-keep="1">Start over</button>'));
   assert.ok(!section(v).includes('id="boot-reset"'));
+});
+
+test('review round 2: an unread tree never verifies (N-1); the pull named off the default branch (N-6)', async () => {
+  const configuredAgents = '# AGENTS.md\n\n**Mode: lite** — x\n';
+  const refs: Record<string, string> = { 'refs/heads/chore/bootstrap': 'x', 'refs/heads/main': 'y' };
+  const fake = (addFails: boolean) => async (args: string[]): Promise<string | null> => {
+    const a = args.filter((x) => x !== '-c' && x !== 'core.safecrlf=false');
+    if (a[0] === 'rev-parse' && a[1] === '--abbrev-ref') return 'chore/bootstrap\n';
+    if (a[0] === 'rev-parse' && a[1] === '--verify') return refs[a[3]] ?? null;
+    if (a[0] === 'rev-parse' && a[1] === '--git-path') return '.git/index\n';
+    if (a[0] === 'rev-parse' && a[1] === 'HEAD') return 'abc\n';
+    if (a[0] === 'show') return a[1].startsWith('chore/') ? configuredAgents : '> **STATUS: NOT CONFIGURED.**\n';
+    if (a[0] === 'remote') return '';
+    if (a[0] === 'add') return addFails ? null : '';
+    if (a[0] === 'write-tree') return 'tree1\n';
+    return null;
+  };
+  const o = { gh: async () => false, here: configuredAgents, started: true, checkConf: false, index: 'x', seed: () => {} };
+  const good = await gather({ ...o, git: fake(false) });
+  assert.equal(good.state, 'abc tree1');
+  assert.equal(phase(good, readDoctor(0, '== result: 0 fail, 0 warn ==', good.state)), 'verified');
+  const bad = await gather({ ...o, git: fake(true) });
+  assert.match(bad.state, /^unread:/);
+  // even a doctor answer recorded on that very state does not verify
+  assert.equal(phase(bad, readDoctor(0, '== result: 0 fail, 0 warn ==', bad.state)), 'generated');
+  assert.notEqual((await gather({ ...o, git: fake(true) })).state, bad.state);
+  // merged on main, not pulled, the human on another branch
+  const off = facts({ branch: configured, base: configured, current: 'feat/x' });
+  assert.match(offered({ facts: off, answers: NO_ANSWERS, agent: 'claude-code', doctor: null }).instead, /^bootstrap is merged on main: git switch main && git pull/);
 });

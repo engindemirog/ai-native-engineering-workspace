@@ -113,8 +113,11 @@ function screens(ctx: vscode.ExtensionContext, root: string): void {
   setupWatcher.onDidChange(soon); setupWatcher.onDidCreate(soon); setupWatcher.onDidDelete(soon);
   ctx.subscriptions.push(setupWatcher);
   // bootstrap's phase follows the files doctor reads, a commit, a branch switch, a fetch (spec 0014)
+  // — Start alone: the other screens are not redrawn for these (review round 2, N-3)
+  let bootTimer: NodeJS.Timeout | undefined;
+  const bootSoon = () => { clearTimeout(bootTimer); bootTimer = setTimeout(() => starter?.refreshed(), 300); };
   const bootWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '{docs/**,scripts/**,workflows/**,prompts/**,.git/HEAD,.git/refs/**}'));
-  bootWatcher.onDidChange(soon); bootWatcher.onDidCreate(soon); bootWatcher.onDidDelete(soon);
+  bootWatcher.onDidChange(bootSoon); bootWatcher.onDidCreate(bootSoon); bootWatcher.onDidDelete(bootSoon);
   ctx.subscriptions.push(bootWatcher);
   ctx.subscriptions.push(watcher, vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('anew.shell')) soon(); }));
 
@@ -449,8 +452,9 @@ class Start {
     }));
   }
 
+  // drawn once the first gather has read git: before it, no /bootstrap could be told from an output
+  // already waiting (review round 2, N-4)
   show(): void {
-    this.render();
     this.web.reveal();
     void this.gather().then(() => this.render());
   }
@@ -465,7 +469,7 @@ class Start {
 
   // What the bootstrap section shows, from the files and git (spec 0014, G-4); never cached.
   private gathering = 0; // the newest gather; an older one that ends later is dropped (L-4)
-  private async gather(): Promise<void> {
+  private async gather(): Promise<boot.Facts> {
     const n = ++this.gathering;
     const index = path.join(os.tmpdir(), `anew-index-${process.pid}-${n}`);
     try {
@@ -476,8 +480,10 @@ class Start {
         started: this.memo.get<boolean>('anew.bootstrap.started') === true,
         checkConf: fs.existsSync(path.join(this.root, 'scripts', 'check.conf')),
         index,
+        seed: (gitIndex, to) => fs.copyFileSync(path.resolve(this.root, gitIndex), to),
       });
       if (n === this.gathering) this.facts = facts;
+      return facts;
     } finally {
       try { fs.rmSync(index, { force: true }); } catch { /* a temporary index; the OS cleans it */ }
     }
@@ -573,6 +579,7 @@ class Start {
       return;
     }
     const s = this.setup();
+    if (!s.bootstrapped && this.facts === null) return; // not read yet (N-4)
     const b = this.bootView(s.agent);
     const cmd = s.bootstrapped ? start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')), s.agent) : b ? boot.offered(b).cmd : boot.command(this.answers(), s.agent);
     if (cmd === null) return this.render();
@@ -597,8 +604,8 @@ class Start {
     this.doctoring = true;
     this.render();
     try {
-      await this.gather();
-      const state = this.facts?.state ?? '';
+      // this gather's own state, even if a newer one is still running (review round 2, N-2)
+      const state = (await this.gather()).state;
       const r = await runScript(shell, this.root, 'doctor', []);
       this.doctor = boot.readDoctor(r.code, `${r.stdout}${r.stderr}`, state);
     } finally {
@@ -820,7 +827,7 @@ class Triage {
 // string.
 function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; out: string }> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { cwd, env: { ...process.env, ...env } }, (e, stdout, stderr) => {
+    execFile(cmd, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 }, (e, stdout, stderr) => {
       const code = e ? (typeof (e as { code?: unknown }).code === 'number' ? (e as { code: number }).code : 1) : 0;
       resolve({ code, stdout: String(stdout ?? ''), out: `${String(stdout ?? '')}${String(stderr ?? '')}`.trim() });
     });

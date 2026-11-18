@@ -46,7 +46,8 @@ command are the human's decisions at their gates.
 - **Extension 0.5.0** (the `.vsix` is attached to the release): the Start screen carries bootstrap
   from the first answer to the merge — the phases from AGENTS.md and git (a squash-merged PR
   included), the four fixed answers with ANEW's recommendations, **Run doctor**, **Push and open
-  PR** of `chore/bootstrap`; never the merge.
+  PR** of `chore/bootstrap`; never the merge. Merged on the remote but not pulled, it names the
+  pull; an abandoned start can be reset (**Start over**).
 
 ### Upgrading
 

@@ -345,7 +345,7 @@ test('bootstrap: the phase from git — not started, generated, verified by doct
   g('branch', '-M', 'main');
   const facts = (started = false) => bootGather({
     git: async (args, env) => { try { return execFileSync('git', args, { cwd: p, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env } }); } catch { return null; } },
-    gh: async () => false, here: fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8'), started, checkConf: fs.existsSync(path.join(p, 'scripts', 'check.conf')), index: path.join(tmp, 'boot-index'),
+    gh: async () => false, here: fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8'), started, checkConf: fs.existsSync(path.join(p, 'scripts', 'check.conf')), index: path.join(tmp, 'boot-index'), seed: (i, to) => fs.copyFileSync(path.resolve(p, i), to),
   });
   assert.equal(bootPhase(await facts(), null), 'not started');
   assert.equal(bootPhase(await facts(true), null), 'in the agent');
@@ -402,7 +402,7 @@ test('bootstrap: with a remote — the default branch from origin/HEAD, the push
   g(p, 'remote', 'set-head', 'origin', '--auto');
   const facts = () => bootGather({
     git: async (args, env) => { try { return execFileSync('git', args, { cwd: p, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env } }); } catch { return null; } },
-    gh: async () => true, here: fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8'), started: true, checkConf: false, index: path.join(tmp, 'boot-remote-index'),
+    gh: async () => true, here: fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8'), started: true, checkConf: false, index: path.join(tmp, 'boot-remote-index'), seed: (i, to) => fs.copyFileSync(path.resolve(p, i), to),
   });
   g(p, 'switch', '-q', '-c', 'chore/bootstrap');
   fs.writeFileSync(path.join(p, 'AGENTS.md'), fs.readFileSync(path.join(p, 'AGENTS.md'), 'utf8').split('\n').filter((l) => !l.startsWith('>')).join('\n').replace('**Mode: unset**', '**Mode: lite**'));
