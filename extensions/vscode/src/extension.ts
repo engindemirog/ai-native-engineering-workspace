@@ -19,6 +19,8 @@ import * as triage from './triage.ts';
 import { split, type Finding } from './report.ts';
 import * as ship from './ship.ts';
 import * as adopt from './adopt.ts';
+import * as boot from './bootstrap.ts';
+import { esc } from './screens.ts';
 import { nextFor, canContinue, type Agent } from './next.ts';
 
 export function activate(ctx: vscode.ExtensionContext): void {
@@ -413,6 +415,12 @@ class Start {
   private started: string | null = null;
   private installing: setup.Tool | null = null;
   private installed: start.StartView['installed'] = null;
+  // bootstrap on the screen (spec 0014): the facts read from git on each draw, doctor's last answer
+  private facts: boot.Facts | null = null;
+  private doctor: boot.Doctor | null = null;
+  private doctoring = false;
+  private pushing = false;
+  private prOutput: string | null = null;
   disposed = false;
   private readonly root: string;
   private readonly read: (rel: string) => string;
@@ -437,10 +445,33 @@ class Start {
   show(): void {
     this.render();
     this.web.reveal();
+    void this.gather().then(() => this.render());
   }
 
   private claude(): string | null {
     return claudeExe();
+  }
+
+  private answers(): boot.Answers {
+    return boot.answers(this.memo.get('anew.bootstrap.answers'));
+  }
+
+  // What the bootstrap section shows, from the files and git (spec 0014, G-4); never cached.
+  private async gather(): Promise<void> {
+    this.facts = await boot.gather({
+      git: async (args) => { const r = await run('git', args, this.root); return r.code === 0 ? r.stdout : null; },
+      gh: async () => (await run('gh', ['auth', 'status'], this.root)).code === 0,
+      here: this.read('AGENTS.md'),
+      started: this.memo.get<boolean>('anew.bootstrap.started') === true,
+      checkConf: fs.existsSync(path.join(this.root, 'scripts', 'check.conf')),
+    });
+  }
+
+  private bootView(agent: setup.Tool): boot.BootView | null {
+    return this.facts === null ? null : {
+      facts: { ...this.facts, here: this.read('AGENTS.md') }, answers: this.answers(), suggested: boot.suggested(vscode.env.language), agent,
+      doctor: this.doctor, doctoring: this.doctoring, pushing: this.pushing, prOutput: this.prOutput, shell: this.shell() !== null,
+    };
   }
 
   // Read again on every draw: installed or not is never cached (spec 0011, Constraints).
@@ -459,12 +490,13 @@ class Start {
 
   private shown = '';
   private keyNow(): string {
-    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null });
+    return setup.key({ ...this.setup(), mode: start.mode(this.read('AGENTS.md')), shell: this.shell() !== null }) + (this.facts ? boot.key(this.facts, this.doctor) : '');
   }
 
   // After a refresh: redrawn only when the setup it shows changed (review round 1, M-1).
   refreshed(): void {
-    if (!this.disposed && this.keyNow() !== this.shown) this.render();
+    if (this.disposed) return;
+    void this.gather().then(() => { if (!this.disposed && this.keyNow() !== this.shown) this.render(); });
   }
 
   render(): void {
@@ -474,13 +506,26 @@ class Start {
     this.web.webview.html = start.html({
       kind: this.kind, description: this.description, mode: start.mode(this.read('AGENTS.md')), number: start.nextNumber(names),
       ...this.setup(), started: this.started, shell: this.shell() !== null, installing: this.installing, installed: this.installed,
-      nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
+      boot: this.bootView(this.setup().agent), nonce: randomBytes(16).toString('hex'), cspSource: this.web.webview.cspSource,
     });
   }
 
   private async on(type: string, form: Record<string, string>): Promise<void> {
     this.description = form.description ?? this.description;
+    if (form.chat !== undefined || form.docs !== undefined) {
+      // the languages are kept as typed; the command in the preview follows in place (no redraw)
+      await this.memo.update('anew.bootstrap.answers', { ...this.answers(), chat: (form.chat ?? '').trim(), docs: (form.docs ?? '').trim() });
+      const s = this.setup();
+      if (!s.bootstrapped && type === 'input') void this.web.webview.postMessage({ type: 'update', html: { preview: esc(boot.command(this.answers(), s.agent)) } });
+    }
     if (type === 'input' || type === 'sync') return; // kept; the page already shows it
+    const pick = /^boot-(mode|trivial)-(ask|lite|strict|1|2|3)$/.exec(type);
+    if (pick) {
+      await this.memo.update('anew.bootstrap.answers', { ...this.answers(), [pick[1]]: pick[2] === 'ask' ? '' : pick[2] });
+      return this.render();
+    }
+    if (type === 'boot-doctor') return this.runDoctor();
+    if (type === 'boot-pr') return this.openPr();
     if (type.startsWith('kind-')) {
       const k = start.KINDS.find((x) => x.id === type.slice(5)); // only a known kind
       if (k) this.kind = k.id;
@@ -504,7 +549,7 @@ class Start {
       return;
     }
     const s = this.setup();
-    const cmd = s.bootstrapped ? start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')), s.agent) : start.bootstrap(s.agent);
+    const cmd = s.bootstrapped ? start.command(this.kind, this.description, start.mode(this.read('AGENTS.md')), s.agent) : boot.command(this.answers(), s.agent);
     if (cmd === null) return this.render();
     if (type === 'copy') {
       await vscode.env.clipboard.writeText(cmd);
@@ -516,6 +561,52 @@ class Start {
     if (exe === null) return this.render();
     openClaude(this.root, exe, cmd, 'ANEW · new work');
     this.started = cmd;
+    if (!s.bootstrapped) { await this.memo.update('anew.bootstrap.started', true); await this.gather(); }
+    this.render();
+  }
+
+  // ./scripts/doctor on the working tree, read-only; its answer kept with the state it ran on.
+  private async runDoctor(): Promise<void> {
+    const shell = this.shell();
+    if (shell === null || this.doctoring) return this.render();
+    this.doctoring = true;
+    this.render();
+    try {
+      await this.gather();
+      const state = this.facts?.state ?? '';
+      const r = await runScript(shell, this.root, 'doctor', []);
+      this.doctor = boot.readDoctor(r.code, `${r.stdout}${r.stderr}`, state);
+    } finally {
+      this.doctoring = false;
+    }
+    await this.gather();
+    this.render();
+  }
+
+  // Push chore/bootstrap and open its PR after a confirmation naming branch and remote; never a
+  // merge (spec 0014, G-5).
+  private async openPr(): Promise<void> {
+    await this.gather();
+    const f = this.facts;
+    if (f === null || this.pushing || !boot.mergeStep(f).offered) return this.render();
+    const ok = await vscode.window.showWarningMessage(`Push ${boot.BRANCH} to ${f.remote} and open its PR?`, {
+      modal: true, detail: `git push -u ${f.remote} ${boot.BRANCH}, then gh pr create --fill. The merge stays with the team: review and CI first.`,
+    }, 'Push and open PR');
+    if (ok !== 'Push and open PR') return this.render();
+    this.pushing = true;
+    this.prOutput = null;
+    this.render();
+    try {
+      const push = await run('git', ['push', '-u', f.remote, boot.BRANCH], this.root, { GIT_TERMINAL_PROMPT: '0' });
+      if (push.code !== 0) this.prOutput = `git push exited ${push.code}:\n${push.out}`;
+      else {
+        const pr = await run('gh', ['pr', 'create', '--fill'], this.root);
+        this.prOutput = pr.code === 0 ? `✓ ${pr.out}` : `gh pr create exited ${pr.code}:\n${pr.out}`;
+      }
+    } finally {
+      this.pushing = false;
+    }
+    await this.gather();
     this.render();
   }
 

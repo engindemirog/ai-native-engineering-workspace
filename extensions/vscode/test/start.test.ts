@@ -144,3 +144,20 @@ test('L-4: while init runs, the agent picks, Start and Copy are disabled', () =>
   // R2-2: held, so typing in the description does not enable it again
   assert.ok(h.includes('<button id="copy" class="secondary" data-keep="1" data-hold="1" disabled>Copy command</button>'));
 });
+
+test('spec 0014: the bootstrap section in place of the card, the answers in the command; above the kinds until merged', () => {
+  const template = { here: '> **STATUS: NOT CONFIGURED.**\n**Mode: unset**\n', branch: null, base: '> **STATUS: NOT CONFIGURED.**\n', defaultBranch: 'main', current: 'main', remote: 'origin', gh: true, started: false, checkConf: false, state: 's' };
+  const b = { facts: template, answers: { chat: 'tr', docs: 'tr', mode: '' as const, trivial: '1' as const }, suggested: 'tr', agent: 'claude-code' as Tool, doctor: null, doctoring: false, pushing: false, prOutput: null, shell: true };
+  const h = html({ ...view, bootstrapped: false, mode: 'unset', boot: b });
+  assert.ok(h.includes('aria-label="Set up the project"><span class="label">Set up the project — bootstrap</span>'));
+  assert.ok(h.includes('>/bootstrap chat=tr docs=tr trivial=1</pre>'));
+  assert.ok(!h.includes('The project is not set up yet</strong>'));
+  assert.ok(html({ ...view, bootstrapped: false, agent: 'codex', have: ['codex'], boot: { ...b, agent: 'codex' } }).includes('>$bootstrap chat=tr docs=tr trivial=1</pre>'));
+  const configured = '**Mode: lite** — x\n';
+  const gen = html({ ...view, boot: { ...b, facts: { ...template, here: configured, branch: configured, current: 'chore/bootstrap' } } });
+  assert.ok(gen.includes('Set up the project — bootstrap'));
+  assert.ok(gen.indexOf('Set up the project — bootstrap') < gen.indexOf('id="kind-feature"'));
+  const merged = html({ ...view, boot: { ...b, facts: { ...template, here: configured, base: configured } } });
+  assert.ok(!merged.includes('Set up the project — bootstrap'));
+  assert.ok(merged.includes('id="kind-feature"'));
+});

@@ -3,7 +3,7 @@
 // and opened as a PR, never merged here. Pure: the VS Code layer gathers the facts.
 import { esc } from './screens.ts';
 import { bootstrapped, forAgent, type Tool } from './setup.ts';
-import { prStep } from './ship.ts';
+import { prStep, defaultBranch as defaultOf } from './ship.ts';
 
 export const BRANCH = 'chore/bootstrap';
 
@@ -94,6 +94,24 @@ export interface Facts {
   started: boolean; // /bootstrap was started from this screen
   checkConf: boolean;
   state: string; // HEAD and `git status --porcelain` now
+}
+
+// The facts from git: AGENTS.md on chore/bootstrap and on the default branch (the remote's, else a
+// local main or master), the branch checked out, the remote, the state doctor's answer is kept with.
+export async function gather(o: { git: (args: string[]) => Promise<string | null>; gh: () => Promise<boolean>; here: string; started: boolean; checkConf: boolean }): Promise<Facts> {
+  const { git } = o;
+  const has = async (ref: string) => (await git(['rev-parse', '--verify', '--quiet', ref])) !== null;
+  const current = (await git(['rev-parse', '--abbrev-ref', 'HEAD']))?.trim() ?? '';
+  const branch = (await has(`refs/heads/${BRANCH}`)) ? (await git(['show', `${BRANCH}:AGENTS.md`])) ?? '' : null;
+  const remotes = ((await git(['remote'])) ?? '').split('\n').map((x) => x.trim()).filter(Boolean);
+  const remote = remotes.includes('origin') ? 'origin' : remotes[0] ?? '';
+  let defaultBranch = remote ? defaultOf(((await git(['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`])) ?? '').trim(), remote) : '';
+  for (const b of ['main', 'master']) if (!defaultBranch && (await has(`refs/heads/${b}`))) defaultBranch = b;
+  const ref = defaultBranch && remote && (await has(`refs/remotes/${remote}/${defaultBranch}`)) ? `${remote}/${defaultBranch}` : defaultBranch;
+  const base = ref ? (await git(['show', `${ref}:AGENTS.md`])) ?? '' : null;
+  const state = `${(await git(['rev-parse', 'HEAD'])) ?? ''}${(await git(['status', '--porcelain'])) ?? ''}`;
+  const gh = branch !== null && remote !== '' ? await o.gh() : false;
+  return { here: o.here, branch, base, defaultBranch, current, remote, gh, started: o.started, checkConf: o.checkConf, state };
 }
 
 export type Phase = 'not started' | 'in the agent' | 'generated' | 'verified' | 'merged';
