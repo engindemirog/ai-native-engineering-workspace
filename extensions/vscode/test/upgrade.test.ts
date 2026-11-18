@@ -55,6 +55,8 @@ test("the script's answer and the checks read as they are", () => {
   assert.deepEqual([s.replaced, s.added, s.removed, s.kept], [1, 1, 0, 1]);
   assert.deepEqual(s.merge, ['docs/domain.md', 'AGENTS.md']);
   assert.deepEqual(readScript(0, 'merge    docs/a (b).md (changed by the project and by v1.32)\n').merge, ['docs/a (b).md'], 'L-5');
+  const sk = readScript(0, 'skipped  .cursor/ (no ANEW cursor adapter found there: if it is installed, upgrade it by hand)\nUpgrade v1.31 → v1.32 in /p: 0 replaced, 0 added, 0 removed, 0 kept, 0 to merge.\n');
+  assert.deepEqual(sk.skipped, ['.cursor/ (no ANEW cursor adapter found there: if it is installed, upgrade it by hand)']);
   assert.match(s.summary, /^Upgrade v1.31 → v1.32/);
   const c = readChecks({ code: 0, out: '== result: 0 fail, 2 warn ==\n' }, { code: 0, out: 'ok    x\n== selftest: 558 passed, 0 failed ==\n' }, 's');
   assert.ok(green(c));
@@ -97,6 +99,8 @@ test('AC-5: the merge step only for chore/anew-<tag>; never a merge; the section
   assert.ok(avail.includes('id="up-fetch"') && avail.includes('ANEW v1.31 → v1.32') && avail.includes('compare/v1.31...v1.32'));
   assert.ok(!avail.includes('up-copy'), 'no /upgrade before the releases are fetched');
   const agent = section(view(facts({ fetched: true, branch: 'v1.31', current: 'chore/anew-v1.32' }), { script: readScript(0, 'merge    docs/<x>.md (changed by the project and by v1.32)\nUpgrade v1.31 → v1.32 in /p: 0 replaced, 0 added, 0 removed, 0 kept, 1 to merge.\n'), changelog: ['v1.32 — <b>'] }));
+  const skippedBox = section(view(facts({ fetched: true, branch: 'v1.31', current: 'chore/anew-v1.32' }), { script: readScript(0, 'skipped  .cursor/ (no ANEW cursor adapter found there: if it is installed, upgrade it by hand)\nUpgrade v1.31 → v1.32 in /p: 0 replaced, 0 added, 0 removed, 0 kept, 0 to merge.\n') }));
+  assert.ok(skippedBox.includes('Not upgraded — .cursor/ (no ANEW cursor adapter found there'), 'the skipped adapter on the screen (VERIFY Low-1)');
   assert.ok(agent.includes('/upgrade v1.32') && agent.includes('id="up-continue"') && agent.includes('docs/&lt;x&gt;.md') && agent.includes('v1.32 — &lt;b&gt;'));
   assert.ok(section(view(up)).includes('id="up-checks"') && section(view(up)).includes('id="up-pr"'));
   assert.ok(section(view({ ...up, current: 'main' })).includes('git switch chore/anew-v1.32 first'));

@@ -54,13 +54,14 @@ export function headings(changelog: string, base: string, to: string): string[] 
 }
 
 // scripts/upgrade's answer: the counts, the files to merge, its summary line.
-export interface Script { code: number; replaced: number; added: number; removed: number; kept: number; merge: string[]; summary: string; out: string }
+export interface Script { code: number; replaced: number; added: number; removed: number; kept: number; merge: string[]; skipped: string[]; summary: string; out: string }
 export function readScript(code: number, out: string): Script {
   const lines = out.replace(/\r/g, '').split('\n');
   const n = (w: string) => lines.filter((l) => l.startsWith(`${w} `)).length;
   return {
     code, replaced: n('replaced'), added: n('added'), removed: n('removed'), kept: n('kept'),
     merge: lines.filter((l) => l.startsWith('merge ')).map((l) => l.replace(/^merge\s+/, '').replace(/ \(changed by the project and by [^)]*\)$/, '')), // L-5
+    skipped: lines.filter((l) => l.startsWith('skipped ')).map((l) => l.replace(/^skipped\s+/, '')), // VERIFY Low-1
     summary: lines.find((l) => l.startsWith('Upgrade ')) ?? '', out,
   };
 }
@@ -185,7 +186,7 @@ export function section(v: View): string {
   const picks = !f.to && (v.offer.choices.length > 1 || v.offer.note) ? `<div class="row" role="group" aria-label="Release">${v.offer.choices.map((t) => `<button id="up-pick-${esc(t)}" class="secondary small" data-keep="1" aria-pressed="${t === to}">${esc(t)}${v.offer.note ? ' (leaves the LTS line)' : ''}</button>`).join('')}</div>` : '';
   const fetch = p === 'available' ? `<div class="row"><button id="up-fetch" class="primary"${v.shell && !v.busy && to ? '' : ' disabled'}>${v.busy === 'fetching' ? 'Fetching…' : 'Fetch and prepare'}</button><span class="muted small">${esc(v.shell ? 'after a confirmation: clones into .git/anew-upgrade/, a branch, scripts/upgrade' : 'No POSIX shell found: set anew.shell.')}</span></div>` : '';
   const s = v.script;
-  const scriptBox = s === null ? '' : `<div class="result ${s.code === 0 ? 'ok' : 'refused'}" role="${s.code === 0 ? 'status' : 'alert'}"><strong>${esc(s.code === 0 ? s.summary || 'scripts/upgrade ran' : `scripts/upgrade exited ${s.code}`)}</strong>${s.code === 0 ? (s.merge.length ? `<p class="small">For /upgrade — changed by the project and by ${esc(to)}:</p><pre class="out">${esc(s.merge.join('\n'))}</pre>` : '') : `<pre class="out">${esc(s.out.trim())}</pre>`}</div>`;
+  const scriptBox = s === null ? '' : `<div class="result ${s.code === 0 ? 'ok' : 'refused'}" role="${s.code === 0 ? 'status' : 'alert'}"><strong>${esc(s.code === 0 ? s.summary || 'scripts/upgrade ran' : `scripts/upgrade exited ${s.code}`)}</strong>${s.code === 0 ? (s.merge.length ? `<p class="small">For /upgrade — changed by the project and by ${esc(to)}:</p><pre class="out">${esc(s.merge.join('\n'))}</pre>` : '') + (s.skipped.length ? `<p class="missing small" role="note">Not upgraded — ${esc(s.skipped.join('; '))}</p>` : '') : `<pre class="out">${esc(s.out.trim())}</pre>`}</div>`;
   const log = v.changelog.length ? `<details><summary class="small">CHANGELOG, ${esc(base)} → ${esc(to)} (${v.changelog.length})</summary><ul class="facts">${v.changelog.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></details>` : '';
   const cmd = command(to, v.agent.agent);
   const agentBox = p === 'in the agent' ? `<div class="row"><span>Run in your agent:</span><code class="cmd">${esc(cmd)}</code><button id="up-copy" class="secondary" data-keep="1">Copy</button>${canContinue(v.agent) ? '<button id="up-continue" class="primary" data-keep="1">Continue in Claude Code</button>' : ''}</div>

@@ -5,7 +5,8 @@ Upgrade this project's ANEW to <new tag> (workflows/upgrade.md). Read AGENTS.md 
 
 INPUTS: the base release (the tag in .anew-version) and the new one, cloned under
 .git/anew-upgrade/<tag>/; the answer of <new>/scripts/upgrade <base> ., kept in
-.git/anew-upgrade/upgrade-<new tag>.out — read the "merge" lines there (do not run the script
+.git/anew-upgrade/upgrade-<new tag>.out — read the "merge" lines there, and tell me any "skipped" line (an adapter folder
+with none of ANEW's files: upgraded by hand, if installed) (do not run the script
 again: it refuses the uncommitted tree it left). No such file → stop and ask me to run Fetch again (on a clean tree:
 the script's earlier changes discarded or stashed first). We are
 on chore/anew-<new tag>; if not, stop and say so.

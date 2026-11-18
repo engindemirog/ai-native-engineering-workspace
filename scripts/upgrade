@@ -83,7 +83,7 @@ map() {
 }
 CC=0; GH=0; CU=0; CX=0
 { ours adapters/claude-code/.claude .claude || ours adapters/claude-code/CLAUDE.md CLAUDE.md; } && CC=1
-{ ours adapters/github-copilot/prompts .github/prompts || ours adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md; } && GH=1
+{ ours adapters/github-copilot/prompts .github/prompts || ours adapters/github-copilot/agents .github/agents || ours adapters/github-copilot/instructions .github/instructions || ours adapters/github-copilot/copilot-instructions.md .github/copilot-instructions.md; } && GH=1
 { ours adapters/cursor/commands .cursor/commands || ours adapters/cursor/rules .cursor/rules; } && CU=1
 ours adapters/codex/skills .agents/skills && CX=1
 paths() {
@@ -121,10 +121,10 @@ trap 'exit 130' INT TERM # stop on Ctrl-C: a killed cmp must never read as "diff
 replaced=0; added=0; removed=0; kept=0; merges=0; exe=0
 {
 # a folder of an adapter's with none of ANEW's files in it: named, not upgraded (N-1)
-[ "$CC" -eq 1 ] || [ ! -d "$T/.claude" ] || echo "skipped  .claude/ (no file there is ANEW's copy: the claude-code adapter is not upgraded)"
-[ "$GH" -eq 1 ] || [ ! -d "$T/.github/prompts" ] || echo "skipped  .github/prompts/ (no file there is ANEW's copy: the github-copilot adapter is not upgraded)"
-[ "$CU" -eq 1 ] || [ ! -d "$T/.cursor" ] || echo "skipped  .cursor/ (no file there is ANEW's copy: the cursor adapter is not upgraded)"
-[ "$CX" -eq 1 ] || [ ! -d "$T/.agents/skills" ] || echo "skipped  .agents/skills/ (no file there is ANEW's copy: the codex adapter is not upgraded)"
+[ "$CC" -eq 1 ] || [ ! -d "$T/.claude" ] || echo "skipped  .claude/ (no ANEW claude-code adapter found there: if it is installed, upgrade it by hand)"
+[ "$GH" -eq 1 ] || [ ! -d "$T/.github/prompts" ] || echo "skipped  .github/prompts/ (no ANEW github-copilot adapter found there: if it is installed, upgrade it by hand)"
+[ "$CU" -eq 1 ] || [ ! -d "$T/.cursor" ] || echo "skipped  .cursor/ (no ANEW cursor adapter found there: if it is installed, upgrade it by hand)"
+[ "$CX" -eq 1 ] || [ ! -d "$T/.agents/skills" ] || echo "skipped  .agents/skills/ (no ANEW codex adapter found there: if it is installed, upgrade it by hand)"
 while IFS="$TAB" read -r src dst; do
   [ -n "$src" ] || continue
   n="$ROOT/$src"; b="$B/$src"; p="$T/$dst"
