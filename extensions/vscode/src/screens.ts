@@ -3,6 +3,8 @@
 // remote content; a nonce'd script posts the pressed button (and a screen's form values) back.
 import type { Row } from './status.ts';
 import { steps } from './panel-logic.ts';
+import { canContinue, fresh, type Agent } from './next.ts';
+import { adapter, forAgent } from './setup.ts';
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
@@ -93,15 +95,30 @@ export function warnings(row: Row): string {
   return row.warnings.length ? `<div class="card warn" role="note"><span class="label">Warnings</span><ul>${row.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '';
 }
 
-// gate's answer as it is: written (with the next command and Copy) or refused (exit code named).
-export function answerBox(r: { written: boolean; code: number; text: string; next: string }, headline: string): string {
+// The agent's next step (spec 0012): the command in the agent's form, Copy, and Continue in Claude
+// Code under Start's rule; what kind of session it wants. No agent read: Copy only.
+export function nextBox(cmd: string, a: Agent = NO_AGENT): string {
+  const c = forAgent(cmd, a.agent);
+  const go = canContinue(a) ? '<button id="continue" class="primary">Continue in Claude Code</button>' : '';
+  const session = fresh(cmd) ? 'A fresh session: the producer never verifies its own work. Continue always opens a new one.'
+    : 'Or tell the session that is waiting to go on. Continue opens a new one; the segment reads its files.';
+  const why = canContinue(a) ? '' : a.agent !== 'claude-code' ? ` Copy it into ${adapter(a.agent).label}'s chat.`
+    : !a.claude ? ' Claude Code was not found on PATH: copy the command.' : !a.have.includes('claude-code') ? ' Continue waits for the Claude Code adapter (the Start screen installs it).' : '';
+  return `<div class="row"><span>Next step — run in your agent:</span><code class="cmd">${esc(c)}</code><button id="copy" class="secondary" data-keep="1">Copy</button>${go}</div>
+  <p class="muted small">${esc(session + why)}</p>`;
+}
+
+const NO_AGENT: Agent = { agent: 'claude-code', claude: false, have: [] };
+
+// gate's answer as it is: written (with the next step) or refused (exit code named).
+export function answerBox(r: { written: boolean; code: number; text: string; next: string }, headline: string, a?: Agent): string {
   if (!r.written) {
     return `<div class="result refused" role="alert"><strong>Refused (exit ${r.code}) — nothing was written.</strong><pre class="out">${esc(r.text)}</pre></div>`;
   }
   return `<div class="result ok" role="status">
   <strong>✓ ${esc(headline)}</strong>
   <pre class="out">${esc(r.text)}</pre>
-  ${r.next ? `<div class="row"><span>Next step — run in your agent:</span><code class="cmd">${esc(r.next)}</code><button id="copy" class="secondary" data-keep="1">Copy</button></div>` : ''}
+  ${r.next ? nextBox(r.next, a) : ''}
 </div>`;
 }
 

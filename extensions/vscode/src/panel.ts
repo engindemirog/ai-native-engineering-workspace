@@ -4,7 +4,8 @@ import type { Section } from './summary.ts';
 import type { Offer } from './panel-logic.ts';
 import type { Row } from './status.ts';
 import { files, pairs, risks, criteria, plain } from './cards.ts';
-import { esc, page, strip, header, warnings, answerBox, card, raw } from './screens.ts';
+import { esc, page, strip, header, warnings, answerBox, nextBox, card, raw } from './screens.ts';
+import { nextFor, type Agent } from './next.ts';
 
 export { notice } from './screens.ts';
 
@@ -15,6 +16,7 @@ export interface View {
   offer: Offer;
   result: { written: boolean; code: number; text: string; next: string; after?: string } | null;
   approver: string; // git user.name, which gate writes; '' when unset
+  agent?: Agent; // the agent the next step is for; without it, Copy only
   nonce: string;
   cspSource: string;
 }
@@ -24,7 +26,11 @@ export function html(v: View): string {
   const kind = v.offer.write === 'approve-spec' ? 'Spec' : v.offer.write === 'approve-plan' ? 'Plan' : '';
   const title = kind ? `${kind} ${v.row.spec} — ${v.row.name}` : `${v.row.spec} — ${v.row.name}`;
   const base = v.file.split('/').pop() ?? v.file;
-  const next = v.offer.write === null && v.row.next && !v.result?.written ? `<p class="muted">Next: ${esc(v.row.next)}</p>` : '';
+  const cmd = nextFor(v.row);
+  // a row that waits for the agent: its command, to copy or continue with (spec 0012)
+  const next = v.offer.write !== null || v.result?.written ? ''
+    : cmd ? `<div class="card next" role="note"><span class="label">Next step</span>${v.row.next ? `<p class="muted">${esc(v.row.next)}</p>` : ''}${nextBox(cmd, v.agent)}</div>`
+    : v.row.next ? `<p class="muted">Next: ${esc(v.row.next)}</p>` : '';
   // after the refresh the row has moved on; the answer's own write names what was approved
   const approved = (v.result?.after ? (v.result.after === 'PLAN' ? 'Spec' : 'Plan') : kind || 'Plan');
   return page({ title, nonce: v.nonce, cspSource: v.cspSource }, `
@@ -34,7 +40,7 @@ ${warnings(v.row)}
 ${cards(v.sections)}
 ${next}
 ${decide(v, what, base)}
-${v.result ? answerBox(v.result, `${approved} approved — written and committed`) : ''}`);
+${v.result ? answerBox(v.result, `${approved} approved — written and committed`, v.agent) : ''}`);
 }
 
 function cards(sections: Section[]): string {
