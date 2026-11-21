@@ -66,26 +66,26 @@ plan=
 if grep -q "^[$ws]*requires[ $tab]" "$CONF"; then
   plan=$(
     while IFS= read -r line || [ -n "$line" ]; do
-      case "$line" in *[!$ws]*) ;; *) continue ;; esac
+      case "$line" in (*[!$ws]*) ;; (*) continue ;; esac
       rest=${line#"${line%%[!$ws]*}"}
       case "$rest" in
-        \#*) continue ;;
-        requires[" $tab"]*)
+        (\#*) continue ;;
+        (requires[" $tab"]*)
           case "$rest" in
-            *:*) ;;
-            *) printf "E\trequires line has no ':': %s\n" "$(trim "$rest")"; continue ;;
+            (*:*) ;;
+            (*) printf "E\trequires line has no ':': %s\n" "$(trim "$rest")"; continue ;;
           esac
           name=$(trim "${rest%%:*}"); name=$(trim "${name#requires}")
           cmd=$(trim "${rest#*:}")
           # Empty, or only a comment (a placeholder): sh -c would exit 0 and pass it silently.
-          case "$cmd" in ''|\#*) printf 'E\trequires has no command: %s\n' "${name:-(empty)}"; continue ;; esac
+          case "$cmd" in (''|\#*) printf 'E\trequires has no command: %s\n' "${name:-(empty)}"; continue ;; esac
           printf 'R\t%s\t%s\n' "$name" "$cmd"
           continue ;;
       esac
       name=${line%%:*}
       case "$name" in
-        *"[fast]"*) sel=1 ;;
-        *) if [ "$profile" = fast ]; then sel=0; else sel=1; fi ;;
+        (*"[fast]"*) sel=1 ;;
+        (*) if [ "$profile" = fast ]; then sel=0; else sel=1; fi ;;
       esac
       printf 'S\t%s\t%s\n' "$sel" "$(trim "$(printf '%s' "$name" | sed 's/[[:space:]]*\[fast\]//')")"
     done < "$CONF" | awk '
